@@ -3,11 +3,19 @@ info:
   title: Tapiro API
   description: API for AI-Driven Personalized Advertising System
   version: 1.0.0
+  contact: { name: Tapiro Support, email: tapirosupport@gmail.com }
+tags:
+  - name: Authentication
+    description: Endpoints related to OAuth2 authentication and authorization
+  - name: User Management
+    description: Operations for user registration, profile management, and deletion
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
   - url: https://api.tapiro.com/v1
     description: Production API
+  - url: http://localhost:${PORT}
+    description: Development API
 security:
   - oauth2:
       - user:read
@@ -17,6 +25,8 @@ security:
 paths:
   /auth/token:
     post:
+      tags:
+        - Authentication
       summary: Get OAuth2 Token
       description: Exchange authorization code for access token.
       operationId: authTokenPOST
@@ -36,8 +46,11 @@ paths:
         "401":
           description: Unauthorized
       x-swagger-router-controller: Authentication
+
   /auth/authorize:
     get:
+      tags:
+        - Authentication
       summary: Authorize User
       description: Redirect to OAuth2 authorization page.
       operationId: authAuthorizeGET
@@ -69,8 +82,11 @@ paths:
         "302":
           description: Redirect to login/consent page
       x-swagger-router-controller: Authentication
+
   /users:
     post:
+      tags:
+        - User Management
       summary: Register User
       description: Create a new user (customer or store).
       operationId: usersPOST
@@ -90,9 +106,13 @@ paths:
         "400":
           description: Invalid input
       x-swagger-router-controller: Authentication
+
   /users/{userId}:
     get:
+      tags:
+        - User Management
       summary: Get User Profile
+      description: Get User Profile by ID.
       operationId: usersUserIdGET
       parameters:
         - name: userId
@@ -115,8 +135,12 @@ paths:
         - oauth2:
             - user:read
       x-swagger-router-controller: Authentication
+
     put:
+      tags:
+        - User Management
       summary: Update User Profile
+      description: Update User Profile by ID.
       operationId: usersUserIdPUT
       parameters:
         - name: userId
@@ -145,8 +169,12 @@ paths:
         - oauth2:
             - user:write
       x-swagger-router-controller: Authentication
+
     delete:
+      tags:
+        - User Management
       summary: Delete User
+      description: Delete User Profile by ID.
       operationId: usersUserIdDELETE
       parameters:
         - name: userId
@@ -202,7 +230,7 @@ components:
           data_sharing: true
           anonymized_id: anonymized_id
         id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
-        email: ""
+        email: "johndoe@gmail.com"
     UserCreate:
       required:
         - email
