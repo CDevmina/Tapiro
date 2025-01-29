@@ -328,8 +328,8 @@ components:
       type: oauth2
       flows:
         authorizationCode:
-          authorizationUrl: https://auth.tapiro.com/oauth/authorize
-          tokenUrl: https://auth.tapiro.com/oauth/token
+          authorizationUrl: https://dev-zuxebycdcmuazvo8.us.auth0.com/authorize
+          tokenUrl: https://dev-zuxebycdcmuazvo8.us.auth0.com/oauth/token
           scopes:
             user:read: Read user data
             user:write: Modify user data
