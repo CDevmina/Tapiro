@@ -3,6 +3,7 @@
 var path = require('path');
 var http = require('http');
 const { connectDB } = require('./utils/mongoUtil');
+const { connectRedis } = require('./utils/redisUtil');
 
 var oas3Tools = require('oas3-tools');
 var serverPort = 8080;
@@ -18,12 +19,14 @@ var expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/open
 var app = expressAppConfig.getApp();
 
 // Initialize MongoDB connection
-connectDB().then(() => {
-    // Initialize the Swagger middleware
-    http.createServer(app).listen(serverPort, function () {
-        console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
-        console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
+connectDB()
+    .then(() => connectRedis())
+    .then(() => {
+        http.createServer(app).listen(serverPort, function () {
+            console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
+            console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
+        });
+    })
+    .catch(err => {
+        console.error('Startup error:', err);
     });
-}).catch(err => {
-    console.error('Failed to connect to MongoDB:', err);
-});
