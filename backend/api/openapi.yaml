@@ -1,0 +1,309 @@
+openapi: 3.0.0
+info:
+  title: Tapiro API
+  description: API for AI-Driven Personalized Advertising System
+  version: 1.0.0
+servers:
+  - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
+    description: SwaggerHub API Auto Mocking
+  - url: https://api.tapiro.com/v1
+    description: Production API
+security:
+  - oauth2:
+      - user:read
+      - user:write
+      - store:read
+      - store:write
+paths:
+  /auth/token:
+    post:
+      summary: Get OAuth2 Token
+      description: Exchange authorization code for access token.
+      operationId: authTokenPOST
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/auth_token_body"
+        required: true
+      responses:
+        "200":
+          description: Token response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "401":
+          description: Unauthorized
+      x-swagger-router-controller: Authentication
+  /auth/authorize:
+    get:
+      summary: Authorize User
+      description: Redirect to OAuth2 authorization page.
+      operationId: authAuthorizeGET
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: string
+            enum:
+              - code
+        - name: client_id
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to login/consent page
+      x-swagger-router-controller: Authentication
+  /users:
+    post:
+      summary: Register User
+      description: Create a new user (customer or store).
+      operationId: usersPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+        required: true
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid input
+      x-swagger-router-controller: Authentication
+  /users/{userId}:
+    get:
+      summary: Get User Profile
+      operationId: usersUserIdGET
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          description: Forbidden
+      security:
+        - oauth2:
+            - user:read
+      x-swagger-router-controller: Authentication
+    put:
+      summary: Update User Profile
+      operationId: usersUserIdPUT
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+        required: true
+      responses:
+        "200":
+          description: Updated user data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          description: Forbidden
+      security:
+        - oauth2:
+            - user:write
+      x-swagger-router-controller: Authentication
+    delete:
+      summary: Delete User
+      operationId: usersUserIdDELETE
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+      responses:
+        "204":
+          description: User deleted
+        "403":
+          description: Forbidden
+      security:
+        - oauth2:
+            - user:write
+      x-swagger-router-controller: Authentication
+components:
+  schemas:
+    User:
+      required:
+        - email
+        - role
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - customer
+            - store
+        preferences:
+          $ref: "#/components/schemas/User_preferences"
+        privacy_settings:
+          $ref: "#/components/schemas/User_privacy_settings"
+      example:
+        preferences:
+          purchase_history:
+            - purchase_history
+            - purchase_history
+          categories:
+            - categories
+            - categories
+        role: customer
+        privacy_settings:
+          data_sharing: true
+          anonymized_id: anonymized_id
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        email: ""
+    UserCreate:
+      required:
+        - email
+        - password
+        - role
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          writeOnly: true
+        role:
+          type: string
+          enum:
+            - customer
+            - store
+    UserUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        preferences:
+          type: object
+        privacy_settings:
+          type: object
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+      example:
+        access_token: access_token
+        refresh_token: refresh_token
+        token_type: token_type
+        expires_in: 0
+    auth_token_body:
+      type: object
+      properties:
+        grant_type:
+          type: string
+          enum:
+            - authorization_code
+            - refresh_token
+        code:
+          type: string
+        redirect_uri:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        refresh_token:
+          type: string
+    User_preferences:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+        purchase_history:
+          type: array
+          items:
+            type: string
+      example:
+        purchase_history:
+          - purchase_history
+          - purchase_history
+        categories:
+          - categories
+          - categories
+    User_privacy_settings:
+      type: object
+      properties:
+        data_sharing:
+          type: boolean
+        anonymized_id:
+          type: string
+          readOnly: true
+      example:
+        data_sharing: true
+        anonymized_id: anonymized_id
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.tapiro.com/oauth/authorize
+          tokenUrl: https://auth.tapiro.com/oauth/token
+          scopes:
+            user:read: Read user data
+            user:write: Modify user data
+            store:read: Read store data
+            store:write: Modify store data
