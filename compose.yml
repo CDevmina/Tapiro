@@ -1,4 +1,20 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    command: npm run dev
+
   backend:
     build:
       context: ./backend
@@ -10,6 +26,8 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
     ports:
       - "3000:3000"
     depends_on:
@@ -20,9 +38,9 @@ services:
     container_name: tapiro-redis
     ports:
       - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
 
 volumes:
   redis-data:
