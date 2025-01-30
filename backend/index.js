@@ -4,6 +4,7 @@ var path = require('path');
 var http = require('http');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
+const { auth, validateToken } = require('./middleware/authMiddleware');
 
 var oas3Tools = require('oas3-tools');
 var serverPort = 8080;
@@ -17,6 +18,10 @@ var options = {
 
 var expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/openapi.yaml'), options);
 var app = expressAppConfig.getApp();
+
+// Apply auth middleware
+app.use(auth);
+app.use('/users', validateToken);
 
 // Initialize MongoDB connection
 connectDB()
