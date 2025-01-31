@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       target: development
+    container_name: tapiro-API
     volumes:
       - ./backend:/app
     environment:
@@ -14,6 +15,26 @@ services:
       - "3000:3000"
     depends_on:
       - redis
+    networks:
+      - tapiro-net
+
+  web:
+    build:
+      context: ./web
+      target: development
+    container_name: tapiro-web
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://backend:3000
+    ports:
+      - "3001:5173"
+    networks:
+      - tapiro-net
+    depends_on:
+      - backend
 
   redis:
     image: redis:alpine
@@ -23,6 +44,11 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
+    networks:
+      - tapiro-net
+
+networks:
+  tapiro-net:
 
 volumes:
   redis-data:
