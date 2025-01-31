@@ -1,5 +1,6 @@
 'use strict';
 
+const { getDB } = require('../utils/mongoUtil');
 
 /**
  * Authorize User
@@ -10,8 +11,8 @@
  * redirect_uri String 
  * no response value expected for this operation
  **/
-exports.authAuthorizeGET = function(response_type,client_id,redirect_uri) {
-  return new Promise(function(resolve, reject) {
+exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
+  return new Promise(function (resolve, reject) {
     resolve();
   });
 }
@@ -23,15 +24,15 @@ exports.authAuthorizeGET = function(response_type,client_id,redirect_uri) {
  *
  * returns Token
  **/
-exports.authTokenPOST = function() {
-  return new Promise(function(resolve, reject) {
+exports.authTokenPOST = function () {
+  return new Promise(function (resolve, reject) {
     var examples = {};
     examples['application/json'] = {
-  "access_token" : "access_token",
-  "refresh_token" : "refresh_token",
-  "token_type" : "token_type",
-  "expires_in" : 0
-};
+      "access_token": "access_token",
+      "refresh_token": "refresh_token",
+      "token_type": "token_type",
+      "expires_in": 0
+    };
     if (Object.keys(examples).length > 0) {
       resolve(examples[Object.keys(examples)[0]]);
     } else {
@@ -48,29 +49,17 @@ exports.authTokenPOST = function() {
  * body UserCreate 
  * returns User
  **/
-exports.usersPOST = function(body) {
-  return new Promise(function(resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-  "preferences" : {
-    "purchase_history" : [ "purchase_history", "purchase_history" ],
-    "categories" : [ "categories", "categories" ]
-  },
-  "role" : "customer",
-  "privacy_settings" : {
-    "data_sharing" : true,
-    "anonymized_id" : "anonymized_id"
-  },
-  "id" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "email" : ""
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+exports.usersPOST = function (body) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users').insertOne(body);
+      resolve(result.ops ? result.ops[0] : result);
+    } catch (error) {
+      reject(error);
     }
   });
-}
+};
 
 
 /**
@@ -79,9 +68,16 @@ exports.usersPOST = function(body) {
  * userId String 
  * no response value expected for this operation
  **/
-exports.usersUserIdDELETE = function(userId) {
-  return new Promise(function(resolve, reject) {
-    resolve();
+exports.usersUserIdDELETE = function (userId) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users')
+        .deleteOne({ _id: userId });
+      resolve({ deletedCount: result.deletedCount });
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -92,29 +88,17 @@ exports.usersUserIdDELETE = function(userId) {
  * userId String 
  * returns User
  **/
-exports.usersUserIdGET = function(userId) {
-  return new Promise(function(resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-  "preferences" : {
-    "purchase_history" : [ "purchase_history", "purchase_history" ],
-    "categories" : [ "categories", "categories" ]
-  },
-  "role" : "customer",
-  "privacy_settings" : {
-    "data_sharing" : true,
-    "anonymized_id" : "anonymized_id"
-  },
-  "id" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "email" : ""
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+exports.usersUserIdGET = function (userId) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const user = await db.collection('users').findOne({ _id: userId });
+      resolve(user);
+    } catch (error) {
+      reject(error);
     }
   });
-}
+};
 
 
 /**
@@ -124,27 +108,15 @@ exports.usersUserIdGET = function(userId) {
  * userId String 
  * returns User
  **/
-exports.usersUserIdPUT = function(body,userId) {
-  return new Promise(function(resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-  "preferences" : {
-    "purchase_history" : [ "purchase_history", "purchase_history" ],
-    "categories" : [ "categories", "categories" ]
-  },
-  "role" : "customer",
-  "privacy_settings" : {
-    "data_sharing" : true,
-    "anonymized_id" : "anonymized_id"
-  },
-  "id" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "email" : ""
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+exports.usersUserIdPUT = function (body, userId) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users')
+        .updateOne({ _id: userId }, { $set: body });
+      resolve({ modifiedCount: result.modifiedCount });
+    } catch (error) {
+      reject(error);
     }
   });
-}
-
+};
