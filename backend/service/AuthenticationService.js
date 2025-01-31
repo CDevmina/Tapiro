@@ -1,5 +1,9 @@
 'use strict';
 
+const axios = require('axios');
+const { getDB } = require('../utils/mongoUtil');
+const { setCache } = require('../utils/redisUtil');
+const { generateAnonymizedId } = require('../utils/helperUtil');
 const { getDB } = require('../utils/mongoUtil');
 
 /**
@@ -24,22 +28,32 @@ exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
  *
  * returns Token
  **/
-exports.authTokenPOST = function () {
-  return new Promise(function (resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-      "access_token": "access_token",
-      "refresh_token": "refresh_token",
-      "token_type": "token_type",
-      "expires_in": 0
-    };
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
-  });
-}
+exports.authTokenPOST = async function (body) {
+  const tokenEndpoint = 'https://dev-zuxebycdcmuazvo8.us.auth0.com/oauth/token';
+
+  try {
+    const response = await axios.post(tokenEndpoint, {
+      grant_type: body.grant_type,
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      code: body.code,
+      redirect_uri: body.redirect_uri
+    });
+
+    // Cache the token with user info
+    await setCache(`token:${response.data.access_token}`, JSON.stringify({
+      token: response.data.access_token,
+      expires_in: response.data.expires_in
+    }), {
+      EX: response.data.expires_in
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Token exchange error:', error);
+    throw error;
+  }
+};
 
 
 /**
