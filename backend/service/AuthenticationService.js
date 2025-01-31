@@ -1,8 +1,10 @@
 'use strict';
+
 const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
+const { getDB } = require('../utils/mongoUtil');
 
 /**
  * Authorize User
@@ -61,28 +63,16 @@ exports.authTokenPOST = async function (body) {
  * body UserCreate 
  * returns User
  **/
-exports.usersPOST = async function (body) {
-  const db = getDB();
-  const users = db.collection('users');
-
-  try {
-    const newUser = {
-      email: body.email,
-      role: body.role,
-      preferences: {},
-      privacy_settings: {
-        data_sharing: true,
-        anonymized_id: generateAnonymizedId()
-      },
-      created_at: new Date()
-    };
-
-    const result = await users.insertOne(newUser);
-    return { ...newUser, id: result.insertedId };
-  } catch (error) {
-    console.error('User creation error:', error);
-    throw error;
-  }
+exports.usersPOST = function (body) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users').insertOne(body);
+      resolve(result.ops ? result.ops[0] : result);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 
@@ -93,8 +83,15 @@ exports.usersPOST = async function (body) {
  * no response value expected for this operation
  **/
 exports.usersUserIdDELETE = function (userId) {
-  return new Promise(function (resolve, reject) {
-    resolve();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users')
+        .deleteOne({ _id: userId });
+      resolve({ deletedCount: result.deletedCount });
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -106,28 +103,16 @@ exports.usersUserIdDELETE = function (userId) {
  * returns User
  **/
 exports.usersUserIdGET = function (userId) {
-  return new Promise(function (resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-      "preferences": {
-        "purchase_history": ["purchase_history", "purchase_history"],
-        "categories": ["categories", "categories"]
-      },
-      "role": "customer",
-      "privacy_settings": {
-        "data_sharing": true,
-        "anonymized_id": "anonymized_id"
-      },
-      "id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-      "email": ""
-    };
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const user = await db.collection('users').findOne({ _id: userId });
+      resolve(user);
+    } catch (error) {
+      reject(error);
     }
   });
-}
+};
 
 
 /**
@@ -138,26 +123,14 @@ exports.usersUserIdGET = function (userId) {
  * returns User
  **/
 exports.usersUserIdPUT = function (body, userId) {
-  return new Promise(function (resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-      "preferences": {
-        "purchase_history": ["purchase_history", "purchase_history"],
-        "categories": ["categories", "categories"]
-      },
-      "role": "customer",
-      "privacy_settings": {
-        "data_sharing": true,
-        "anonymized_id": "anonymized_id"
-      },
-      "id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-      "email": ""
-    };
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+      const result = await db.collection('users')
+        .updateOne({ _id: userId }, { $set: body });
+      resolve({ modifiedCount: result.modifiedCount });
+    } catch (error) {
+      reject(error);
     }
   });
-}
-
+};
