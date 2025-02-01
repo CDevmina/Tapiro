@@ -4,7 +4,6 @@ const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
-const { getDB } = require('../utils/mongoUtil');
 
 /**
  * Authorize User
