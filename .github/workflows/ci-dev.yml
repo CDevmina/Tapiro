@@ -3,9 +3,9 @@ name: Local Docker CI
 
 on:
   push:
-    branches: ["dev", "main"]
+    branches: ["Development", "Production"]
   pull_request:
-    branches: ["dev", "main"]
+    branches: ["Development", "Production"]
 
 jobs:
   build-and-test:
