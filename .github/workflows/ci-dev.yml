@@ -1,0 +1,63 @@
+# .github/workflows/ci.yml
+name: Local Docker CI
+
+on:
+  push:
+    branches: ["dev", "main"]
+  pull_request:
+    branches: ["dev", "main"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build backend image
+        run: |
+          docker build -f docker/backend.Dockerfile -t tapiro-backend ./backend
+
+      - name: Build web image
+        run: |
+          docker build -f docker/web.Dockerfile -t tapiro-web ./web
+
+      - name: Start containers
+        run: |
+          docker network create tapiro-net
+          docker run -d --name tapiro-redis --network tapiro-net redis:alpine
+          docker run -d \
+            --name tapiro-backend \
+            --network tapiro-net \
+            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+            -e REDIS_HOST=tapiro-redis \
+            -p 3000:3000 \
+            tapiro-backend
+          docker run -d \
+            --name tapiro-web \
+            --network tapiro-net \
+            -e VITE_API_URL=http://tapiro-backend:3000 \
+            -p 3001:5173 \
+            tapiro-web
+
+      - name: Run backend tests
+        run: |
+          docker exec tapiro-backend npm test
+
+      - name: Run web tests
+        run: |
+          docker exec tapiro-web npm run test
+
+      - name: Integration tests
+        run: |
+          # Add your API test commands here using curl/newman/etc
+          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3000/auth/healthcheck
+          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3001

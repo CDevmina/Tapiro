@@ -1,0 +1,28 @@
+name: CD-Prod
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "backend/**"
+      - "web/**"
+      - "docker/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to AWS ECS (Example)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: tapiro-task-def.json
+          service: tapiro-service
+          cluster: tapiro-cluster
+          wait-for-service-stability: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
