@@ -24,11 +24,11 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build -f docker/backend.Dockerfile -t backend ./backend
+          docker build -f backend/dockerfile -t backend ./backend
 
       - name: Build web image
         run: |
-          docker build -f docker/web.Dockerfile -t web ./web
+          docker build -f web/dockerfile -t web ./web
 
       - name: Start containers
         run: |
