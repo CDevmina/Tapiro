@@ -44,23 +44,24 @@ jobs:
         run: |
           docker build -f web/dockerfile.prod -t web-prod ./web
 
-      - name: Start containers
-        run: |
-          docker network create tapiro-net
-          docker run -d --name tapiro-redis --network tapiro-net redis:alpine
-          docker run -d \
-            --name tapiro-backend \
-            --network tapiro-net \
-            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-            -e REDIS_HOST=tapiro-redis \
-            -p 3000:3000 \
-            tapiro-backend
-          docker run -d \
-            --name tapiro-web \
-            --network tapiro-net \
-            -e VITE_API_URL=http://tapiro-backend:3000 \
-            -p 3001:5173 \
-            tapiro-web
+- name: Start containers (Development)
+  if: github.ref_name == 'Development'
+  run: |
+    docker network create tapiro-net
+    docker run -d --name tapiro-redis --network tapiro-net redis:alpine
+    docker run -d \
+      --name tapiro-backend \
+      --network tapiro-net \
+      -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+      -e REDIS_HOST=tapiro-redis \
+      -p 3000:3000 \
+      backend-dev
+    docker run -d \
+      --name tapiro-web \
+      --network tapiro-net \
+      -e VITE_API_URL=http://tapiro-backend:3000 \
+      -p 3001:5173 \
+      web-dev
 
       - name: Run backend tests
         run: |
