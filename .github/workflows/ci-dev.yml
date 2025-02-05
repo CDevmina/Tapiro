@@ -22,13 +22,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build backend image
+      # Build backend
+      - name: Build backend dev
+        if: github.ref_name == 'Development'
         run: |
-          docker build -f backend/dockerfile -t backend ./backend
+          docker build -f backend/dockerfile.dev -t backend-dev ./backend
 
-      - name: Build web image
+      - name: Build backend prod
+        if: github.ref_name == 'Production'
         run: |
-          docker build -f web/dockerfile -t web ./web
+          docker build -f backend/dockerfile.prod -t backend-prod ./backend
+
+      # Build web
+      - name: Build web dev
+        if: github.ref_name == 'Development'
+        run: |
+          docker build -f web/dockerfile.dev -t web-dev ./web
+
+      - name: Build web prod
+        if: github.ref_name == 'Production'
+        run: |
+          docker build -f web/dockerfile.prod -t web-prod ./web
 
       - name: Start containers
         run: |
