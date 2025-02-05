@@ -24,11 +24,11 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build -f docker/backend.Dockerfile -t tapiro-backend ./backend
+          docker build -f docker/backend.Dockerfile -t backend ./backend
 
       - name: Build web image
         run: |
-          docker build -f docker/web.Dockerfile -t tapiro-web ./web
+          docker build -f docker/web.Dockerfile -t web ./web
 
       - name: Start containers
         run: |
@@ -50,10 +50,12 @@ jobs:
 
       - name: Run backend tests
         run: |
+          docker exec tapiro-backend npm install --only=dev
           docker exec tapiro-backend npm test
 
       - name: Run web tests
         run: |
+          docker exec tapiro-web npm install --only=dev
           docker exec tapiro-web npm run test
 
       - name: Integration tests
