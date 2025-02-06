@@ -68,8 +68,7 @@ jobs:
       - name: Run all tests
         working-directory: web
         run: |
-          npm run test:unit
-          npm run test:components
+          npm run test
 
       - name: Run E2E tests
         uses: cypress-io/github-action@v6

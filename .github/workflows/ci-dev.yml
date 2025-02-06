@@ -34,17 +34,17 @@ jobs:
 
       - name: Run unit tests
         working-directory: backend
-        run: npm run test:unit
+        run: npm run test
 
       - name: Run integration tests
         working-directory: backend
-        run: npm run test:integration
+        run: npm run test
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Run API tests
         working-directory: backend
-        run: npm run test:api
+        run: npm run test
 
   web-tests:
     name: Web Tests
@@ -65,11 +65,11 @@ jobs:
 
       - name: Run unit tests
         working-directory: web
-        run: npm run test:unit
+        run: npm run test
 
       - name: Run component tests
         working-directory: web
-        run: npm run test:components
+        run: npm run test
 
       - name: Run E2E tests
         uses: cypress-io/github-action@v6
