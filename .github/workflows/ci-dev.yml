@@ -1,64 +1,170 @@
-name: CI - Dev
+name: CI-Dev
+
 on:
   push:
     branches: ["Development"]
+    paths:
+      - "backend/**"
+      - "web/**"
+      - ".github/workflows/ci-dev.yml"
   pull_request:
     branches: ["Development"]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
-  build-and-test:
+  backend-tests:
+    name: Backend Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js with cache
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "18"
           cache: "npm"
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install web dependencies
+      - name: Install dependencies
+        working-directory: backend
         run: npm ci
-        working-directory: ./web
 
-      - name: Lint (web)
-        run: npm run lint
-        working-directory: ./web
+      - name: Run unit tests
+        working-directory: backend
+        run: npm run test:unit
 
-      - name: Install backend dependencies
+      - name: Run integration tests
+        working-directory: backend
+        run: npm run test:integration
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+
+      - name: Run API tests
+        working-directory: backend
+        run: npm run test:api
+
+  web-tests:
+    name: Web Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
         run: npm ci
-        working-directory: ./backend
 
-      - name: Security scan (backend)
-        run: npm audit --audit-level=moderate
-        working-directory: ./backend
+      - name: Run unit tests
+        working-directory: web
+        run: npm run test:unit
 
-      - name: Build Web Dev Image
-        run: |
-          docker build \
-            -f web/dockerfile.dev \
-            -t your-org/web-dev:latest \
-            ./web
+      - name: Run component tests
+        working-directory: web
+        run: npm run test:components
 
-      - name: Build Backend Dev Image
-        run: |
-          docker build \
-            -f backend/dockerfile \
-            -t your-org/backend-dev:latest \
-            ./backend
+      - name: Run E2E tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: web
+          start: npm run dev
+          wait-on: "http://localhost:5173"
 
-      - name: Run Tests with Docker Compose
+  docker-tests:
+    name: Docker Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build containers
+        run: docker-compose -f compose.yml build
+
+      - name: Start containers
         run: |
           docker-compose -f compose.yml up -d
-          # Example test commands:
-          docker exec tapiro-web npm test || exit 1
-          docker exec tapiro-API npm run test || exit 1
-          docker-compose -f compose.yml down
+          sleep 30
 
-      - name: Archive test reports (if any)
-        if: always()
-        uses: actions/upload-artifact@v3
+      - name: Test container health
+        run: |
+          docker ps
+          curl -f http://localhost:3000/health || exit 1
+          curl -f http://localhost:3001/health || exit 1
+
+      - name: Check logs for errors
+        run: |
+          docker-compose logs backend
+          docker-compose logs web
+
+      - name: Cleanup
+        run: docker-compose down
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [web, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: test-reports
-          path: "**/coverage*"
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: npm ci
+
+      - name: Run linting
+        working-directory: ${{ matrix.service }}
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: ${{ matrix.service }}
+        run: npm test
+
+  build:
+    needs: validate
+    name: Build & Push
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [web, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/dockerfile.dev
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.service }}:dev
+            ghcr.io/${{ github.repository }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
