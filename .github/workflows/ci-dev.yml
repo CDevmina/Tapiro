@@ -15,8 +15,9 @@ jobs:
       - name: Determine Environment
         id: env
         run: |
-          ENVIRONMENT=${{ github.ref_name }}
+          ENVIRONMENT="${{ github.ref_name }}"
           echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "::set-output name=ENVIRONMENT::$ENVIRONMENT"
 
   build_and_test:
     needs: determine_environment
