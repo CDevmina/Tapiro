@@ -1,26 +1,13 @@
-name: Local Docker CI
+name: Development Docker CI
 
 on:
   push:
-    branches: ["Development", "Production"]
+    branches: ["Development"]
   pull_request:
-    branches: ["Development", "Production"]
+    branches: ["Development"]
 
 jobs:
-  determine_environment:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.env.outputs.ENVIRONMENT }}
-    steps:
-      - name: Determine Environment
-        id: env
-        run: |
-          ENVIRONMENT="${{ github.ref_name }}"
-          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
-          echo "::set-output name=ENVIRONMENT::$ENVIRONMENT"
-
   build_and_test:
-    needs: determine_environment
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -45,7 +32,6 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build backend image (Development)
-        if: needs.determine_environment.outputs.environment == 'Development'
         uses: docker/build-push-action@v2
         with:
           context: ./backend
@@ -54,18 +40,7 @@ jobs:
           cache-from: type=local,dest=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
-      - name: Build backend image (Production)
-        if: needs.determine_environment.outputs.environment == 'Production'
-        uses: docker/build-push-action@v2
-        with:
-          context: ./backend
-          file: ./backend/dockerfile.prod
-          tags: backend-prod
-          cache-from: type=local,dest=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
-
       - name: Build web image (Development)
-        if: needs.determine_environment.outputs.environment == 'Development'
         uses: docker/build-push-action@v2
         with:
           context: ./web
@@ -74,37 +49,22 @@ jobs:
           cache-from: type=local,dest=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
-      - name: Build web image (Production)
-        if: needs.determine_environment.outputs.environment == 'Production'
-        uses: docker/build-push-action@v2
-        with:
-          context: ./web
-          file: ./web/dockerfile.prod
-          tags: web-prod
-          cache-from: type=local,dest=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
-
       - name: Start containers (Development)
-        if: needs.determine_environment.outputs.environment == 'Development'
         run: docker-compose -f compose.yml up -d --build
 
       - name: Integration tests
-        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
           sleep 10 # give containers time to start
           curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3000/auth/healthcheck
           curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3001
 
       - name: Stop containers (Development)
-        if: needs.determine_environment.outputs.environment == 'Development'
         run: docker-compose -f compose.yml down
 
       - name: Run backend tests
-        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
-          docker exec tapiro-backend npm test
+          docker exec tapiro-API npm test
 
       - name: Run web tests
-        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
           docker exec tapiro-web npm test
