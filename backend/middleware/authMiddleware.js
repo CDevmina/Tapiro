@@ -7,7 +7,7 @@ const config = {
     auth0Logout: true,
     baseURL: process.env.BASE_URL || 'http://localhost:8080',
     clientID: process.env.AUTH0_CLIENT_ID,
-    issuerBaseURL: 'https://dev-zuxebycdcmuazvo8.us.auth0.com',
+    AUTH0_ISSUER_BASE_URL: 'https://dev-zuxebycdcmuazvo8.us.auth0.com',
     secret: process.env.AUTH0_CLIENT_SECRET
 };
 

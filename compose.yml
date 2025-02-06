@@ -2,6 +2,7 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: dockerfile.dev
       target: development
     container_name: tapiro-API
     volumes:
@@ -13,7 +14,7 @@ services:
       - REDIS_PORT=6379
       - BASE_URL=http://localhost:3000
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
-      - issuerBaseURL=${AUTH0_ISSUER_BASE_URL}
+      - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
     ports:
       - "3000:3000"
@@ -25,6 +26,7 @@ services:
   web:
     build:
       context: ./web
+      dockerfile: dockerfile.dev
       target: development
     container_name: tapiro-web
     volumes:
