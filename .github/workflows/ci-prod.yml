@@ -2,6 +2,8 @@ name: CI - Prod
 on:
   push:
     branches: ["Production"]
+  pull_request:
+    branches: ["Development"]
 
 jobs:
   build-and-deploy:
