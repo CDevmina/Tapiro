@@ -1,4 +1,3 @@
-# .github/workflows/ci.yml
 name: Local Docker CI
 
 on:
@@ -8,92 +7,103 @@ on:
     branches: ["Development", "Production"]
 
 jobs:
-  build-and-test:
+  determine_environment:
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.ENVIRONMENT }}
+    steps:
+      - name: Determine Environment
+        id: env
+        run: |
+          ENVIRONMENT=${{ github.ref_name }}
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
+
+  build_and_test:
+    needs: determine_environment
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18]
+
     services:
       redis:
         image: redis:alpine
         ports:
           - 6379:6379
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Build backend
-      - name: Build backend dev
-        if: github.ref_name == 'Development'
-        run: |
-          docker build -f backend/dockerfile.dev -t backend-dev ./backend
+      - name: Build backend image (Development)
+        if: needs.determine_environment.outputs.environment == 'Development'
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/dockerfile
+          tags: backend-dev
+          cache-from: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
-      - name: Build backend prod
-        if: github.ref_name == 'Production'
-        run: |
-          docker build -f backend/dockerfile.prod -t backend-prod ./backend
+      - name: Build backend image (Production)
+        if: needs.determine_environment.outputs.environment == 'Production'
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/dockerfile.prod
+          tags: backend-prod
+          cache-from: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
-      # Build web
-      - name: Build web dev
-        if: github.ref_name == 'Development'
-        run: |
-          docker build -f web/dockerfile.dev -t web-dev ./web
+      - name: Build web image (Development)
+        if: needs.determine_environment.outputs.environment == 'Development'
+        uses: docker/build-push-action@v2
+        with:
+          context: ./web
+          file: ./web/dockerfile.dev
+          tags: web-dev
+          cache-from: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
-      - name: Build web prod
-        if: github.ref_name == 'Production'
-        run: |
-          docker build -f web/dockerfile.prod -t web-prod ./web
+      - name: Build web image (Production)
+        if: needs.determine_environment.outputs.environment == 'Production'
+        uses: docker/build-push-action@v2
+        with:
+          context: ./web
+          file: ./web/dockerfile.prod
+          tags: web-prod
+          cache-from: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
       - name: Start containers (Development)
-        if: github.ref_name == 'Development'
-        run: |
-          docker network create tapiro-net
-          docker run -d --name tapiro-redis --network tapiro-net redis:alpine
-          docker run -d \
-            --name tapiro-backend \
-            --network tapiro-net \
-            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-            -e REDIS_HOST=tapiro-redis \
-            -p 3000:3000 \
-            backend-dev
-          docker run -d \
-            --name tapiro-web \
-            --network tapiro-net \
-            -e VITE_API_URL=http://tapiro-backend:3000 \
-            -p 3001:5173 \
-            web-dev
+        if: needs.determine_environment.outputs.environment == 'Development'
+        run: docker-compose -f compose.yml up -d --build
 
-      - name: Start containers (Production)
-        if: github.ref_name == 'Production'
+      - name: Integration tests
+        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
-          docker network create tapiro-net
-          docker run -d --name tapiro-redis --network tapiro-net redis:alpine
-          docker run -d \
-            --name tapiro-backend \
-            --network tapiro-net \
-            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-            -e REDIS_HOST=tapiro-redis \
-            -p 3000:3000 \
-            backend-prod
-          docker run -d \
-            --name tapiro-web \
-            --network tapiro-net \
-            -e VITE_API_URL=http://tapiro-backend:3000 \
-            -p 3001:5173 \
-            web-prod
+          sleep 10 # give containers time to start
+          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3000/auth/healthcheck
+          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3001
+
+      - name: Stop containers (Development)
+        if: needs.determine_environment.outputs.environment == 'Development'
+        run: docker-compose -f compose.yml down
 
       - name: Run backend tests
+        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
-          docker exec tapiro-backend npm install --only=dev
           docker exec tapiro-backend npm test
 
       - name: Run web tests
+        if: needs.determine_environment.outputs.environment == 'Development'
         run: |
-          docker exec tapiro-web npm install --only=dev
-          docker exec tapiro-web npm run test
-
-      - name: Integration tests
-        run: |
-          # Add your API test commands here using curl/newman/etc
-          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3000/auth/healthcheck
-          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3001
+          docker exec tapiro-web npm test
