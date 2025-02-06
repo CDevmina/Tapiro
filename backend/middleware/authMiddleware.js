@@ -5,9 +5,9 @@ const { getCache } = require('../utils/redisUtil');
 const config = {
     authRequired: true,
     auth0Logout: true,
-    baseURL: process.env.BASE_URL || 'http://localhost:8080',
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     clientID: process.env.AUTH0_CLIENT_ID,
-    AUTH0_ISSUER_BASE_URL: 'https://dev-zuxebycdcmuazvo8.us.auth0.com',
+    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
     secret: process.env.AUTH0_CLIENT_SECRET
 };
 

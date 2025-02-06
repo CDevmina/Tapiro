@@ -7,7 +7,7 @@ const { connectRedis } = require('./utils/redisUtil');
 const { auth, validateToken } = require('./middleware/authMiddleware');
 
 var oas3Tools = require('oas3-tools');
-var serverPort = 8080;
+var serverPort = process.env.PORT || 3000;
 
 // swaggerRouter configuration
 var options = {
