@@ -51,29 +51,15 @@ jobs:
   web-tests:
     name: Web Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # Add timeout
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      # Add retry logic for node setup
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
-        continue-on-error: true
-        id: setup-node
-
-      # Fallback node setup if primary fails
-      - name: Setup Node.js (Fallback)
-        if: steps.setup-node.outcome == 'failure'
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          sudo npm install -g npm@latest
 
       - name: Install dependencies
         working-directory: web
@@ -106,13 +92,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Add Docker Compose setup
-      - name: Set up Docker Compose
+      # Updated Docker Compose installation
+      - name: Install Docker Compose V2
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y docker-compose-plugin
 
-      # Use Docker Compose V2 syntax
       - name: Build containers
         run: docker compose -f compose.yml build
 
@@ -124,15 +115,12 @@ jobs:
       - name: Test container health
         run: |
           docker ps
+          docker compose ps
           curl -f http://localhost:3000/health || exit 1
           curl -f http://localhost:3001/health || exit 1
 
-      - name: Check logs for errors
-        run: |
-          docker compose logs backend
-          docker compose logs web
-
       - name: Cleanup
+        if: always()
         run: docker compose down
 
   security:
