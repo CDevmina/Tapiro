@@ -114,10 +114,49 @@ jobs:
       - name: Test container health
         run: |
           docker compose -f compose.yml up -d
+          echo "Waiting for services to start..."
           sleep 30
-          docker ps
-          curl -f http://localhost:3000/health || exit 1
-          curl -f http://localhost:3001/health || exit 1
+
+          # Check if containers are running
+          docker compose ps
+
+          # Backend health check with retries
+          for i in {1..5}; do
+            echo "Attempting backend health check ($i/5)..."
+            if curl -f http://localhost:3000/health; then
+              echo "Backend is healthy"
+              break
+            fi
+            if [ $i -eq 5 ]; then
+              echo "Backend health check failed after 5 attempts"
+              docker compose logs backend
+              exit 1
+            fi
+            sleep 10
+          done
+
+          # Frontend health check with retries
+          for i in {1..5}; do
+            echo "Attempting frontend health check ($i/5)..."
+            if curl -f http://localhost:3001/health; then
+              echo "Frontend is healthy"
+              break
+            fi
+            if [ $i -eq 5 ]; then
+              echo "Frontend health check failed after 5 attempts"
+              docker compose logs web
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "Backend logs:"
+          docker compose logs backend
+          echo "Frontend logs:"
+          docker compose logs web
 
       - name: Cleanup
         if: always()
