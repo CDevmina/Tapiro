@@ -23,22 +23,6 @@ security:
       - store:read
       - store:write
 paths:
-  /health:
-    get:
-      tags:
-        - System
-      summary: Health Check
-      description: Get API health status
-      operationId: healthGET
-      responses:
-        "200":
-          description: System is healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
-      x-swagger-router-controller: System
-
   /auth/token:
     post:
       tags:
@@ -211,33 +195,6 @@ paths:
       x-swagger-router-controller: Authentication
 components:
   schemas:
-    Health:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [healthy, unhealthy]
-        time:
-          type: string
-          format: date-time
-        version:
-          type: string
-        services:
-          type: object
-          properties:
-            database:
-              type: string
-              enum: [connected, disconnected]
-            redis:
-              type: string
-              enum: [connected, disconnected]
-      example:
-        status: healthy
-        time: "2024-02-06T10:00:00Z"
-        version: "1.0.0"
-        services:
-          database: connected
-          redis: connected
     User:
       required:
         - email
