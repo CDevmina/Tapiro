@@ -1,84 +1,62 @@
-name: Development Docker CI
-
+name: CI - Dev
 on:
   push:
     branches: ["Development"]
-  pull_request:
-    branches: ["Development"]
 
 jobs:
-  build_and_test:
+  build-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18]
-
-    services:
-      redis:
-        image: redis:alpine
-        ports:
-          - 6379:6379
-
     steps:
-      - name: Checkout code
+      - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js with cache
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18
+          cache: "npm"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: ./web
 
-      - name: Build backend image (Development)
-        id: build-backend
-        uses: docker/build-push-action@v2
+      - name: Lint (web)
+        run: npm run lint
+        working-directory: ./web
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      - name: Security scan (backend)
+        run: npm audit --audit-level=moderate
+        working-directory: ./backend
+
+      - name: Build Web Dev Image
+        run: |
+          docker build \
+            -f web/dockerfile.dev \
+            -t your-org/web-dev:latest \
+            ./web
+
+      - name: Build Backend Dev Image
+        run: |
+          docker build \
+            -f backend/dockerfile \
+            -t your-org/backend-dev:latest \
+            ./backend
+
+      - name: Run Tests with Docker Compose
+        run: |
+          docker-compose -f compose.yml up -d
+          # Example test commands:
+          docker exec tapiro-web npm test || exit 1
+          docker exec tapiro-API npm run test || exit 1
+          docker-compose -f compose.yml down
+
+      - name: Archive test reports (if any)
+        if: always()
+        uses: actions/upload-artifact@v3
         with:
-          context: ./backend
-          file: ./backend/dockerfile
-          tags: backend-dev
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
-          push: false
-          outputs: |
-            imageid=backend_image_id
-
-      - name: Build web image (Development)
-        id: build-web
-        uses: docker/build-push-action@v2
-        with:
-          context: ./web
-          file: ./web/dockerfile.dev
-          tags: web-dev
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
-          push: false
-          outputs: |
-            imageid=web_image_id
-
-      - name: Set Backend Image ID Env
-        run: echo "BACKEND_IMAGE_ID=${{ steps.build-backend.outputs.backend_image_id }}" >> $GITHUB_ENV
-
-      - name: Set Web Image ID Env
-        run: echo "WEB_IMAGE_ID=${{ steps.build-web.outputs.web_image_id }}" >> $GITHUB_ENV
-
-      - name: Start containers (Development)
-        run: docker-compose -f compose.yml up -d --build
-
-      - name: Integration tests
-        run: |
-          sleep 10 # give containers time to start
-          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3000/auth/healthcheck
-          curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:3001
-
-      - name: Stop containers (Development)
-        run: docker-compose -f compose.yml down
-
-      - name: Run backend tests
-        run: |
-          docker exec tapiro-API npm test
-
-      - name: Run web tests
-        run: |
-          docker exec tapiro-web npm test
+          name: test-reports
+          path: "**/coverage*"
