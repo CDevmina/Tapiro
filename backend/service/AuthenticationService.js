@@ -39,7 +39,7 @@ exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
  * returns Token
  **/
 exports.authTokenPOST = async function (body) {
-  const tokenEndpoint = 'https://dev-zuxebycdcmuazvo8.us.auth0.com/oauth/token';
+  const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
 
   try {
     const response = await axios.post(tokenEndpoint, {
