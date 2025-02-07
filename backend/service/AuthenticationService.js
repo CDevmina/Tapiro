@@ -21,7 +21,7 @@ exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
       return;
     }
 
-    const authUrl = new URL('https://dev-zuxebycdcmuazvo8.us.auth0.com/authorize');
+    const authUrl = new URL(process.env.AUTH0_AUTHORIZE_URL);
     authUrl.searchParams.append('response_type', response_type);
     authUrl.searchParams.append('client_id', client_id);
     authUrl.searchParams.append('redirect_uri', redirect_uri);
