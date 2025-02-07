@@ -26,20 +26,13 @@ module.exports.authTokenPOST = function authTokenPOST(req, res, next) {
 module.exports.usersPOST = function usersPOST(req, res, next, body) {
   Authentication.usersPOST(body)
     .then(function (response) {
-      utils.writeJson(res, response);
+      utils.writeJson(res, response, 201);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
-    });
-};
-
-module.exports.usersUserIdDELETE = function usersUserIdDELETE(req, res, next, userId) {
-  Authentication.usersUserIdDELETE(userId)
-    .then(function (response) {
-      utils.writeJson(res, response);
-    })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (error) {
+      utils.writeJson(res, {
+        error: error.message || 'Internal server error',
+        status: error.status || 500
+      }, error.status || 500);
     });
 };
 
@@ -48,8 +41,11 @@ module.exports.usersUserIdGET = function usersUserIdGET(req, res, next, userId) 
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (error) {
+      utils.writeJson(res, {
+        error: error.message || 'Internal server error',
+        status: error.status || 500
+      }, error.status || 500);
     });
 };
 
@@ -58,7 +54,23 @@ module.exports.usersUserIdPUT = function usersUserIdPUT(req, res, next, body, us
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (error) {
+      utils.writeJson(res, {
+        error: error.message || 'Internal server error',
+        status: error.status || 500
+      }, error.status || 500);
+    });
+};
+
+module.exports.usersUserIdDELETE = function usersUserIdDELETE(req, res, next, userId) {
+  Authentication.usersUserIdDELETE(userId)
+    .then(function (response) {
+      utils.writeJson(res, response, 204);
+    })
+    .catch(function (error) {
+      utils.writeJson(res, {
+        error: error.message || 'Internal server error',
+        status: error.status || 500
+      }, error.status || 500);
     });
 };

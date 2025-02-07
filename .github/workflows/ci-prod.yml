@@ -19,6 +19,7 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
+    environment: Development
     steps:
       - uses: actions/checkout@v4
 
@@ -118,8 +119,9 @@ jobs:
           echo "Waiting for containers to start..."
           sleep 30
 
-          # Check if all containers are running
-          if [ "$(docker compose ps --format json | jq -r '.[].State' | grep -c 'running')" -eq 3 ]; then
+          # Simple container status check
+          RUNNING_CONTAINERS=$(docker compose ps | grep -c "Up")
+          if [ "${RUNNING_CONTAINERS}" -eq 3 ]; then
             echo "All containers are running"
             docker ps
           else
@@ -131,7 +133,17 @@ jobs:
 
       - name: Show logs on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          echo "Backend logs:"
+          docker compose logs backend
+          echo "Frontend logs:"
+          docker compose logs web
+          echo "Redis logs:"
+          docker compose logs redis
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
 
       - name: Cleanup
         if: always()

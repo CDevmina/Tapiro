@@ -16,7 +16,18 @@ const { generateAnonymizedId } = require('../utils/helperUtil');
  **/
 exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
   return new Promise(function (resolve, reject) {
-    resolve();
+    if (response_type !== 'code') {
+      reject(new Error('Invalid response type'));
+      return;
+    }
+
+    const authUrl = new URL('https://dev-zuxebycdcmuazvo8.us.auth0.com/authorize');
+    authUrl.searchParams.append('response_type', response_type);
+    authUrl.searchParams.append('client_id', client_id);
+    authUrl.searchParams.append('redirect_uri', redirect_uri);
+    authUrl.searchParams.append('scope', 'openid profile email');
+
+    resolve({ redirectUrl: authUrl.toString() });
   });
 }
 
@@ -28,7 +39,7 @@ exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
  * returns Token
  **/
 exports.authTokenPOST = async function (body) {
-  const tokenEndpoint = 'https://dev-zuxebycdcmuazvo8.us.auth0.com/oauth/token';
+  const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
 
   try {
     const response = await axios.post(tokenEndpoint, {
@@ -65,11 +76,49 @@ exports.authTokenPOST = async function (body) {
 exports.usersPOST = function (body) {
   return new Promise(async (resolve, reject) => {
     try {
+      // Input validation
+      if (!body.email || !body.password || !body.role) {
+        reject({ status: 400, message: 'Missing required fields' });
+        return;
+      }
+
+      if (!['customer', 'store'].includes(body.role)) {
+        reject({ status: 400, message: 'Invalid role' });
+        return;
+      }
+
       const db = getDB();
-      const result = await db.collection('users').insertOne(body);
-      resolve(result.ops ? result.ops[0] : result);
+
+      // Check if user already exists
+      const existingUser = await db.collection('users').findOne({ email: body.email });
+      if (existingUser) {
+        reject({ status: 409, message: 'User already exists' });
+        return;
+      }
+
+      // Create user object with required fields
+      const newUser = {
+        email: body.email,
+        role: body.role,
+        privacy_settings: {
+          data_sharing: false,
+          anonymized_id: generateAnonymizedId()
+        },
+        preferences: {
+          categories: [],
+          purchase_history: []
+        },
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+
+      const result = await db.collection('users').insertOne(newUser);
+      resolve({
+        id: result.insertedId,
+        ...newUser
+      });
     } catch (error) {
-      reject(error);
+      reject({ status: 500, message: 'Internal server error', error });
     }
   });
 };
@@ -84,12 +133,33 @@ exports.usersPOST = function (body) {
 exports.usersUserIdDELETE = function (userId) {
   return new Promise(async (resolve, reject) => {
     try {
+      if (!userId) {
+        reject({ status: 400, message: 'User ID is required' });
+        return;
+      }
+
       const db = getDB();
-      const result = await db.collection('users')
-        .deleteOne({ _id: userId });
-      resolve({ deletedCount: result.deletedCount });
+
+      // Soft delete - mark user as inactive instead of removing
+      const result = await db.collection('users').findOneAndUpdate(
+        { _id: userId },
+        {
+          $set: {
+            status: 'inactive',
+            deleted_at: new Date(),
+            updated_at: new Date()
+          }
+        }
+      );
+
+      if (!result.value) {
+        reject({ status: 404, message: 'User not found' });
+        return;
+      }
+
+      resolve({ message: 'User deleted successfully' });
     } catch (error) {
-      reject(error);
+      reject({ status: 500, message: 'Internal server error', error });
     }
   });
 }
@@ -104,11 +174,25 @@ exports.usersUserIdDELETE = function (userId) {
 exports.usersUserIdGET = function (userId) {
   return new Promise(async (resolve, reject) => {
     try {
+      if (!userId) {
+        reject({ status: 400, message: 'User ID is required' });
+        return;
+      }
+
       const db = getDB();
       const user = await db.collection('users').findOne({ _id: userId });
+
+      if (!user) {
+        reject({ status: 404, message: 'User not found' });
+        return;
+      }
+
+      // Remove sensitive data before sending
+      delete user.password;
+
       resolve(user);
     } catch (error) {
-      reject(error);
+      reject({ status: 500, message: 'Internal server error', error });
     }
   });
 };
@@ -124,12 +208,50 @@ exports.usersUserIdGET = function (userId) {
 exports.usersUserIdPUT = function (body, userId) {
   return new Promise(async (resolve, reject) => {
     try {
+      if (!userId) {
+        reject({ status: 400, message: 'User ID is required' });
+        return;
+      }
+
       const db = getDB();
-      const result = await db.collection('users')
-        .updateOne({ _id: userId }, { $set: body });
-      resolve({ modifiedCount: result.modifiedCount });
+
+      // Validate allowed update fields
+      const allowedUpdates = {
+        email: body.email,
+        preferences: body.preferences,
+        privacy_settings: body.privacy_settings
+      };
+
+      // Remove undefined fields
+      Object.keys(allowedUpdates).forEach(key =>
+        allowedUpdates[key] === undefined && delete allowedUpdates[key]
+      );
+
+      if (Object.keys(allowedUpdates).length === 0) {
+        reject({ status: 400, message: 'No valid update fields provided' });
+        return;
+      }
+
+      // Add updated timestamp
+      allowedUpdates.updated_at = new Date();
+
+      const result = await db.collection('users').findOneAndUpdate(
+        { _id: userId },
+        { $set: allowedUpdates },
+        { returnDocument: 'after' }
+      );
+
+      if (!result.value) {
+        reject({ status: 404, message: 'User not found' });
+        return;
+      }
+
+      // Remove sensitive data before sending
+      delete result.value.password;
+
+      resolve(result.value);
     } catch (error) {
-      reject(error);
+      reject({ status: 500, message: 'Internal server error', error });
     }
   });
 };
