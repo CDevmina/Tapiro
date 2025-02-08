@@ -24,5 +24,9 @@
     "mongodb": "^6.13.0",
     "oas3-tools": "^2.2.3",
     "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "supertest": "^7.0.0"
   }
 }
