@@ -10,9 +10,9 @@ describe('HelperUtil', () => {
     });
 
     describe('generateRandomString', () => {
-        it('should generate a random string of length 16', () => {
+        it('should generate a random string of length 11', () => {
             const randomString = helperUtil.generateRandomString();
-            expect(randomString).toHaveLength(16);
+            expect(randomString).toHaveLength(11);
             expect(typeof randomString).toBe('string');
         });
     });

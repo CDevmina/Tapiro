@@ -1,4 +1,5 @@
 const redis = require('redis');
+require('dotenv').config();
 
 const client = redis.createClient({
     url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
@@ -10,10 +11,12 @@ async function connectRedis() {
         console.log('Connected to Redis');
     } catch (error) {
         console.error('Redis connection error:', error);
-        process.exit(1);
+        if (process.env.NODE_ENV !== 'test') {
+            process.exit(1);
+        }
+        throw error;
     }
 }
-
 
 async function getCache(key) {
     return client.get(key);
