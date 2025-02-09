@@ -30,9 +30,10 @@ const validateToken = async (req, res, next) => {
     // Add user info to request
     req.user = JSON.parse(cachedToken);
     next();
+    return undefined; // Explicit return for success path
   } catch (error) {
     console.error('Token validation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
