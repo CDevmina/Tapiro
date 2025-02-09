@@ -5,9 +5,10 @@ var http = require('http');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 const { auth, validateToken } = require('./middleware/authMiddleware');
+require('dotenv').config();
 
 var oas3Tools = require('oas3-tools');
-var serverPort = process.env.PORT || 3000;
+var serverPort = process.env.PORT;
 
 // swaggerRouter configuration
 var options = {

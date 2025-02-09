@@ -1,5 +1,6 @@
 const { auth } = require('express-openid-connect');
 const { getCache } = require('../utils/redisUtil');
+require('dotenv').config();
 
 // Auth0 config
 const config = {
