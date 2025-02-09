@@ -7,7 +7,9 @@
     "prestart": "npm install",
     "start": "node index.js",
     "lint": "eslint .",
-    "test": "jest --coverage"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "swagger"
