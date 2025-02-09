@@ -11,12 +11,10 @@ async function connectRedis() {
         console.log('Connected to Redis');
     } catch (error) {
         console.error('Redis connection error:', error);
-        if (process.env.NODE_ENV !== 'test') {
-            process.exit(1);
-        }
-        throw error;
+        process.exit(1);
     }
 }
+
 
 async function getCache(key) {
     return client.get(key);
