@@ -1,14 +1,20 @@
 name: CI-Dev
 
 on:
+  pull_request:
+    branches: ["Development"]
+    paths:
+      - "backend/**"
+      - "web/**"
+      - ".github/workflows/ci-dev.yml"
   push:
     branches: ["Development"]
     paths:
       - "backend/**"
       - "web/**"
       - ".github/workflows/ci-dev.yml"
-  pull_request:
-    branches: ["Development"]
+    tags-ignore:
+      - "**"
 
 permissions:
   contents: read
@@ -20,6 +26,7 @@ jobs:
     name: Backend Tests
     runs-on: ubuntu-latest
     environment: Development
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +58,7 @@ jobs:
   web-tests:
     name: Web Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -85,6 +93,7 @@ jobs:
     name: Docker Tests
     runs-on: ubuntu-latest
     environment: development
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -154,6 +163,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     strategy:
       matrix:
         service: [web, backend]
@@ -183,6 +193,7 @@ jobs:
     needs: validate
     name: Build & Push
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Development'
     permissions:
       contents: read
       packages: write
