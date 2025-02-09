@@ -1,8 +1,15 @@
 const utils = require('../utils/writer.js');
 const Authentication = require('../service/AuthenticationService');
 
-module.exports.authAuthorizeGET = function authAuthorizeGET(req, res, next, response_type, client_id, redirect_uri) {
-  Authentication.authAuthorizeGET(response_type, client_id, redirect_uri)
+module.exports.authAuthorizeGET = function authAuthorizeGET(
+  req,
+  res,
+  next,
+  responseType,
+  clientId,
+  redirectUri,
+) {
+  Authentication.authAuthorizeGET(responseType, clientId, redirectUri)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -11,7 +18,7 @@ module.exports.authAuthorizeGET = function authAuthorizeGET(req, res, next, resp
     });
 };
 
-module.exports.authTokenPOST = function authTokenPOST(req, res, next) {
+module.exports.authTokenPOST = function authTokenPOST(req, res) {
   Authentication.authTokenPOST()
     .then((response) => {
       utils.writeJson(res, response);

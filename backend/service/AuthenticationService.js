@@ -12,17 +12,17 @@ const { generateAnonymizedId } = require('../utils/helperUtil');
  * redirect_uri String
  * no response value expected for this operation
  * */
-exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
+exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, redirectUri) {
   return new Promise((resolve, reject) => {
-    if (response_type !== 'code') {
+    if (responseType !== 'code') {
       reject(new Error('Invalid response type'));
       return;
     }
 
     const authUrl = new URL(process.env.AUTH0_AUTHORIZE_URL);
-    authUrl.searchParams.append('response_type', response_type);
-    authUrl.searchParams.append('client_id', client_id);
-    authUrl.searchParams.append('redirect_uri', redirect_uri);
+    authUrl.searchParams.append('response_type', responseType);
+    authUrl.searchParams.append('client_id', clientId);
+    authUrl.searchParams.append('redirect_uri', redirectUri);
     authUrl.searchParams.append('scope', 'openid profile email');
 
     resolve({ redirectUrl: authUrl.toString() });
@@ -35,7 +35,7 @@ exports.authAuthorizeGET = function (response_type, client_id, redirect_uri) {
  *
  * returns Token
  * */
-exports.authTokenPOST = async function (body) {
+exports.authTokenPOST = async function authTokenPOST(body) {
   const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
 
   try {
@@ -69,53 +69,56 @@ exports.authTokenPOST = async function (body) {
  * body UserCreate
  * returns User
  * */
-exports.usersPOST = function (body) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Input validation
-      if (!body.email || !body.password || !body.role) {
-        reject({ status: 400, message: 'Missing required fields' });
-        return;
+exports.usersPOST = function usersPOST(body) {
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        if (!body.email || !body.password || !body.role) {
+          const err = new Error('Missing required fields');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        if (!['customer', 'store'].includes(body.role)) {
+          const err = new Error('Invalid role');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        const db = getDB();
+        const existingUser = await db.collection('users').findOne({ email: body.email });
+        if (existingUser) {
+          const err = new Error('User already exists');
+          err.status = 409;
+          reject(err);
+          return;
+        }
+        const newUser = {
+          email: body.email,
+          role: body.role,
+          privacy_settings: {
+            data_sharing: false,
+            anonymized_id: generateAnonymizedId(),
+          },
+          preferences: {
+            categories: [],
+            purchase_history: [],
+          },
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        const result = await db.collection('users').insertOne(newUser);
+        resolve({
+          id: result.insertedId,
+          ...newUser,
+        });
+      } catch (error) {
+        const err = new Error('Internal server error');
+        err.status = 500;
+        err.error = error;
+        reject(err);
       }
-
-      if (!['customer', 'store'].includes(body.role)) {
-        reject({ status: 400, message: 'Invalid role' });
-        return;
-      }
-
-      const db = getDB();
-
-      // Check if user already exists
-      const existingUser = await db.collection('users').findOne({ email: body.email });
-      if (existingUser) {
-        reject({ status: 409, message: 'User already exists' });
-        return;
-      }
-
-      // Create user object with required fields
-      const newUser = {
-        email: body.email,
-        role: body.role,
-        privacy_settings: {
-          data_sharing: false,
-          anonymized_id: generateAnonymizedId(),
-        },
-        preferences: {
-          categories: [],
-          purchase_history: [],
-        },
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-
-      const result = await db.collection('users').insertOne(newUser);
-      resolve({
-        id: result.insertedId,
-        ...newUser,
-      });
-    } catch (error) {
-      reject({ status: 500, message: 'Internal server error', error });
-    }
+    })();
   });
 };
 
@@ -125,37 +128,41 @@ exports.usersPOST = function (body) {
  * userId String
  * no response value expected for this operation
  * */
-exports.usersUserIdDELETE = function (userId) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (!userId) {
-        reject({ status: 400, message: 'User ID is required' });
-        return;
-      }
-
-      const db = getDB();
-
-      // Soft delete - mark user as inactive instead of removing
-      const result = await db.collection('users').findOneAndUpdate(
-        { _id: userId },
-        {
-          $set: {
-            status: 'inactive',
-            deleted_at: new Date(),
-            updated_at: new Date(),
+exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        if (!userId) {
+          const err = new Error('User ID is required');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        const db = getDB();
+        const result = await db.collection('users').findOneAndUpdate(
+          { _id: userId },
+          {
+            $set: {
+              status: 'inactive',
+              deleted_at: new Date(),
+              updated_at: new Date(),
+            },
           },
-        },
-      );
-
-      if (!result.value) {
-        reject({ status: 404, message: 'User not found' });
-        return;
+        );
+        if (!result.value) {
+          const err = new Error('User not found');
+          err.status = 404;
+          reject(err);
+          return;
+        }
+        resolve({ message: 'User deleted successfully' });
+      } catch (error) {
+        const err = new Error('Internal server error');
+        err.status = 500;
+        err.error = error;
+        reject(err);
       }
-
-      resolve({ message: 'User deleted successfully' });
-    } catch (error) {
-      reject({ status: 500, message: 'Internal server error', error });
-    }
+    })();
   });
 };
 
@@ -165,29 +172,33 @@ exports.usersUserIdDELETE = function (userId) {
  * userId String
  * returns User
  * */
-exports.usersUserIdGET = function (userId) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (!userId) {
-        reject({ status: 400, message: 'User ID is required' });
-        return;
+exports.usersUserIdGET = function usersUserIdGET(userId) {
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        if (!userId) {
+          const err = new Error('User ID is required');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        const db = getDB();
+        const user = await db.collection('users').findOne({ _id: userId });
+        if (!user) {
+          const err = new Error('User not found');
+          err.status = 404;
+          reject(err);
+          return;
+        }
+        delete user.password;
+        resolve(user);
+      } catch (error) {
+        const err = new Error('Internal server error');
+        err.status = 500;
+        err.error = error;
+        reject(err);
       }
-
-      const db = getDB();
-      const user = await db.collection('users').findOne({ _id: userId });
-
-      if (!user) {
-        reject({ status: 404, message: 'User not found' });
-        return;
-      }
-
-      // Remove sensitive data before sending
-      delete user.password;
-
-      resolve(user);
-    } catch (error) {
-      reject({ status: 500, message: 'Internal server error', error });
-    }
+    })();
   });
 };
 
@@ -198,51 +209,50 @@ exports.usersUserIdGET = function (userId) {
  * userId String
  * returns User
  * */
-exports.usersUserIdPUT = function (body, userId) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (!userId) {
-        reject({ status: 400, message: 'User ID is required' });
-        return;
+exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        if (!userId) {
+          const err = new Error('User ID is required');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        const db = getDB();
+        const allowedUpdates = {
+          email: body.email,
+          preferences: body.preferences,
+          privacy_settings: body.privacy_settings,
+        };
+        Object.keys(allowedUpdates).forEach((key) => allowedUpdates[key]
+          === undefined && delete allowedUpdates[key]);
+        if (Object.keys(allowedUpdates).length === 0) {
+          const err = new Error('No valid update fields provided');
+          err.status = 400;
+          reject(err);
+          return;
+        }
+        allowedUpdates.updated_at = new Date();
+        const result = await db.collection('users').findOneAndUpdate(
+          { _id: userId },
+          { $set: allowedUpdates },
+          { returnDocument: 'after' },
+        );
+        if (!result.value) {
+          const err = new Error('User not found');
+          err.status = 404;
+          reject(err);
+          return;
+        }
+        delete result.value.password;
+        resolve(result.value);
+      } catch (error) {
+        const err = new Error('Internal server error');
+        err.status = 500;
+        err.error = error;
+        reject(err);
       }
-
-      const db = getDB();
-
-      // Validate allowed update fields
-      const allowedUpdates = {
-        email: body.email,
-        preferences: body.preferences,
-        privacy_settings: body.privacy_settings,
-      };
-
-      // Remove undefined fields
-      Object.keys(allowedUpdates).forEach((key) => allowedUpdates[key] === undefined && delete allowedUpdates[key]);
-
-      if (Object.keys(allowedUpdates).length === 0) {
-        reject({ status: 400, message: 'No valid update fields provided' });
-        return;
-      }
-
-      // Add updated timestamp
-      allowedUpdates.updated_at = new Date();
-
-      const result = await db.collection('users').findOneAndUpdate(
-        { _id: userId },
-        { $set: allowedUpdates },
-        { returnDocument: 'after' },
-      );
-
-      if (!result.value) {
-        reject({ status: 404, message: 'User not found' });
-        return;
-      }
-
-      // Remove sensitive data before sending
-      delete result.value.password;
-
-      resolve(result.value);
-    } catch (error) {
-      reject({ status: 500, message: 'Internal server error', error });
-    }
+    })();
   });
 };

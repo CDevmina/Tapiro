@@ -1,13 +1,13 @@
-const ResponsePayload = function (code, payload) {
+const ResponsePayload = function ResponsePayload(code, payload) {
   this.code = code;
   this.payload = payload;
 };
 
-exports.respondWithCode = function (code, payload) {
+exports.respondWithCode = function respondWithCode(code, payload) {
   return new ResponsePayload(code, payload);
 };
 
-var writeJson = exports.writeJson = function (response, arg1, arg2) {
+const writeJson = function writeJson(response, arg1, arg2) {
   let code;
   let payload;
 
@@ -28,7 +28,6 @@ var writeJson = exports.writeJson = function (response, arg1, arg2) {
   }
 
   if (!code) {
-    // if no response code given, we Authentication to 200
     code = 200;
   }
   if (typeof payload === 'object') {
@@ -37,3 +36,5 @@ var writeJson = exports.writeJson = function (response, arg1, arg2) {
   response.writeHead(code, { 'Content-Type': 'application/json' });
   response.end(payload);
 };
+
+exports.writeJson = writeJson;
