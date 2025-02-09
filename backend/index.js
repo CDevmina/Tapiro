@@ -1,23 +1,21 @@
-'use strict';
-
-var path = require('path');
-var http = require('http');
+const path = require('path');
+const http = require('http');
+const oas3Tools = require('oas3-tools');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 const { auth, validateToken } = require('./middleware/authMiddleware');
 
-var oas3Tools = require('oas3-tools');
-var serverPort = process.env.PORT || 3000;
+const serverPort = process.env.PORT || 3000;
 
 // swaggerRouter configuration
-var options = {
-    routing: {
-        controllers: path.join(__dirname, './controllers')
-    },
+const options = {
+  routing: {
+    controllers: path.join(__dirname, './controllers'),
+  },
 };
 
-var expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/openapi.yaml'), options);
-var app = expressAppConfig.getApp();
+const expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/openapi.yaml'), options);
+const app = expressAppConfig.getApp();
 
 // Apply auth middleware
 app.use(auth);
@@ -25,13 +23,13 @@ app.use('/users', validateToken);
 
 // Initialize MongoDB connection
 connectDB()
-    .then(() => connectRedis())
-    .then(() => {
-        http.createServer(app).listen(serverPort, function () {
-            console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
-            console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
-        });
-    })
-    .catch(err => {
-        console.error('Startup error:', err);
+  .then(() => connectRedis())
+  .then(() => {
+    http.createServer(app).listen(serverPort, () => {
+      console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
+      console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
     });
+  })
+  .catch((err) => {
+    console.error('Startup error:', err);
+  });
