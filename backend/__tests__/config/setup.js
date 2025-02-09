@@ -1,6 +1,3 @@
-const { MongoClient } = require('mongodb');
-const { createClient } = require('redis');
-
 // Mock MongoDB
 jest.mock('mongodb', () => ({
     MongoClient: {
