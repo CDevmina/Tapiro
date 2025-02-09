@@ -19,7 +19,8 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
-    environment: Development
+    environment: Production
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +52,7 @@ jobs:
   web-tests:
     name: Web Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +85,8 @@ jobs:
   docker-tests:
     name: Docker Tests
     runs-on: ubuntu-latest
-    environment: development
+    environment: Production
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -145,10 +148,6 @@ jobs:
         if: always()
         run: docker compose down
 
-      - name: Cleanup
-        if: always()
-        run: docker compose down
-
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -171,6 +170,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     strategy:
       matrix:
         service: [web, backend]
@@ -206,6 +206,10 @@ jobs:
     needs: [security, validate]
     name: Build & Push
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Production'
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         service: [web, backend]
@@ -222,6 +226,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare Docker tags
+        id: prep
+        run: |
+          REPO=${GITHUB_REPOSITORY,,}
+          echo "repository=${REPO}" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -229,8 +240,8 @@ jobs:
           file: ./${{ matrix.service }}/dockerfile.prod
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/${{ matrix.service }}:latest
-            ghcr.io/${{ github.repository }}/${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/${{ steps.prep.outputs.repository }}/${{ matrix.service }}:${{ steps.prep.outputs.sha }}
+            ghcr.io/${{ steps.prep.outputs.repository }}/${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
