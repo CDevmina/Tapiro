@@ -34,10 +34,14 @@ module.exports.usersPOST = function usersPOST(req, res, next, body) {
       utils.writeJson(res, response, 201);
     })
     .catch((error) => {
-      utils.writeJson(res, {
-        error: error.message || 'Internal server error',
-        status: error.status || 500,
-      }, error.status || 500);
+      utils.writeJson(
+        res,
+        {
+          error: error.message || 'Internal server error',
+          status: error.status || 500,
+        },
+        error.status || 500,
+      );
     });
 };
 
@@ -47,10 +51,14 @@ module.exports.usersUserIdGET = function usersUserIdGET(req, res, next, userId) 
       utils.writeJson(res, response);
     })
     .catch((error) => {
-      utils.writeJson(res, {
-        error: error.message || 'Internal server error',
-        status: error.status || 500,
-      }, error.status || 500);
+      utils.writeJson(
+        res,
+        {
+          error: error.message || 'Internal server error',
+          status: error.status || 500,
+        },
+        error.status || 500,
+      );
     });
 };
 
@@ -60,10 +68,14 @@ module.exports.usersUserIdPUT = function usersUserIdPUT(req, res, next, body, us
       utils.writeJson(res, response);
     })
     .catch((error) => {
-      utils.writeJson(res, {
-        error: error.message || 'Internal server error',
-        status: error.status || 500,
-      }, error.status || 500);
+      utils.writeJson(
+        res,
+        {
+          error: error.message || 'Internal server error',
+          status: error.status || 500,
+        },
+        error.status || 500,
+      );
     });
 };
 
@@ -73,9 +85,13 @@ module.exports.usersUserIdDELETE = function usersUserIdDELETE(req, res, next, us
       utils.writeJson(res, response, 204);
     })
     .catch((error) => {
-      utils.writeJson(res, {
-        error: error.message || 'Internal server error',
-        status: error.status || 500,
-      }, error.status || 500);
+      utils.writeJson(
+        res,
+        {
+          error: error.message || 'Internal server error',
+          status: error.status || 500,
+        },
+        error.status || 500,
+      );
     });
 };

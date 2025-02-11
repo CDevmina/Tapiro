@@ -48,12 +48,16 @@ exports.authTokenPOST = async function authTokenPOST(body) {
     });
 
     // Cache the token with user info
-    await setCache(`token:${response.data.access_token}`, JSON.stringify({
-      token: response.data.access_token,
-      expires_in: response.data.expires_in,
-    }), {
-      EX: response.data.expires_in,
-    });
+    await setCache(
+      `token:${response.data.access_token}`,
+      JSON.stringify({
+        token: response.data.access_token,
+        expires_in: response.data.expires_in,
+      }),
+      {
+        EX: response.data.expires_in,
+      },
+    );
 
     return response.data;
   } catch (error) {
@@ -225,8 +229,9 @@ exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
           preferences: body.preferences,
           privacy_settings: body.privacy_settings,
         };
-        Object.keys(allowedUpdates).forEach((key) => allowedUpdates[key]
-          === undefined && delete allowedUpdates[key]);
+        Object.keys(allowedUpdates).forEach(
+          (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key],
+        );
         if (Object.keys(allowedUpdates).length === 0) {
           const err = new Error('No valid update fields provided');
           err.status = 400;
@@ -234,11 +239,9 @@ exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
           return;
         }
         allowedUpdates.updated_at = new Date();
-        const result = await db.collection('users').findOneAndUpdate(
-          { _id: userId },
-          { $set: allowedUpdates },
-          { returnDocument: 'after' },
-        );
+        const result = await db
+          .collection('users')
+          .findOneAndUpdate({ _id: userId }, { $set: allowedUpdates }, { returnDocument: 'after' });
         if (!result.value) {
           const err = new Error('User not found');
           err.status = 404;

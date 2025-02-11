@@ -14,7 +14,10 @@ const options = {
   },
 };
 
-const expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/openapi.yaml'), options);
+const expressAppConfig = oas3Tools.expressAppConfig(
+  path.join(__dirname, 'api/openapi.yaml'),
+  options,
+);
 const app = expressAppConfig.getApp();
 
 // Apply auth middleware
@@ -26,7 +29,11 @@ connectDB()
   .then(() => connectRedis())
   .then(() => {
     http.createServer(app).listen(serverPort, () => {
-      console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
+      console.log(
+        'Your server is listening on port %d (http://localhost:%d)',
+        serverPort,
+        serverPort,
+      );
       console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
     });
   })

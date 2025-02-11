@@ -3,8 +3,11 @@ module.exports = {
   verbose: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/**/*.test.js',
+    'utils/**/*.js',
+    'middleware/**/*.js',
+    'service/**/*.js',
+    'controllers/**/*.js',
+    '!**/*.test.js',
     '!**/node_modules/**',
   ],
   coverageThreshold: {
