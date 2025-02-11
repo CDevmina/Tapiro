@@ -3,8 +3,11 @@ module.exports = {
   verbose: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/**/*.test.js',
+    'utils/**/*.js',
+    'middleware/**/*.js',
+    'service/**/*.js',
+    'controllers/**/*.js',
+    '!**/*.test.js',
     '!**/node_modules/**',
   ],
   coverageThreshold: {
@@ -16,5 +19,6 @@ module.exports = {
     },
   },
   testMatch: ['**/__tests__/**/*.test.js'],
-  setupFilesAfterEnv: ['<rootDir>/__tests__/config/setup.js'],
+  setupFiles: ['<rootDir>/__tests__/config/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/__tests__/config/setupAfterEnv.js'],
 };
