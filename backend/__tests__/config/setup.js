@@ -1,7 +1,10 @@
+require('dotenv').config({ path: '.env.test' });
+
 // Mock MongoDB
-jest.mock('mongodb', () => ({
-  MongoClient: {
-    connect: jest.fn().mockResolvedValue({
+jest.mock('mongodb', () => {
+  return {
+    MongoClient: jest.fn().mockImplementation(() => ({
+      connect: jest.fn().mockResolvedValue(),
       db: jest.fn().mockReturnValue({
         collection: jest.fn().mockReturnValue({
           findOne: jest.fn(),
@@ -9,9 +12,9 @@ jest.mock('mongodb', () => ({
           findOneAndUpdate: jest.fn(),
         }),
       }),
-    }),
-  },
-}));
+    })),
+  };
+});
 
 // Mock Redis
 jest.mock('redis', () => ({
@@ -21,8 +24,3 @@ jest.mock('redis', () => ({
     set: jest.fn(),
   }),
 }));
-
-// Clean up after each test
-afterEach(() => {
-  jest.clearAllMocks();
-});

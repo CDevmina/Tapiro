@@ -1,3 +1,4 @@
+require('dotenv').config();
 const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
@@ -40,3 +41,5 @@ connectDB()
   .catch((err) => {
     console.error('Startup error:', err);
   });
+
+module.exports = app;
