@@ -28,6 +28,7 @@
     "js-yaml": "^3.3.0",
     "mongodb": "^6.13.0",
     "oas3-tools": "^2.2.3",
+    "qrcode": "^1.5.4",
     "redis": "^4.7.0"
   },
   "devDependencies": {

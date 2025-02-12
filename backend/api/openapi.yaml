@@ -9,6 +9,14 @@ tags:
     description: Endpoints related to OAuth2 authentication and authorization
   - name: User Management
     description: Operations for user registration, profile management, and deletion
+  - name: Ad Management
+    description: Store advertisement creation and management
+  - name: QR Code
+    description: QR code generation and scanning operations
+  - name: Analytics
+    description: Advertising performance and customer insights
+  - name: Recommendations
+    description: AI-driven personalization endpoints
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -198,6 +206,7 @@ paths:
     post:
       tags: [Ad Management]
       summary: Create new advertisement
+      description: Create a new targeted advertisement for a specific store. Allows setting categories, media, and validity period.
       operationId: createAd
       parameters:
         - name: storeId
@@ -212,7 +221,7 @@ paths:
         required: true
       responses:
         "201":
-          description: Ad created
+          description: Advertisement successfully created
           content:
             application/json:
               schema:
@@ -224,6 +233,7 @@ paths:
     get:
       tags: [Ad Management]
       summary: List store ads
+      description: Retrieve all active advertisements for a specific store including their targeting criteria and status
       operationId: listAds
       parameters:
         - name: storeId
@@ -232,7 +242,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: List of ads
+          description: Successful retrieval of store advertisements
           content:
             application/json:
               schema:
@@ -247,6 +257,7 @@ paths:
     put:
       tags: [Ad Management]
       summary: Update specific ad
+      description: Modify an existing advertisement's details including targeting parameters and validity period
       operationId: updateAd
       parameters:
         - name: storeId
@@ -265,7 +276,7 @@ paths:
         required: true
       responses:
         "200":
-          description: Updated ad
+          description: Advertisement successfully updated
           content:
             application/json:
               schema:
@@ -277,6 +288,7 @@ paths:
     delete:
       tags: [Ad Management]
       summary: Delete specific ad
+      description: Permanently remove an advertisement from the store's active campaigns
       operationId: deleteAd
       parameters:
         - name: storeId
@@ -289,7 +301,7 @@ paths:
           schema: { type: string }
       responses:
         "204":
-          description: Ad deleted
+          description: Advertisement successfully deleted
       security:
         - oauth2: [store:write]
       x-swagger-router-controller: Advertisements
@@ -298,6 +310,7 @@ paths:
     get:
       tags: [QR Code]
       summary: Generate QR code
+      description: Generate a dynamic QR code for in-store kiosks that customers can scan to receive personalized ads
       operationId: generateQR
       parameters:
         - name: storeId
@@ -306,7 +319,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: QR code image
+          description: PNG image containing the store-specific QR code
           content:
             image/png:
               schema: { type: string, format: binary }
@@ -318,6 +331,7 @@ paths:
     post:
       tags: [QR Code]
       summary: Process QR scan
+      description: Handle QR code scan events and return personalized advertisements based on user preferences and purchase history
       operationId: processScan
       requestBody:
         content:
@@ -327,7 +341,7 @@ paths:
         required: true
       responses:
         "200":
-          description: Ads for scanned store
+          description: List of personalized advertisements for the scanned store
           content:
             application/json:
               schema:
@@ -339,6 +353,7 @@ paths:
     get:
       tags: [Recommendations]
       summary: Get personalized ads
+      description: Retrieve AI-generated personalized advertisements based on user preferences and historical purchase data
       operationId: getPersonalizedAds
       parameters:
         - name: userId
@@ -347,7 +362,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Personalized ads
+          description: Successfully retrieved personalized advertisements
           content:
             application/json:
               schema:
@@ -360,6 +375,7 @@ paths:
     post:
       tags: [Recommendations]
       summary: Trigger personalization
+      description: Internal endpoint to initiate AI recommendation process for a specific user-store combination
       operationId: triggerRecommendations
       requestBody:
         content:
@@ -372,7 +388,7 @@ paths:
         required: true
       responses:
         "202":
-          description: Recommendation job started
+          description: Recommendation generation process successfully initiated
       security:
         - oauth2: [store:write, user:read]
       x-swagger-router-controller: Recommendations
@@ -381,6 +397,7 @@ paths:
     put:
       tags: [User Management]
       summary: Update preferences
+      description: Allow users to modify their advertising preferences and category interests
       operationId: updatePreferences
       parameters:
         - name: userId
@@ -395,7 +412,7 @@ paths:
         required: true
       responses:
         "200":
-          description: Updated preferences
+          description: User preferences successfully updated
           content:
             application/json:
               schema:
@@ -408,6 +425,7 @@ paths:
     post:
       tags: [User Management]
       summary: Log purchase
+      description: Record customer purchases to improve recommendation accuracy and maintain purchase history
       operationId: logPurchase
       parameters:
         - name: userId
@@ -422,13 +440,14 @@ paths:
         required: true
       responses:
         "201":
-          description: Purchase logged
+          description: Purchase successfully recorded
       x-swagger-router-controller: UserController
 
   /stores/{storeId}/analytics/engagement:
     get:
       tags: [Analytics]
       summary: Get engagement analytics
+      description: Retrieve engagement metrics including click-through rates and ad interaction statistics
       operationId: getEngagement
       parameters:
         - name: storeId
@@ -437,7 +456,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Engagement metrics
+          description: Successful retrieval of engagement analytics
           content:
             application/json:
               schema:
@@ -450,6 +469,7 @@ paths:
     get:
       tags: [Analytics]
       summary: Get demographic analytics
+      description: Access demographic data and preference trends of store customers
       operationId: getDemographics
       parameters:
         - name: storeId
@@ -458,7 +478,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Demographic data
+          description: Successful retrieval of demographic analytics
           content:
             application/json:
               schema:
