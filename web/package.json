@@ -14,7 +14,6 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@auth0/auth0-react": "^2.3.0",
     "cypress": "^14.0.2",
     "lru-cache": "^10.1.0",
     "react": "^18.3.1",
