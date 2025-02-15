@@ -13,7 +13,7 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - BASE_URL=http://localhost:3000
+      - BASE_URL=${API_URL}
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
       - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
@@ -38,10 +38,11 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://backend:3000
+      - VITE_API_URL=${API_URL}
       - VITE_AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
       - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+      - VITE_AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI}
     ports:
       - "3001:5173"
     networks:
