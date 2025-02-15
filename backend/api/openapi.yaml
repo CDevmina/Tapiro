@@ -113,6 +113,9 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           description: Invalid input
+      security:
+        - oauth2:
+            - user:write
       x-swagger-router-controller: Authentication
 
   /users/{userId}:
@@ -527,13 +530,9 @@ components:
         email: "johndoe@gmail.com"
     UserCreate:
       required:
-        - email
         - role
       type: object
       properties:
-        email:
-          type: string
-          format: email
         role:
           type: string
           enum:
@@ -542,9 +541,6 @@ components:
     UserUpdate:
       type: object
       properties:
-        email:
-          type: string
-          format: email
         preferences:
           type: object
         privacy_settings:

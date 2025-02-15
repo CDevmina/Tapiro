@@ -29,7 +29,8 @@ module.exports.authTokenPOST = function authTokenPOST(req, res) {
 };
 
 module.exports.usersPOST = function usersPOST(req, res, next, body) {
-  Authentication.usersPOST(body)
+  const user = req.user;
+  Authentication.usersPOST(body, user)
     .then((response) => {
       utils.writeJson(res, response);
     })

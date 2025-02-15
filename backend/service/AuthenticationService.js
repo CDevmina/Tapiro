@@ -39,7 +39,8 @@ exports.authTokenPOST = async function authTokenPOST(body) {
   const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
 
   try {
-    const response = await axios.post(tokenEndpoint, {
+    // Exchange code for token
+    const tokenResponse = await axios.post(tokenEndpoint, {
       grant_type: body.grant_type,
       client_id: process.env.AUTH0_CLIENT_ID,
       client_secret: process.env.AUTH0_CLIENT_SECRET,
@@ -47,19 +48,25 @@ exports.authTokenPOST = async function authTokenPOST(body) {
       redirect_uri: body.redirect_uri,
     });
 
-    // Cache the token with user info
-    await setCache(
-      `token:${response.data.access_token}`,
-      JSON.stringify({
-        token: response.data.access_token,
-        expires_in: response.data.expires_in,
-      }),
-      {
-        EX: response.data.expires_in,
+    // Fetch user info from Auth0
+    const userInfoResponse = await axios.get(process.env.AUTH0_USERINFO_URL, {
+      headers: {
+        Authorization: `Bearer ${tokenResponse.data.access_token}`,
       },
+    });
+
+    // Cache user info (sub, email) with token
+    await setCache(
+      `token:${tokenResponse.data.access_token}`,
+      JSON.stringify({
+        ...userInfoResponse.data,
+        token: tokenResponse.data.access_token,
+        expires_in: tokenResponse.data.expires_in,
+      }),
+      { EX: tokenResponse.data.expires_in },
     );
 
-    return response.data;
+    return tokenResponse.data;
   } catch (error) {
     console.error('Token exchange error:', error);
     throw error;
@@ -73,32 +80,32 @@ exports.authTokenPOST = async function authTokenPOST(body) {
  * body UserCreate
  * returns User
  * */
-exports.usersPOST = function usersPOST(body) {
+exports.usersPOST = function usersPOST(body, user) {
   return new Promise((resolve, reject) => {
     (async () => {
       try {
-        if (!body.email || !body.password || !body.role) {
-          const err = new Error('Missing required fields');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        if (!['customer', 'store'].includes(body.role)) {
+        // Validate role
+        if (!body.role || !['customer', 'store'].includes(body.role)) {
           const err = new Error('Invalid role');
           err.status = 400;
           reject(err);
           return;
         }
+
         const db = getDB();
-        const existingUser = await db.collection('users').findOne({ email: body.email });
+        const existingUser = await db.collection('users').findOne({ auth0Id: user.sub });
+
         if (existingUser) {
           const err = new Error('User already exists');
           err.status = 409;
           reject(err);
           return;
         }
+
+        // Create new user
         const newUser = {
-          email: body.email,
+          auth0Id: user.sub,
+          email: user.email,
           role: body.role,
           privacy_settings: {
             data_sharing: false,
@@ -111,6 +118,7 @@ exports.usersPOST = function usersPOST(body) {
           created_at: new Date(),
           updated_at: new Date(),
         };
+
         const result = await db.collection('users').insertOne(newUser);
         resolve({
           id: result.insertedId,
@@ -119,7 +127,6 @@ exports.usersPOST = function usersPOST(body) {
       } catch (error) {
         const err = new Error('Internal server error');
         err.status = 500;
-        err.error = error;
         reject(err);
       }
     })();
