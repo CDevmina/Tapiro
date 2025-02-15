@@ -1,5 +1,7 @@
 const { getDB } = require('../utils/mongoUtil');
 const QRCode = require('qrcode');
+const { rankAds } = require('../utils/adUtil');
+const { logAdInteraction } = require('./RecommendationEngine/personalizationService');
 
 /**
  * Generate QR code for store
@@ -92,31 +94,30 @@ exports.processScan = function processScan(body) {
           return;
         }
 
-        // Get user's preferred categories
-        const userCategories = user.preferences?.categories || [];
-
-        // Find relevant ads for the store matching user categories
+        // Find relevant ads for the store
         const ads = await db
           .collection('ads')
           .find({
             store_id: body.store_id,
-            target_categories: { $in: userCategories },
             'validity_period.end': { $gt: new Date() },
             'validity_period.start': { $lt: new Date() },
           })
           .toArray();
 
+        // Rank the ads based on user preferences and purchase history
+        const recommendedAds = rankAds(ads, user);
+
         // Log scan event for analytics
-        await db.collection('scan_events').insertOne({
+        await logAdInteraction({
+          // Use imported function
           store_id: body.store_id,
           user_id: body.user_id,
-          timestamp: new Date(),
-          ads_shown: ads.map((ad) => ad._id),
+          ads_shown: recommendedAds.map((ad) => ad._id),
         });
 
         resolve({
           store_id: body.store_id,
-          ads: ads,
+          ads: recommendedAds,
         });
       } catch (error) {
         const err = new Error('Internal server error');

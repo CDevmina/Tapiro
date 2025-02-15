@@ -22,7 +22,7 @@ servers:
     description: SwaggerHub API Auto Mocking
   - url: https://api.tapiro.com/v1
     description: Production API
-  - url: http://localhost:${PORT}
+  - url: http://localhost:3000
     description: Development API
 security:
   - oauth2:
