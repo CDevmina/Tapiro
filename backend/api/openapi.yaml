@@ -528,17 +528,12 @@ components:
     UserCreate:
       required:
         - email
-        - password
         - role
       type: object
       properties:
         email:
           type: string
           format: email
-        password:
-          type: string
-          format: password
-          writeOnly: true
         role:
           type: string
           enum:
