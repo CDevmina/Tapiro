@@ -2,6 +2,7 @@ const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Authorize User
@@ -15,17 +16,22 @@ const { generateAnonymizedId } = require('../utils/helperUtil');
 exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, redirectUri) {
   return new Promise((resolve, reject) => {
     if (responseType !== 'code') {
-      reject(new Error('Invalid response type'));
+      reject(ApiError.BadRequest('Invalid response type'));
       return;
     }
 
-    const authUrl = new URL(process.env.AUTH0_AUTHORIZE_URL);
-    authUrl.searchParams.append('response_type', responseType);
-    authUrl.searchParams.append('client_id', clientId);
-    authUrl.searchParams.append('redirect_uri', redirectUri);
-    authUrl.searchParams.append('scope', 'openid profile email');
+    try {
+      const authUrl = new URL(process.env.AUTH0_AUTHORIZE_URL);
+      authUrl.searchParams.append('response_type', responseType);
+      authUrl.searchParams.append('client_id', clientId);
+      authUrl.searchParams.append('redirect_uri', redirectUri);
+      authUrl.searchParams.append('scope', 'openid profile email');
 
-    resolve({ redirectUrl: authUrl.toString() });
+      resolve({ redirectUrl: authUrl.toString() });
+    } catch (error) {
+      console.error('Authorization URL error:', error);
+      reject(ApiError.InternalError('Failed to generate authorization URL', error));
+    }
   });
 };
 
@@ -36,10 +42,12 @@ exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, red
  * returns Token
  * */
 exports.authTokenPOST = async function authTokenPOST(body) {
-  const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
-
   try {
-    // Exchange code for token
+    if (!body.grant_type || !body.code) {
+      throw ApiError.BadRequest('Missing required token parameters');
+    }
+
+    const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
     const tokenResponse = await axios.post(tokenEndpoint, {
       grant_type: body.grant_type,
       client_id: process.env.AUTH0_CLIENT_ID,
@@ -48,14 +56,10 @@ exports.authTokenPOST = async function authTokenPOST(body) {
       redirect_uri: body.redirect_uri,
     });
 
-    // Fetch user info from Auth0
     const userInfoResponse = await axios.get(process.env.AUTH0_USERINFO_URL, {
-      headers: {
-        Authorization: `Bearer ${tokenResponse.data.access_token}`,
-      },
+      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
     });
 
-    // Cache user info (sub, email) with token
     await setCache(
       `token:${tokenResponse.data.access_token}`,
       JSON.stringify({
@@ -69,7 +73,10 @@ exports.authTokenPOST = async function authTokenPOST(body) {
     return tokenResponse.data;
   } catch (error) {
     console.error('Token exchange error:', error);
-    throw error;
+    if (error.response?.status === 401) {
+      throw ApiError.Unauthorized('Invalid authorization code');
+    }
+    throw ApiError.InternalError('Token exchange failed', error);
   }
 };
 
@@ -86,9 +93,7 @@ exports.usersPOST = function usersPOST(body, user) {
       try {
         // Validate role
         if (!body.role || !['customer', 'store'].includes(body.role)) {
-          const err = new Error('Invalid role');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Invalid role'));
           return;
         }
 
@@ -96,9 +101,7 @@ exports.usersPOST = function usersPOST(body, user) {
         const existingUser = await db.collection('users').findOne({ auth0Id: user.sub });
 
         if (existingUser) {
-          const err = new Error('User already exists');
-          err.status = 409;
-          reject(err);
+          reject(ApiError.Conflict('User already exists'));
           return;
         }
 
@@ -125,9 +128,8 @@ exports.usersPOST = function usersPOST(body, user) {
           ...newUser,
         });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        reject(err);
+        console.error('User creation error:', error);
+        reject(ApiError.InternalError('Failed to create user', error));
       }
     })();
   });
@@ -144,11 +146,10 @@ exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
+
         const db = getDB();
         const result = await db.collection('users').findOneAndUpdate(
           { _id: userId },
@@ -160,18 +161,16 @@ exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
             },
           },
         );
+
         if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
+
         resolve({ message: 'User deleted successfully' });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('User deletion error:', error);
+        reject(ApiError.InternalError('Failed to delete user', error));
       }
     })();
   });
@@ -188,26 +187,23 @@ exports.usersUserIdGET = function usersUserIdGET(userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
+
         const db = getDB();
         const user = await db.collection('users').findOne({ _id: userId });
+
         if (!user) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
+
         delete user.password;
         resolve(user);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Get user error:', error);
+        reject(ApiError.InternalError('Failed to retrieve user', error));
       }
     })();
   });
@@ -225,43 +221,41 @@ exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
+
         const db = getDB();
         const allowedUpdates = {
           email: body.email,
           preferences: body.preferences,
           privacy_settings: body.privacy_settings,
         };
+
         Object.keys(allowedUpdates).forEach(
           (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key],
         );
+
         if (Object.keys(allowedUpdates).length === 0) {
-          const err = new Error('No valid update fields provided');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('No valid update fields provided'));
           return;
         }
+
         allowedUpdates.updated_at = new Date();
         const result = await db
           .collection('users')
           .findOneAndUpdate({ _id: userId }, { $set: allowedUpdates }, { returnDocument: 'after' });
+
         if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
+
         delete result.value.password;
         resolve(result.value);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('User update error:', error);
+        reject(ApiError.InternalError('Failed to update user', error));
       }
     })();
   });

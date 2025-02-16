@@ -1,4 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Get engagement analytics
@@ -12,9 +13,7 @@ exports.getEngagement = function getEngagement(storeId) {
     (async () => {
       try {
         if (!storeId) {
-          const err = new Error('Store ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID is required'));
           return;
         }
 
@@ -27,9 +26,7 @@ exports.getEngagement = function getEngagement(storeId) {
         });
 
         if (!store) {
-          const err = new Error('Store not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Store not found'));
           return;
         }
 
@@ -57,10 +54,8 @@ exports.getEngagement = function getEngagement(storeId) {
 
         resolve(analytics);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Get engagement analytics error:', error);
+        reject(ApiError.InternalError('Failed to retrieve engagement analytics', error));
       }
     })();
   });
@@ -78,9 +73,7 @@ exports.getDemographics = function getDemographics(storeId) {
     (async () => {
       try {
         if (!storeId) {
-          const err = new Error('Store ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID is required'));
           return;
         }
 
@@ -93,9 +86,7 @@ exports.getDemographics = function getDemographics(storeId) {
         });
 
         if (!store) {
-          const err = new Error('Store not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Store not found'));
           return;
         }
 
@@ -138,10 +129,8 @@ exports.getDemographics = function getDemographics(storeId) {
 
         resolve(analytics);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Get demographics analytics error:', error);
+        reject(ApiError.InternalError('Failed to retrieve demographic analytics', error));
       }
     })();
   });

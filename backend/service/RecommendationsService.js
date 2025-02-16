@@ -1,4 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Get personalized ads for user
@@ -12,9 +13,7 @@ exports.getPersonalizedAds = function getPersonalizedAds(userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
 
@@ -23,9 +22,7 @@ exports.getPersonalizedAds = function getPersonalizedAds(userId) {
         // Get user preferences
         const user = await db.collection('users').findOne({ _id: userId });
         if (!user) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
 
@@ -48,10 +45,8 @@ exports.getPersonalizedAds = function getPersonalizedAds(userId) {
           ads: ads,
         });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Get personalized ads error:', error);
+        reject(ApiError.InternalError('Failed to retrieve personalized ads', error));
       }
     })();
   });
@@ -69,9 +64,7 @@ exports.triggerRecommendations = function triggerRecommendations(body) {
     (async () => {
       try {
         if (!body.user_id || !body.store_id) {
-          const err = new Error('User ID and Store ID are required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID and Store ID are required'));
           return;
         }
 
@@ -84,9 +77,7 @@ exports.triggerRecommendations = function triggerRecommendations(body) {
         ]);
 
         if (!user || !store) {
-          const err = new Error('User or Store not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User or Store not found'));
           return;
         }
 
@@ -112,10 +103,8 @@ exports.triggerRecommendations = function triggerRecommendations(body) {
           job_id: job._id,
         });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Trigger recommendations error:', error);
+        reject(ApiError.InternalError('Failed to trigger recommendations generation', error));
       }
     })();
   });

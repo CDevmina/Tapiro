@@ -2,6 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const QRCode = require('qrcode');
 const { rankAds } = require('../utils/adUtil');
 const { logAdInteraction } = require('./RecommendationEngine/personalizationService');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Generate QR code for store
@@ -15,9 +16,7 @@ exports.generateQR = function generateQR(storeId) {
     (async () => {
       try {
         if (!storeId) {
-          const err = new Error('Store ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID is required'));
           return;
         }
 
@@ -30,9 +29,7 @@ exports.generateQR = function generateQR(storeId) {
         });
 
         if (!store) {
-          const err = new Error('Store not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Store not found'));
           return;
         }
 
@@ -52,10 +49,8 @@ exports.generateQR = function generateQR(storeId) {
 
         resolve(qrImage);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('QR generation error:', error);
+        reject(ApiError.InternalError('Failed to generate QR code', error));
       }
     })();
   });
@@ -73,9 +68,7 @@ exports.processScan = function processScan(body) {
     (async () => {
       try {
         if (!body.store_id || !body.user_id) {
-          const err = new Error('Store ID and User ID are required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID and User ID are required'));
           return;
         }
 
@@ -88,9 +81,7 @@ exports.processScan = function processScan(body) {
         ]);
 
         if (!store || !user) {
-          const err = new Error('Store or User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Store or User not found'));
           return;
         }
 
@@ -109,7 +100,6 @@ exports.processScan = function processScan(body) {
 
         // Log scan event for analytics
         await logAdInteraction({
-          // Use imported function
           store_id: body.store_id,
           user_id: body.user_id,
           ads_shown: recommendedAds.map((ad) => ad._id),
@@ -120,10 +110,8 @@ exports.processScan = function processScan(body) {
           ads: recommendedAds,
         });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('QR scan processing error:', error);
+        reject(ApiError.InternalError('Failed to process QR code scan', error));
       }
     })();
   });

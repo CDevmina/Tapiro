@@ -1,4 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Create new advertisement
@@ -13,16 +14,12 @@ exports.createAd = function createAd(body, storeId) {
     (async () => {
       try {
         if (!storeId) {
-          const err = new Error('Store ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID is required'));
           return;
         }
 
         if (!body.title || !body.target_categories) {
-          const err = new Error('Title and target categories are required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Title and target categories are required'));
           return;
         }
 
@@ -35,9 +32,7 @@ exports.createAd = function createAd(body, storeId) {
         });
 
         if (!store) {
-          const err = new Error('Store not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Store not found'));
           return;
         }
 
@@ -61,10 +56,8 @@ exports.createAd = function createAd(body, storeId) {
           ...newAd,
         });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Ad creation error:', error);
+        reject(ApiError.InternalError('Failed to create advertisement', error));
       }
     })();
   });
@@ -82,9 +75,7 @@ exports.listAds = function listAds(storeId) {
     (async () => {
       try {
         if (!storeId) {
-          const err = new Error('Store ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID is required'));
           return;
         }
 
@@ -100,10 +91,8 @@ exports.listAds = function listAds(storeId) {
 
         resolve(ads);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('List ads error:', error);
+        reject(ApiError.InternalError('Failed to retrieve advertisements', error));
       }
     })();
   });
@@ -123,9 +112,7 @@ exports.updateAd = function updateAd(body, storeId, adId) {
     (async () => {
       try {
         if (!storeId || !adId) {
-          const err = new Error('Store ID and Ad ID are required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID and Ad ID are required'));
           return;
         }
 
@@ -152,18 +139,14 @@ exports.updateAd = function updateAd(body, storeId, adId) {
           );
 
         if (!result.value) {
-          const err = new Error('Advertisement not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Advertisement not found'));
           return;
         }
 
         resolve(result.value);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Update ad error:', error);
+        reject(ApiError.InternalError('Failed to update advertisement', error));
       }
     })();
   });
@@ -182,9 +165,7 @@ exports.deleteAd = function deleteAd(storeId, adId) {
     (async () => {
       try {
         if (!storeId || !adId) {
-          const err = new Error('Store ID and Ad ID are required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Store ID and Ad ID are required'));
           return;
         }
 
@@ -196,18 +177,14 @@ exports.deleteAd = function deleteAd(storeId, adId) {
         });
 
         if (result.deletedCount === 0) {
-          const err = new Error('Advertisement not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('Advertisement not found'));
           return;
         }
 
-        resolve();
+        resolve({ message: 'Advertisement deleted successfully' });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Delete ad error:', error);
+        reject(ApiError.InternalError('Failed to delete advertisement', error));
       }
     })();
   });

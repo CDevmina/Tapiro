@@ -1,4 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
+const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Update user preferences
@@ -13,9 +14,7 @@ exports.updatePreferences = function updatePreferences(body, userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
 
@@ -32,18 +31,14 @@ exports.updatePreferences = function updatePreferences(body, userId) {
         );
 
         if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
 
         resolve(result.value.preferences);
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Update preferences error:', error);
+        reject(ApiError.InternalError('Failed to update user preferences', error));
       }
     })();
   });
@@ -62,16 +57,12 @@ exports.logPurchase = function logPurchase(body, userId) {
     (async () => {
       try {
         if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('User ID is required'));
           return;
         }
 
         if (!body.store_id || !body.items || !body.items.length) {
-          const err = new Error('Invalid purchase data');
-          err.status = 400;
-          reject(err);
+          reject(ApiError.BadRequest('Invalid purchase data - store ID and items are required'));
           return;
         }
 
@@ -101,18 +92,14 @@ exports.logPurchase = function logPurchase(body, userId) {
         );
 
         if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
+          reject(ApiError.NotFound('User not found'));
           return;
         }
 
         resolve({ message: 'Purchase logged successfully' });
       } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
+        console.error('Log purchase error:', error);
+        reject(ApiError.InternalError('Failed to log purchase', error));
       }
     })();
   });
