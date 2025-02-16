@@ -10,6 +10,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - DB_NAME=${DB_NAME}
       - MONGODB_URI=${MONGODB_URI}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
