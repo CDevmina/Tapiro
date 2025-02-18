@@ -1,33 +1,88 @@
 const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
-const { setCache } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
 const { ApiError } = require('../utils/errorUtil');
 
 /**
  * Authorize User
- * Redirect to OAuth2 authorization page.
+ * Build the Auth0 authorization URL.
  *
- * response_type String
- * client_id String
- * redirect_uri String
- * no response value expected for this operation
- * */
+ * responseType String, clientId unused (use env) and redirectUri String.
+ * Returns an object with the authorization URL.
+ */
 exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, redirectUri) {
-  return new Promise((resolve, reject) => {
-  })
+  return new Promise((resolve) => {
+    const authUrl = `${process.env.AUTH0_AUTHORIZE_URL}?response_type=${encodeURIComponent(responseType)}&client_id=${encodeURIComponent(process.env.AUTH0_CLIENT_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email`;
+    resolve({ authorizationUrl: authUrl });
+  });
+};
+
+/**
+ * Exchange authorization code for tokens.
+ *
+ * code String, redirectUri String.
+ * Returns token data from Auth0.
+ */
+exports.authTokenPOST = function authTokenPOST(code, redirectUri) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const data = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.AUTH0_CLIENT_ID,
+        client_secret: process.env.AUTH0_CLIENT_SECRET,
+        code: code,
+        redirect_uri: redirectUri,
+      });
+      const tokenRes = await axios.post(process.env.AUTH0_TOKEN_URL, data.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      resolve(tokenRes.data);
+    } catch (err) {
+      reject(ApiError.InternalError('Token exchange failed', err));
+    }
+  });
 };
 
 /**
  * Register User
- * Create a new user (customer or store).
+ * Create a new user (customer or store), assign role and persist in MongoDB.
  *
- * body UserCreate
- * returns User
- * */
+ * body UserCreate with at least email and role.
+ * Returns the newly created user.
+ */
 exports.usersPOST = function usersPOST(body, user) {
-  return new Promise((resolve, reject) => {
-  })
+  return new Promise(async (resolve, reject) => {
+    try {
+      if (!body || !body.email || !body.role) {
+        reject(ApiError.BadRequest('Email and role are required'));
+        return;
+      }
+      const db = getDB();
+      // Check for an existing user by email.
+      let existingUser = await db.collection('users').findOne({ email: body.email });
+      if (existingUser) {
+        resolve(existingUser);
+        return;
+      }
+      // Create new user record.
+      const newUser = {
+        email: body.email,
+        role: body.role, // role should be either 'customer' or 'store'
+        preferences: body.preferences || { categories: [], purchase_history: [] },
+        privacy_settings: body.privacy_settings || {
+          data_sharing: true,
+          anonymized_id: generateAnonymizedId(),
+        },
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      const result = await db.collection('users').insertOne(newUser);
+      newUser._id = result.insertedId;
+      resolve(newUser);
+    } catch (err) {
+      reject(ApiError.InternalError('Failed to register user', err));
+    }
+  });
 };
 
 /**

@@ -16,10 +16,10 @@ const options = {
   openApiValidator: {
     validateSecurity: {
       handlers: {
-        oauth2: validateToken 
-      }
-    }
-  }
+        oauth2: validateToken,
+      },
+    },
+  },
 };
 
 const expressAppConfig = oas3Tools.expressAppConfig(
