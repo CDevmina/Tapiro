@@ -16,7 +16,7 @@ const options = {
   openApiValidator: {
     validateSecurity: {
       handlers: {
-        oauth2: validateToken // Map to the security scheme name in your OpenAPI spec
+        oauth2: validateToken 
       }
     }
   }
