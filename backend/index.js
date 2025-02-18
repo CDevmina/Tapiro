@@ -4,7 +4,7 @@ const http = require('http');
 const oas3Tools = require('oas3-tools');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
-const { auth, validateToken } = require('./middleware/authMiddleware');
+const { validateToken } = require('./middleware/authMiddleware');
 
 const serverPort = process.env.PORT || 3000;
 
@@ -13,6 +13,13 @@ const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
   },
+  openApiValidator: {
+    validateSecurity: {
+      handlers: {
+        oauth2: validateToken // Map to the security scheme name in your OpenAPI spec
+      }
+    }
+  }
 };
 
 const expressAppConfig = oas3Tools.expressAppConfig(
@@ -20,10 +27,6 @@ const expressAppConfig = oas3Tools.expressAppConfig(
   options,
 );
 const app = expressAppConfig.getApp();
-
-// Apply auth middleware
-app.use(auth);
-app.use('/users', validateToken);
 
 // Initialize MongoDB connection
 connectDB()
