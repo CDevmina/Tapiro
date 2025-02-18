@@ -113,9 +113,7 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           description: Invalid input
-      security:
-        - oauth2:
-            - user:write
+      security: []
       x-swagger-router-controller: Authentication
 
   /users/{userId}:
@@ -531,6 +529,7 @@ components:
     UserCreate:
       required:
         - role
+        - email
       type: object
       properties:
         role:
@@ -538,6 +537,9 @@ components:
           enum:
             - customer
             - store
+        email:
+          type: string
+          format: email
     UserUpdate:
       type: object
       properties:
@@ -669,8 +671,8 @@ components:
       type: oauth2
       flows:
         authorizationCode:
-          authorizationUrl: https://dev-zuxebycdcmuazvo8.us.auth0.com/authorize
-          tokenUrl: https://dev-zuxebycdcmuazvo8.us.auth0.com/oauth/token
+          authorizationUrl: ${AUTH0_AUTHORIZE_URL}
+          tokenUrl: ${AUTH0_TOKEN_URL}
           scopes:
             user:read: Read user data
             user:write: Modify user data

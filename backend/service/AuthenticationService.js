@@ -7,35 +7,55 @@ const { ApiError } = require('../utils/errorUtil');
 /**
  * Authorize User
  * Redirect to OAuth2 authorization page.
- *
- * response_type String
- * client_id String
- * redirect_uri String
- * no response value expected for this operation
- * */
+ */
 exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, redirectUri) {
   return new Promise((resolve, reject) => {
-  })
+    // No implementation needed, handled by Auth0
+    resolve();
+  });
 };
 
 /**
  * Register User
  * Create a new user (customer or store).
- *
- * body UserCreate
- * returns User
- * */
-exports.usersPOST = function usersPOST(body, user) {
-  return new Promise((resolve, reject) => {
-  })
+ */
+exports.usersPOST = function usersPOST(body) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = getDB();
+
+      // Check if user already exists
+      const existingUser = await db.collection('users').findOne({ email: body.email });
+      if (existingUser) {
+        return reject(ApiError.Conflict('User already exists'));
+      }
+
+      const newUser = {
+        email: body.email,
+        role: body.role,
+        preferences: {},
+        privacy_settings: {
+          data_sharing: true,
+          anonymized_id: generateAnonymizedId(),
+        },
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const result = await db.collection('users').insertOne(newUser);
+      const insertedUser = await db.collection('users').findOne({ _id: result.insertedId });
+
+      resolve(insertedUser);
+    } catch (error) {
+      console.error('User creation error:', error);
+      reject(ApiError.InternalError('Failed to create user', error));
+    }
+  });
 };
 
 /**
  * Delete User
- *
- * userId String
- * no response value expected for this operation
- * */
+ */
 exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
   return new Promise((resolve, reject) => {
     (async () => {
@@ -73,10 +93,7 @@ exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
 
 /**
  * Get User Profile
- *
- * userId String
- * returns User
- * */
+ */
 exports.usersUserIdGET = function usersUserIdGET(userId) {
   return new Promise((resolve, reject) => {
     (async () => {
@@ -106,11 +123,7 @@ exports.usersUserIdGET = function usersUserIdGET(userId) {
 
 /**
  * Update User Profile
- *
- * body UserUpdate
- * userId String
- * returns User
- * */
+ */
 exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
   return new Promise((resolve, reject) => {
     (async () => {
