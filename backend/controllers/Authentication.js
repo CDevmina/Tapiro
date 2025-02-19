@@ -1,33 +1,6 @@
 const utils = require('../utils/writer.js');
 const Authentication = require('../service/AuthenticationService');
 
-module.exports.authAuthorizeGET = function authAuthorizeGET(
-  req,
-  res,
-  next,
-  responseType,
-  clientId,
-  redirectUri,
-) {
-  Authentication.authAuthorizeGET(responseType, clientId, redirectUri)
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
-};
-
-module.exports.authTokenPOST = function authTokenPOST(req, res) {
-  Authentication.authTokenPOST()
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
-};
-
 module.exports.usersPOST = function usersPOST(req, res, next, body) {
   Authentication.usersPOST(body)
     .then((response) => {
