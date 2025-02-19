@@ -23,66 +23,6 @@ security:
       - store:read
       - store:write
 paths:
-  /auth/token:
-    post:
-      tags:
-        - Authentication
-      summary: Get OAuth2 Token
-      description: Exchange authorization code for access token.
-      operationId: authTokenPOST
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/auth_token_body'
-        required: true
-      responses:
-        '200':
-          description: Token response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Token'
-        '401':
-          description: Unauthorized
-      x-swagger-router-controller: Authentication
-
-  /auth/authorize:
-    get:
-      tags:
-        - Authentication
-      summary: Authorize User
-      description: Redirect to OAuth2 authorization page.
-      operationId: authAuthorizeGET
-      parameters:
-        - name: response_type
-          in: query
-          required: true
-          style: form
-          explode: true
-          schema:
-            type: string
-            enum:
-              - code
-        - name: client_id
-          in: query
-          required: true
-          style: form
-          explode: true
-          schema:
-            type: string
-        - name: redirect_uri
-          in: query
-          required: true
-          style: form
-          explode: true
-          schema:
-            type: string
-      responses:
-        '302':
-          description: Redirect to login/consent page
-      x-swagger-router-controller: Authentication
-
   /users:
     post:
       tags:
@@ -94,16 +34,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreate'
+              $ref: "#/components/schemas/UserCreate"
         required: true
       responses:
-        '201':
+        "201":
           description: User created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '400':
+                $ref: "#/components/schemas/User"
+        "400":
           description: Invalid input
       x-swagger-router-controller: Authentication
 
@@ -123,13 +63,13 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: User data
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
+                $ref: "#/components/schemas/User"
+        "403":
           description: Forbidden
       security:
         - oauth2:
@@ -154,16 +94,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserUpdate'
+              $ref: "#/components/schemas/UserUpdate"
         required: true
       responses:
-        '200':
+        "200":
           description: Updated user data
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
+                $ref: "#/components/schemas/User"
+        "403":
           description: Forbidden
       security:
         - oauth2:
@@ -185,9 +125,9 @@ paths:
           schema:
             type: string
       responses:
-        '204':
+        "204":
           description: User deleted
-        '403':
+        "403":
           description: Forbidden
       security:
         - oauth2:
@@ -214,9 +154,9 @@ components:
             - customer
             - store
         preferences:
-          $ref: '#/components/schemas/User_preferences'
+          $ref: "#/components/schemas/User_preferences"
         privacy_settings:
-          $ref: '#/components/schemas/User_privacy_settings'
+          $ref: "#/components/schemas/User_privacy_settings"
       example:
         preferences:
           purchase_history:
@@ -230,7 +170,7 @@ components:
           data_sharing: true
           anonymized_id: anonymized_id
         id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
-        email: 'johndoe@gmail.com'
+        email: "johndoe@gmail.com"
     UserCreate:
       required:
         - email
