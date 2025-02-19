@@ -21,10 +21,6 @@ const expressAppConfig = oas3Tools.expressAppConfig(
 );
 const app = expressAppConfig.getApp();
 
-// Apply auth middleware
-app.use(auth);
-app.use('/users', validateToken);
-
 // Initialize MongoDB connection
 connectDB()
   .then(() => connectRedis())
