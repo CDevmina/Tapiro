@@ -4,7 +4,6 @@ const http = require('http');
 const oas3Tools = require('oas3-tools');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
-const { auth, validateToken } = require('./middleware/authMiddleware');
 
 const serverPort = process.env.PORT || 3000;
 
