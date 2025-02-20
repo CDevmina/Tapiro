@@ -14,7 +14,7 @@ tags:
   - name: QR Code
     description: QR code generation and scanning operations
   - name: Analytics
-    description: Advertising performance and customer insights
+    description: Advertising performance and user insights
   - name: Recommendations
     description: AI-driven personalization endpoints
 servers:
@@ -36,7 +36,7 @@ paths:
       tags:
         - User Management
       summary: Register User
-      description: Create a new user (customer or store).
+      description: Create a new user (user or store).
       operationId: usersPOST
       requestBody:
         content:
@@ -250,7 +250,7 @@ paths:
     get:
       tags: [QR Code]
       summary: Generate QR code
-      description: Generate a dynamic QR code for in-store kiosks that customers can scan to receive personalized ads
+      description: Generate a dynamic QR code for in-store kiosks that users can scan to receive personalized ads
       operationId: generateQR
       parameters:
         - name: storeId
@@ -365,7 +365,7 @@ paths:
     post:
       tags: [User Management]
       summary: Log purchase
-      description: Record customer purchases to improve recommendation accuracy and maintain purchase history
+      description: Record user purchases to improve recommendation accuracy and maintain purchase history
       operationId: logPurchase
       parameters:
         - name: userId
@@ -409,7 +409,7 @@ paths:
     get:
       tags: [Analytics]
       summary: Get demographic analytics
-      description: Access demographic data and preference trends of store customers
+      description: Access demographic data and preference trends of store users
       operationId: getDemographics
       parameters:
         - name: storeId
