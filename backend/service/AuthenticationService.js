@@ -6,7 +6,7 @@ const { respondWithCode } = require('../utils/writer');
 
 /**
  * Register User
- * Create a new user (customer or store).
+ * Create a new user (user or store).
  *
  * body UserCreate
  * returns User
@@ -28,9 +28,39 @@ exports.usersPOST = async function usersPOST(req, body) {
     // Get user info from Auth0
     let auth0Response;
     try {
-      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
+      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/userinfo`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
+
+      // Add validation for empty response
+      if (!auth0Response.data || Object.keys(auth0Response.data).length === 0) {
+        console.error('Empty user data received:', auth0Response);
+        return respondWithCode(401, {
+          code: 401,
+          message: 'Invalid or expired token',
+        });
+      }
+
+      console.log('Auth0 Response:', auth0Response.data);
+
+      // Validate required user data
+      const { sub, email } = auth0Response.data;
+      if (!sub || !email) {
+        console.error('Missing required user fields:', auth0Response.data);
+        return respondWithCode(400, {
+          code: 400,
+          message: 'Incomplete user profile data',
+        });
+      }
+
+      const userData = {
+        sub,
+        email,
+        // Add any other needed fields
+      };
     } catch (authError) {
       return respondWithCode(401, {
         code: 401,
@@ -38,7 +68,24 @@ exports.usersPOST = async function usersPOST(req, body) {
       });
     }
 
-    const userData = auth0Response.data;
+    // Debug user data
+    console.log('User Data:', userData);
+
+    // Test Management API token
+    try {
+      const tokenTest = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users`, {
+        headers: {
+          Authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
+        },
+      });
+      console.log('Management API Token Valid');
+    } catch (tokenError) {
+      console.error('Management API Token Error:', tokenError.response?.data);
+      return respondWithCode(500, {
+        code: 500,
+        message: 'Invalid Management API configuration',
+      });
+    }
 
     // Assign role in Auth0
     try {

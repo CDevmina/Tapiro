@@ -459,7 +459,7 @@ components:
           categories:
             - categories
             - categories
-        role: customer
+        role: user
         privacy_settings:
           data_sharing: true
           anonymized_id: anonymized_id
@@ -473,7 +473,7 @@ components:
         role:
           type: string
           enum:
-            - customer
+            - user
             - store
     UserUpdate:
       type: object
