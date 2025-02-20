@@ -445,7 +445,7 @@ components:
         role:
           type: string
           enum:
-            - customer
+            - user
             - store
         preferences:
           $ref: "#/components/schemas/User_preferences"
