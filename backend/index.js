@@ -5,7 +5,7 @@ const oas3Tools = require('oas3-tools');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 
-const serverPort = process.env.PORT || 3000;
+const serverPort = process.env.PORT;
 
 // swaggerRouter configuration
 const options = {
