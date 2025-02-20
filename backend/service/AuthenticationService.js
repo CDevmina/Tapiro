@@ -2,128 +2,118 @@ const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
-
-/**
- * Authorize User
- * Redirect to OAuth2 authorization page.
- *
- * response_type String
- * client_id String
- * redirect_uri String
- * no response value expected for this operation
- * */
-exports.authAuthorizeGET = function authAuthorizeGET(responseType, clientId, redirectUri) {
-  return new Promise((resolve, reject) => {
-    if (responseType !== 'code') {
-      reject(new Error('Invalid response type'));
-      return;
-    }
-
-    const authUrl = new URL(process.env.AUTH0_AUTHORIZE_URL);
-    authUrl.searchParams.append('response_type', responseType);
-    authUrl.searchParams.append('client_id', clientId);
-    authUrl.searchParams.append('redirect_uri', redirectUri);
-    authUrl.searchParams.append('scope', 'openid profile email');
-
-    resolve({ redirectUrl: authUrl.toString() });
-  });
-};
-
-/**
- * Get OAuth2 Token
- * Exchange authorization code for access token.
- *
- * returns Token
- * */
-exports.authTokenPOST = async function authTokenPOST(body) {
-  const tokenEndpoint = process.env.AUTH0_TOKEN_URL;
-
-  try {
-    const response = await axios.post(tokenEndpoint, {
-      grant_type: body.grant_type,
-      client_id: process.env.AUTH0_CLIENT_ID,
-      client_secret: process.env.AUTH0_CLIENT_SECRET,
-      code: body.code,
-      redirect_uri: body.redirect_uri,
-    });
-
-    // Cache the token with user info
-    await setCache(
-      `token:${response.data.access_token}`,
-      JSON.stringify({
-        token: response.data.access_token,
-        expires_in: response.data.expires_in,
-      }),
-      {
-        EX: response.data.expires_in,
-      },
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error('Token exchange error:', error);
-    throw error;
-  }
-};
+const { respondWithCode } = require('../utils/writer');
 
 /**
  * Register User
- * Create a new user (customer or store).
+ * Create a new user (user or store).
  *
  * body UserCreate
  * returns User
  * */
-exports.usersPOST = function usersPOST(body) {
-  return new Promise((resolve, reject) => {
-    (async () => {
-      try {
-        if (!body.email || !body.password || !body.role) {
-          const err = new Error('Missing required fields');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        if (!['customer', 'store'].includes(body.role)) {
-          const err = new Error('Invalid role');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        const db = getDB();
-        const existingUser = await db.collection('users').findOne({ email: body.email });
-        if (existingUser) {
-          const err = new Error('User already exists');
-          err.status = 409;
-          reject(err);
-          return;
-        }
-        const newUser = {
-          email: body.email,
-          role: body.role,
-          privacy_settings: {
-            data_sharing: false,
-            anonymized_id: generateAnonymizedId(),
-          },
-          preferences: {
-            categories: [],
-            purchase_history: [],
-          },
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
-        const result = await db.collection('users').insertOne(newUser);
-        resolve({
-          id: result.insertedId,
-          ...newUser,
-        });
-      } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
-      }
-    })();
-  });
+exports.usersPOST = async function usersPOST(req, body) {
+  try {
+    const db = getDB();
+    const { role } = body;
+
+    // Get token from Authorization header
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get user info from Auth0
+    let auth0Response;
+    try {
+      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (authError) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid authentication token',
+      });
+    }
+
+    const userData = auth0Response.data;
+
+    // Assign role in Auth0
+    try {
+      const options = {
+        method: 'POST',
+        url: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}/roles`,
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
+          'cache-control': 'no-cache',
+        },
+        data: {
+          roles: [
+            role === 'store' ? process.env.AUTH0_STORE_ROLE_ID : process.env.AUTH0_USER_ROLE_ID,
+          ],
+        },
+      };
+
+      await axios.request(options);
+      console.log(`Role assigned successfully for user: ${userData.sub}`);
+    } catch (roleError) {
+      console.error('Role assignment failed:', roleError.response?.data || roleError.message);
+      return respondWithCode(500, {
+        code: 500,
+        message: 'Failed to assign user role',
+        error: roleError.response?.data?.message || roleError.message,
+      });
+    }
+
+    // Create user in MongoDB
+    const user = {
+      email: userData.email,
+      role: role,
+      privacy_settings: {
+        data_sharing: true,
+        anonymized_id: generateAnonymizedId(),
+      },
+      preferences: {
+        categories: [],
+        purchase_history: [],
+      },
+    };
+
+    let result;
+    try {
+      result = await db.collection('users').insertOne(user);
+    } catch (dbError) {
+      return respondWithCode(500, {
+        code: 500,
+        message: 'Database operation failed',
+      });
+    }
+
+    // Cache user data
+    try {
+      await setCache(`user:${result.insertedId}`, JSON.stringify(user), {
+        EX: 3600, // Cache for 1 hour
+      });
+    } catch (cacheError) {
+      console.error('Cache operation failed:', cacheError);
+      // Continue even if cache fails
+    }
+
+    // Return 201 Created for successful user creation
+    return respondWithCode(201, {
+      ...user,
+      id: result.insertedId,
+    });
+  } catch (error) {
+    console.error('User registration failed:', error);
+    return respondWithCode(500, {
+      code: 500,
+      message: 'Internal server error',
+    });
+  }
 };
 
 /**
@@ -133,41 +123,7 @@ exports.usersPOST = function usersPOST(body) {
  * no response value expected for this operation
  * */
 exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
-  return new Promise((resolve, reject) => {
-    (async () => {
-      try {
-        if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        const db = getDB();
-        const result = await db.collection('users').findOneAndUpdate(
-          { _id: userId },
-          {
-            $set: {
-              status: 'inactive',
-              deleted_at: new Date(),
-              updated_at: new Date(),
-            },
-          },
-        );
-        if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
-          return;
-        }
-        resolve({ message: 'User deleted successfully' });
-      } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
-      }
-    })();
-  });
+  return new Promise((resolve, reject) => {});
 };
 
 /**
@@ -177,33 +133,7 @@ exports.usersUserIdDELETE = function usersUserIdDELETE(userId) {
  * returns User
  * */
 exports.usersUserIdGET = function usersUserIdGET(userId) {
-  return new Promise((resolve, reject) => {
-    (async () => {
-      try {
-        if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        const db = getDB();
-        const user = await db.collection('users').findOne({ _id: userId });
-        if (!user) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
-          return;
-        }
-        delete user.password;
-        resolve(user);
-      } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
-      }
-    })();
-  });
+  return new Promise((resolve, reject) => {});
 };
 
 /**
@@ -214,48 +144,5 @@ exports.usersUserIdGET = function usersUserIdGET(userId) {
  * returns User
  * */
 exports.usersUserIdPUT = function usersUserIdPUT(body, userId) {
-  return new Promise((resolve, reject) => {
-    (async () => {
-      try {
-        if (!userId) {
-          const err = new Error('User ID is required');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        const db = getDB();
-        const allowedUpdates = {
-          email: body.email,
-          preferences: body.preferences,
-          privacy_settings: body.privacy_settings,
-        };
-        Object.keys(allowedUpdates).forEach(
-          (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key],
-        );
-        if (Object.keys(allowedUpdates).length === 0) {
-          const err = new Error('No valid update fields provided');
-          err.status = 400;
-          reject(err);
-          return;
-        }
-        allowedUpdates.updated_at = new Date();
-        const result = await db
-          .collection('users')
-          .findOneAndUpdate({ _id: userId }, { $set: allowedUpdates }, { returnDocument: 'after' });
-        if (!result.value) {
-          const err = new Error('User not found');
-          err.status = 404;
-          reject(err);
-          return;
-        }
-        delete result.value.password;
-        resolve(result.value);
-      } catch (error) {
-        const err = new Error('Internal server error');
-        err.status = 500;
-        err.error = error;
-        reject(err);
-      }
-    })();
-  });
+  return new Promise((resolve, reject) => {});
 };

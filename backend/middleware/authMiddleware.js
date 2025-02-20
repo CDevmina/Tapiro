@@ -1,11 +1,10 @@
-require('dotenv').config();
-
 const { auth } = require('express-openid-connect');
-const { getCache } = require('../utils/redisUtil');
+const { auth: expressJwtAuth } = require('express-oauth2-jwt-bearer');
+const { setCache, getCache } = require('../utils/redisUtil');
 
 // Auth0 config
 const config = {
-  authRequired: true,
+  authRequired: false,
   auth0Logout: true,
   baseURL: process.env.BASE_URL,
   clientID: process.env.AUTH0_CLIENT_ID,
@@ -13,30 +12,59 @@ const config = {
   secret: process.env.AUTH0_CLIENT_SECRET,
 };
 
-// Token validation middleware
-const validateToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
+// JWT validation middleware
+const checkJwt = expressJwtAuth({
+  audience: process.env.AUTH0_AUDIENCE,
+  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+  tokenSigningAlg: 'RS256',
+});
 
-  const token = authHeader.split(' ')[1];
+// Role-based access control middleware
+const checkRole = (requiredPermissions) => {
+  return async (req, res, next) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+      }
 
-  try {
-    // Check Redis cache first
-    const cachedToken = await getCache(`token:${token}`);
-    if (!cachedToken) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      // Check Redis cache first
+      const cachedPermissions = await getCache(`permissions:${token}`);
+      if (cachedPermissions) {
+        const permissions = JSON.parse(cachedPermissions);
+        const hasPermission = requiredPermissions.every((p) => permissions.includes(p));
+        if (!hasPermission) {
+          return res.status(403).json({ message: 'Insufficient permissions' });
+        }
+        return next();
+      }
+
+      // Verify permissions from Auth0
+      const response = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const userData = await response.json();
+
+      // Cache permissions
+      await setCache(`permissions:${token}`, JSON.stringify(userData.permissions), {
+        EX: 3600, // Cache for 1 hour
+      });
+
+      const hasPermission = requiredPermissions.every((p) => userData.permissions.includes(p));
+      if (!hasPermission) {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Permission check failed:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
-
-    // Add user info to request
-    req.user = JSON.parse(cachedToken);
-    next();
-    return undefined; // Explicit return for success path
-  } catch (error) {
-    console.error('Token validation error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  };
 };
 
-module.exports = { auth: auth(config), validateToken };
+module.exports = {
+  auth: auth(config),
+  checkJwt,
+  checkRole,
+};

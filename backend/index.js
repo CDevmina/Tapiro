@@ -2,16 +2,17 @@ require('dotenv').config();
 const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
+const { auth, checkJwt } = require('./middleware/authMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
-const { auth, validateToken } = require('./middleware/authMiddleware');
 
-const serverPort = process.env.PORT || 3000;
+const serverPort = process.env.PORT;
 
 // swaggerRouter configuration
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
+    middlewares: [auth, checkJwt],
   },
 };
 
@@ -21,11 +22,7 @@ const expressAppConfig = oas3Tools.expressAppConfig(
 );
 const app = expressAppConfig.getApp();
 
-// Apply auth middleware
-app.use(auth);
-app.use('/users', validateToken);
-
-// Initialize MongoDB connection
+// Initialize connections
 connectDB()
   .then(() => connectRedis())
   .then(() => {

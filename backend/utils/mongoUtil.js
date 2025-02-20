@@ -3,13 +3,14 @@ const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
+const dbname = process.env.DB_NAME;
 
 let db;
 
 async function connectDB() {
   try {
     await client.connect();
-    db = client.db();
+    db = client.db(dbname);
     console.log('Connected to MongoDB Atlas');
   } catch (error) {
     console.error('MongoDB connection error:', error);
