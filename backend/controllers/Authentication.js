@@ -2,7 +2,7 @@ const utils = require('../utils/writer.js');
 const Authentication = require('../service/AuthenticationService');
 
 module.exports.usersPOST = function usersPOST(req, res, next, body) {
-  Authentication.usersPOST(body)
+  Authentication.usersPOST(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })

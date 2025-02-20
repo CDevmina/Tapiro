@@ -2,6 +2,7 @@ require('dotenv').config();
 const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
+const { auth, checkJwt } = require('./middleware/authMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 
@@ -11,6 +12,7 @@ const serverPort = process.env.PORT;
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
+    middlewares: [auth, checkJwt],
   },
 };
 
@@ -20,7 +22,7 @@ const expressAppConfig = oas3Tools.expressAppConfig(
 );
 const app = expressAppConfig.getApp();
 
-// Initialize MongoDB connection
+// Initialize connections
 connectDB()
   .then(() => connectRedis())
   .then(() => {
