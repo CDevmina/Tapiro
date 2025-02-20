@@ -1,6 +1,5 @@
 const { auth } = require('express-openid-connect');
 const { auth: expressJwtAuth } = require('express-oauth2-jwt-bearer');
-const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache } = require('../utils/redisUtil');
 
 // Auth0 config
