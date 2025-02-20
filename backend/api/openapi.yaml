@@ -46,13 +46,13 @@ paths:
         required: true
       responses:
         "201":
-          description: User created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
+          description: User created successfully
         "400":
           description: Invalid input
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
       x-swagger-router-controller: Authentication
 
   /users/{userId}:
