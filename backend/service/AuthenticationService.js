@@ -42,24 +42,29 @@ exports.usersPOST = async function usersPOST(req, body) {
 
     // Assign role in Auth0
     try {
-      await axios.post(
-        `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}/roles`,
-        {
+      const options = {
+        method: 'POST',
+        url: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}/roles`,
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
+          'cache-control': 'no-cache',
+        },
+        data: {
           roles: [
             role === 'store' ? process.env.AUTH0_STORE_ROLE_ID : process.env.AUTH0_USER_ROLE_ID,
           ],
         },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+      };
+
+      await axios.request(options);
+      console.log(`Role assigned successfully for user: ${userData.sub}`);
     } catch (roleError) {
+      console.error('Role assignment failed:', roleError.response?.data || roleError.message);
       return respondWithCode(500, {
         code: 500,
         message: 'Failed to assign user role',
+        error: roleError.response?.data?.message || roleError.message,
       });
     }
 

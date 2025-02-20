@@ -11,7 +11,7 @@ services:
     environment:
       - NODE_ENV=development
       - MONGODB_URI=${MONGODB_URI}
-      - DB_NAME=Tapiro
+      - DB_NAME=tapiro
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - BASE_URL=http://localhost:3000
@@ -23,6 +23,8 @@ services:
       - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
       - AUTH0_MANAGEMENT_API_TOKEN=${AUTH0_MANAGEMENT_API_TOKEN}
       - PORT=3000
+      - AUTH0_USER_ROLE_ID=${AUTH0_USER_ROLE_ID}
+      - AUTH0_STORE_ROLE_ID=${AUTH0_STORE_ROLE_ID}
     ports:
       - "3000:3000"
     depends_on:
