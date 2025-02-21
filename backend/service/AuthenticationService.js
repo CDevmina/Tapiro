@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, client } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 
@@ -90,7 +90,7 @@ exports.usersPOST = async function usersPOST(req, body) {
       email: userData.email,
       role: role,
       privacy_settings: {
-        data_sharing: true,
+        data_sharing: false,
         anonymized_id: generateAnonymizedId(),
       },
       preferences: {
@@ -188,11 +188,15 @@ exports.usersProfileDELETE = async function usersProfileDELETE(req) {
         });
       } catch (auth0Error) {
         console.error('Auth0 deletion failed:', auth0Error);
-        // Continue with local deletion even if Auth0 fails
       }
 
-      // Remove from cache
-      await client.del(`user:${userData.sub}`);
+      // Remove from cache using imported client
+      try {
+        await client.del(`user:${userData.sub}`);
+      } catch (cacheError) {
+        console.error('Cache deletion failed:', cacheError);
+        // Continue even if cache deletion fails
+      }
 
       return respondWithCode(204);
     } catch (dbError) {
