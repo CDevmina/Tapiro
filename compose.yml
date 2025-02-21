@@ -25,6 +25,7 @@ services:
       - PORT=3000
       - AUTH0_USER_ROLE_ID=${AUTH0_USER_ROLE_ID}
       - AUTH0_STORE_ROLE_ID=${AUTH0_STORE_ROLE_ID}
+      - FRONTEND_URL=http://localhost:3001
     ports:
       - "3000:3000"
     depends_on:
