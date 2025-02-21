@@ -8,7 +8,7 @@ interface UserPreferences {
 
 interface UserPrivacySettings {
   data_sharing: boolean;
-  anonymized_id?: string; // Optional because it's readonly
+  anonymized_id?: string;
 }
 
 interface UserUpdateData {
@@ -16,14 +16,19 @@ interface UserUpdateData {
   privacy_settings?: UserPrivacySettings;
 }
 
+interface RegisterUserParams {
+  role: "user" | "store";
+  data_sharing: boolean;
+}
+
 export const useUserService = () => {
   const { getToken } = useAuth();
 
-  const registerUser = async (role: "user" | "store") => {
+  const registerUser = async ({ role, data_sharing }: RegisterUserParams) => {
     const token = await getToken();
     return apiClient.post(
       "/users",
-      { role },
+      { role, data_sharing },
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -44,9 +49,17 @@ export const useUserService = () => {
     });
   };
 
+  const deleteUserProfile = async () => {
+    const token = await getToken();
+    return apiClient.delete("/users/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
+
   return {
     registerUser,
     getUserProfile,
     updateUserProfile,
+    deleteUserProfile,
   };
 };

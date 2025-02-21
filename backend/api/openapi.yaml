@@ -456,6 +456,7 @@ components:
     UserCreate:
       required:
         - role
+        - data_sharing
       type: object
       properties:
         role:
@@ -463,6 +464,9 @@ components:
           enum:
             - user
             - store
+        data_sharing:
+          type: boolean
+          description: User's consent for data sharing
     UserUpdate:
       type: object
       properties:

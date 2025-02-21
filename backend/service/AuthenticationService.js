@@ -14,7 +14,7 @@ const { respondWithCode } = require('../utils/writer');
 exports.usersPOST = async function usersPOST(req, body) {
   try {
     const db = getDB();
-    const { role } = body;
+    const { role, data_sharing } = body;
 
     // Get token from Authorization header
     const token = req.headers.authorization?.split(' ')[1];
@@ -90,7 +90,7 @@ exports.usersPOST = async function usersPOST(req, body) {
       email: userData.email,
       role: role,
       privacy_settings: {
-        data_sharing: false,
+        data_sharing: data_sharing, // Use the provided data_sharing value
         anonymized_id: generateAnonymizedId(),
       },
       preferences: {

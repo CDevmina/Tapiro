@@ -1,25 +1,19 @@
 import "./App.css";
-import { useAuth } from "./hooks/useAuth";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./routes/routes";
+import { AuthProvider } from "./auth/AuthContext";
+import { AuthStateManager } from "./auth/AuthStateManager";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 function App() {
-  const { isAuthenticated, login, register, logout, user } = useAuth();
-
   return (
-    <div className="app">
-      <header>
-        {!isAuthenticated ? (
-          <div>
-            <button onClick={login}>Log In</button>
-            <button onClick={register}>Sign Up</button>
-          </div>
-        ) : (
-          <div>
-            <p>Welcome, {user?.email}</p>
-            <button onClick={logout}>Log Out</button>
-          </div>
-        )}
-      </header>
-    </div>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AuthStateManager>
+          <RouterProvider router={router} />
+        </AuthStateManager>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
