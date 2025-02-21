@@ -55,21 +55,13 @@ paths:
           description: Internal server error
       x-swagger-router-controller: Authentication
 
-  /users/{userId}:
+  /users/profile:
     get:
       tags:
         - User Management
       summary: Get User Profile
-      description: Get User Profile by ID.
-      operationId: usersUserIdGET
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          style: simple
-          explode: false
-          schema:
-            type: string
+      description: Get authenticated user's profile using their Auth0 token
+      operationId: usersProfileGET
       responses:
         "200":
           description: User data
@@ -77,8 +69,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        "403":
-          description: Forbidden
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
       security:
         - oauth2:
             - user:read
@@ -88,16 +84,8 @@ paths:
       tags:
         - User Management
       summary: Update User Profile
-      description: Update User Profile by ID.
-      operationId: usersUserIdPUT
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          style: simple
-          explode: false
-          schema:
-            type: string
+      description: Update authenticated user's profile using their Auth0 token
+      operationId: usersProfilePUT
       requestBody:
         content:
           application/json:
@@ -106,13 +94,17 @@ paths:
         required: true
       responses:
         "200":
-          description: Updated user data
+          description: User updated successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        "403":
-          description: Forbidden
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
       security:
         - oauth2:
             - user:write
@@ -121,22 +113,18 @@ paths:
     delete:
       tags:
         - User Management
-      summary: Delete User
-      description: Delete User Profile by ID.
-      operationId: usersUserIdDELETE
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          style: simple
-          explode: false
-          schema:
-            type: string
+      summary: Delete User Profile
+      description: Delete authenticated user's profile using their Auth0 token
+      operationId: usersProfileDELETE
       responses:
         "204":
-          description: User deleted
-        "403":
-          description: Forbidden
+          description: User deleted successfully
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
       security:
         - oauth2:
             - user:write
