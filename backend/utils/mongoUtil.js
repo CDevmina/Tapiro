@@ -11,6 +11,9 @@ async function connectDB() {
   try {
     await client.connect();
     db = client.db(dbname);
+
+    await db.collection('users').createIndex({ email: 1 }, { unique: true });
+
     console.log('Connected to MongoDB Atlas');
   } catch (error) {
     console.error('MongoDB connection error:', error);

@@ -11,8 +11,8 @@ module.exports.usersPOST = function usersPOST(req, res, next, body) {
     });
 };
 
-module.exports.usersUserIdGET = function usersUserIdGET(req, res, next, userId) {
-  Authentication.usersUserIdGET(userId)
+module.exports.usersProfileGET = function usersProfileGET(req, res, next) {
+  Authentication.usersProfileGET(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -21,8 +21,8 @@ module.exports.usersUserIdGET = function usersUserIdGET(req, res, next, userId) 
     });
 };
 
-module.exports.usersUserIdPUT = function usersUserIdPUT(req, res, next, body, userId) {
-  Authentication.usersUserIdPUT(body, userId)
+module.exports.usersProfilePUT = function usersProfilePUT(req, res, next, body) {
+  Authentication.usersProfilePUT(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -31,8 +31,8 @@ module.exports.usersUserIdPUT = function usersUserIdPUT(req, res, next, body, us
     });
 };
 
-module.exports.usersUserIdDELETE = function usersUserIdDELETE(req, res, next, userId) {
-  Authentication.usersUserIdDELETE(userId)
+module.exports.usersProfileDELETE = function usersProfileDELETE(req, res, next) {
+  Authentication.usersProfileDELETE(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
