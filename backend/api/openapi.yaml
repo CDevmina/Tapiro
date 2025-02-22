@@ -567,3 +567,13 @@ components:
             user:write: Modify user data
             store:read: Read store data
             store:write: Modify store data
+  headers:
+    Access-Control-Allow-Origin:
+      schema:
+        type: string
+    Access-Control-Allow-Methods:
+      schema:
+        type: string
+    Access-Control-Allow-Headers:
+      schema:
+        type: string

@@ -2,17 +2,27 @@ require('dotenv').config();
 const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
+const cors = require('cors');
 const { auth, checkJwt } = require('./middleware/authMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 
 const serverPort = process.env.PORT;
 
+// CORS configuration
+const corsOptions = {
+  origin: [process.env.FRONTEND_URL],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400,
+};
+
 // swaggerRouter configuration
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
-    middlewares: [auth, checkJwt],
+    middlewares: [cors(corsOptions), auth, checkJwt],
   },
 };
 

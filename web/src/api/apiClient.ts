@@ -1,10 +1,11 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 // Add auth interceptor
@@ -19,5 +20,16 @@ apiClient.interceptors.request.use(async (config) => {
     return Promise.reject(error);
   }
 });
+
+// Add response interceptor to handle CORS errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403) {
+      console.error("CORS error:", error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
