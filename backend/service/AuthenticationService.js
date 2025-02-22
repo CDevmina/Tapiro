@@ -3,6 +3,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache, client } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
+const { assignUserRole } = require('../utils/auth0Util');
 
 /**
  * Register User
@@ -16,7 +17,6 @@ exports.usersPOST = async function usersPOST(req, body) {
     const db = getDB();
     const { role, data_sharing } = body;
 
-    // Get token from Authorization header
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return respondWithCode(401, {
@@ -26,71 +26,36 @@ exports.usersPOST = async function usersPOST(req, body) {
     }
 
     // Get user info from Auth0
-    let auth0Response;
+    let userData;
     try {
-      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (authError) {
+      userData = response.data;
+    } catch (error) {
       return respondWithCode(401, {
         code: 401,
-        message: 'Invalid authentication token',
+        message: 'Invalid token',
       });
     }
 
-    const userData = auth0Response.data;
-
+    // Assign role using client credentials
     try {
-      const existingUser = await db.collection('users').findOne({ email: userData.email });
-      if (existingUser) {
-        return respondWithCode(409, {
-          code: 409,
-          message: 'User already exists',
-          error: 'A user with this email is already registered',
-        });
-      }
-    } catch (dbError) {
-      console.error('Database lookup failed:', dbError);
+      await assignUserRole(userData.sub, role);
+    } catch (error) {
+      console.error('Role assignment failed:', error);
       return respondWithCode(500, {
         code: 500,
-        message: 'Failed to check existing user',
-        error: dbError.message,
+        message: 'Failed to assign role',
       });
     }
 
-    // Assign role in Auth0
-    try {
-      const options = {
-        method: 'POST',
-        url: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}/roles`,
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
-          'cache-control': 'no-cache',
-        },
-        data: {
-          roles: [
-            role === 'store' ? process.env.AUTH0_STORE_ROLE_ID : process.env.AUTH0_USER_ROLE_ID,
-          ],
-        },
-      };
-
-      await axios.request(options);
-    } catch (roleError) {
-      console.error('Role assignment failed:', roleError.response?.data || roleError.message);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to assign user role',
-        error: roleError.response?.data?.message || roleError.message,
-      });
-    }
-
-    // Create user in MongoDB
+    // Create user in database
     const user = {
       email: userData.email,
       role: role,
       privacy_settings: {
-        data_sharing: data_sharing, // Use the provided data_sharing value
+        data_sharing: data_sharing,
         anonymized_id: generateAnonymizedId(),
       },
       preferences: {
@@ -99,27 +64,8 @@ exports.usersPOST = async function usersPOST(req, body) {
       },
     };
 
-    let result;
-    try {
-      result = await db.collection('users').insertOne(user);
-    } catch (dbError) {
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Database operation failed',
-      });
-    }
+    const result = await db.collection('users').insertOne(user);
 
-    // Cache user data
-    try {
-      await setCache(`user:${result.insertedId}`, JSON.stringify(user), {
-        EX: 3600, // Cache for 1 hour
-      });
-    } catch (cacheError) {
-      console.error('Cache operation failed:', cacheError);
-      // Continue even if cache fails
-    }
-
-    // Return 201 Created for successful user creation
     return respondWithCode(201, {
       ...user,
       id: result.insertedId,
@@ -358,3 +304,27 @@ exports.usersProfilePUT = async function usersProfilePUT(req, body) {
     });
   }
 };
+
+// In Auth0 Dashboard -> Rules -> Create Rule
+function assignRoleToUser(user, context, callback) {
+  // Check email domain or metadata to determine role
+  const role = user.email.endsWith('@store.com') ? 'store' : 'user';
+
+  const roleIds = {
+    store: configuration.STORE_ROLE_ID,
+    user: configuration.USER_ROLE_ID,
+  };
+
+  const ManagementClient = require('auth0').ManagementClient;
+  const management = new ManagementClient({
+    token: auth0.accessToken,
+    domain: auth0.domain,
+  });
+
+  management.assignRolestoUser({ id: user.user_id }, { roles: [roleIds[role]] }, (err) => {
+    if (err) {
+      console.error('Error assigning role:', err);
+    }
+    return callback(null, user, context);
+  });
+}

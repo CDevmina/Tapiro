@@ -1,15 +1,19 @@
 const { auth } = require('express-openid-connect');
 const { auth: expressJwtAuth } = require('express-oauth2-jwt-bearer');
 const { setCache, getCache } = require('../utils/redisUtil');
+const crypto = require('crypto');
+
+// Generate a secure random string for the secret
+const generateSecret = () => crypto.randomBytes(32).toString('hex');
 
 // Auth0 config
 const config = {
   authRequired: false,
   auth0Logout: true,
   baseURL: process.env.BASE_URL,
-  clientID: process.env.AUTH0_CLIENT_ID,
+  clientID: process.env.AUTH0_SPA_CLIENT_ID,
   issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
-  secret: process.env.AUTH0_CLIENT_SECRET,
+  secret: generateSecret(),
 };
 
 // JWT validation middleware
