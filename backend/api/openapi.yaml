@@ -347,7 +347,7 @@ paths:
                 $ref: "#/components/schemas/User_preferences"
       security:
         - oauth2: [user:write]
-      x-swagger-router-controller: UserController
+      x-swagger-router-controller: UserPreferences
 
   /users/{userId}/purchases:
     post:
@@ -369,7 +369,7 @@ paths:
       responses:
         "201":
           description: Purchase successfully recorded
-      x-swagger-router-controller: UserController
+      x-swagger-router-controller: UserPreferences
 
   /stores/{storeId}/analytics/engagement:
     get:
@@ -391,7 +391,7 @@ paths:
                 $ref: "#/components/schemas/Analytics"
       security:
         - oauth2: [store:read]
-      x-swagger-router-controller: AnalyticsController
+      x-swagger-router-controller: Analytics
 
   /stores/{storeId}/analytics/demographics:
     get:
@@ -413,7 +413,7 @@ paths:
                 $ref: "#/components/schemas/Analytics"
       security:
         - oauth2: [store:read]
-      x-swagger-router-controller: AnalyticsController
+      x-swagger-router-controller: Analytics
 
 components:
   schemas:
