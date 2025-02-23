@@ -456,6 +456,7 @@ components:
     UserCreate:
       required:
         - role
+        - data_sharing
       type: object
       properties:
         role:
@@ -463,6 +464,9 @@ components:
           enum:
             - user
             - store
+        data_sharing:
+          type: boolean
+          description: User's consent for data sharing
     UserUpdate:
       type: object
       properties:
@@ -563,3 +567,13 @@ components:
             user:write: Modify user data
             store:read: Read store data
             store:write: Modify store data
+  headers:
+    Access-Control-Allow-Origin:
+      schema:
+        type: string
+    Access-Control-Allow-Methods:
+      schema:
+        type: string
+    Access-Control-Allow-Headers:
+      schema:
+        type: string
