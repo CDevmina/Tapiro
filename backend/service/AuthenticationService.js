@@ -3,7 +3,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache, client } = require('../utils/redisUtil');
 const { generateAnonymizedId } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole } = require('../utils/auth0Util');
+const { assignUserRole, getManagementToken } = require('../utils/auth0Util');
 
 /**
  * Register User
@@ -124,24 +124,24 @@ exports.usersProfileDELETE = async function usersProfileDELETE(req) {
         });
       }
 
-      // Delete from Auth0
+      // Get fresh management token and delete from Auth0
       try {
+        const managementToken = await getManagementToken();
         await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
           headers: {
-            authorization: `Bearer ${process.env.AUTH0_MANAGEMENT_API_TOKEN}`,
-            'content-type': 'application/json',
+            Authorization: `Bearer ${managementToken}`,
+            'Content-Type': 'application/json',
           },
         });
       } catch (auth0Error) {
-        console.error('Auth0 deletion failed:', auth0Error);
+        console.error('Auth0 deletion failed:', auth0Error?.response?.data || auth0Error);
       }
 
-      // Remove from cache using imported client
+      // Remove from cache
       try {
         await client.del(`user:${userData.sub}`);
       } catch (cacheError) {
         console.error('Cache deletion failed:', cacheError);
-        // Continue even if cache deletion fails
       }
 
       return respondWithCode(204);
