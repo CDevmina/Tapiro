@@ -5,18 +5,8 @@ info:
   version: 1.0.0
   contact: { name: Tapiro Support, email: tapirosupport@gmail.com }
 tags:
-  - name: Authentication
-    description: Endpoints related to OAuth2 authentication and authorization
   - name: User Management
     description: Operations for user registration, profile management, and deletion
-  - name: Ad Management
-    description: Store advertisement creation and management
-  - name: QR Code
-    description: QR code generation and scanning operations
-  - name: Analytics
-    description: Advertising performance and user insights
-  - name: Recommendations
-    description: AI-driven personalization endpoints
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -31,13 +21,13 @@ security:
       - store:read
       - store:write
 paths:
-  /users:
+  /users/register:
     post:
       tags:
         - User Management
       summary: Register User
-      description: Create a new user (user or store).
-      operationId: usersPOST
+      description: Create a new regular user account
+      operationId: registerUser
       requestBody:
         content:
           application/json:
@@ -47,6 +37,38 @@ paths:
       responses:
         "201":
           description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid input
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      x-swagger-router-controller: Authentication
+
+  /stores/register:
+    post:
+      tags:
+        - User Management
+      summary: Register Store
+      description: Create a new store account
+      operationId: registerStore
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreCreate"
+        required: true
+      responses:
+        "201":
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
         "400":
           description: Invalid input
         "401":
@@ -60,11 +82,11 @@ paths:
       tags:
         - User Management
       summary: Get User Profile
-      description: Get authenticated user's profile using their Auth0 token
-      operationId: usersProfileGET
+      description: Get authenticated user's profile
+      operationId: getUserProfile
       responses:
         "200":
-          description: User data
+          description: User profile retrieved successfully
           content:
             application/json:
               schema:
@@ -84,8 +106,8 @@ paths:
       tags:
         - User Management
       summary: Update User Profile
-      description: Update authenticated user's profile using their Auth0 token
-      operationId: usersProfilePUT
+      description: Update authenticated user's profile
+      operationId: updateUserProfile
       requestBody:
         content:
           application/json:
@@ -94,7 +116,7 @@ paths:
         required: true
       responses:
         "200":
-          description: User updated successfully
+          description: User profile updated successfully
           content:
             application/json:
               schema:
@@ -114,11 +136,11 @@ paths:
       tags:
         - User Management
       summary: Delete User Profile
-      description: Delete authenticated user's profile using their Auth0 token
-      operationId: usersProfileDELETE
+      description: Delete authenticated user's profile
+      operationId: deleteUserProfile
       responses:
         "204":
-          description: User deleted successfully
+          description: User profile deleted successfully
         "401":
           description: Unauthorized
         "404":
@@ -130,430 +152,276 @@ paths:
             - user:write
       x-swagger-router-controller: Authentication
 
-  /stores/{storeId}/ads:
-    post:
-      tags: [Ad Management]
-      summary: Create new advertisement
-      description: Create a new targeted advertisement for a specific store. Allows setting categories, media, and validity period.
-      operationId: createAd
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Ad"
-        required: true
-      responses:
-        "201":
-          description: Advertisement successfully created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Ad"
-      security:
-        - oauth2: [store:write]
-      x-swagger-router-controller: Advertisements
-
+  /stores/profile:
     get:
-      tags: [Ad Management]
-      summary: List store ads
-      description: Retrieve all active advertisements for a specific store including their targeting criteria and status
-      operationId: listAds
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
+      tags:
+        - User Management
+      summary: Get Store Profile
+      description: Get authenticated store's profile
+      operationId: getStoreProfile
       responses:
         "200":
-          description: Successful retrieval of store advertisements
+          description: Store profile retrieved successfully
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Ad"
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Store not found
+        "500":
+          description: Internal server error
       security:
-        - oauth2: [store:read]
-      x-swagger-router-controller: Advertisements
+        - oauth2:
+            - store:read
+      x-swagger-router-controller: Authentication
 
-  /stores/{storeId}/ads/{adId}:
     put:
-      tags: [Ad Management]
-      summary: Update specific ad
-      description: Modify an existing advertisement's details including targeting parameters and validity period
-      operationId: updateAd
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-        - name: adId
-          in: path
-          required: true
-          schema: { type: string }
+      tags:
+        - User Management
+      summary: Update Store Profile
+      description: Update authenticated store's profile
+      operationId: updateStoreProfile
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Ad"
+              $ref: "#/components/schemas/StoreUpdate"
         required: true
       responses:
         "200":
-          description: Advertisement successfully updated
+          description: Store profile updated successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Ad"
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Store not found
+        "500":
+          description: Internal server error
       security:
-        - oauth2: [store:write]
-      x-swagger-router-controller: Advertisements
+        - oauth2:
+            - store:write
+      x-swagger-router-controller: Authentication
 
     delete:
-      tags: [Ad Management]
-      summary: Delete specific ad
-      description: Permanently remove an advertisement from the store's active campaigns
-      operationId: deleteAd
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-        - name: adId
-          in: path
-          required: true
-          schema: { type: string }
+      tags:
+        - User Management
+      summary: Delete Store Profile
+      description: Delete authenticated store's profile
+      operationId: deleteStoreProfile
       responses:
         "204":
-          description: Advertisement successfully deleted
+          description: Store profile deleted successfully
+        "401":
+          description: Unauthorized
+        "404":
+          description: Store not found
+        "500":
+          description: Internal server error
       security:
-        - oauth2: [store:write]
-      x-swagger-router-controller: Advertisements
-
-  /stores/{storeId}/qr:
-    get:
-      tags: [QR Code]
-      summary: Generate QR code
-      description: Generate a dynamic QR code for in-store kiosks that users can scan to receive personalized ads
-      operationId: generateQR
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: PNG image containing the store-specific QR code
-          content:
-            image/png:
-              schema: { type: string, format: binary }
-      security:
-        - oauth2: [store:write]
-      x-swagger-router-controller: QRcodes
-
-  /scan:
-    post:
-      tags: [QR Code]
-      summary: Process QR scan
-      description: Handle QR code scan events and return personalized advertisements based on user preferences and purchase history
-      operationId: processScan
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/qr_data"
-        required: true
-      responses:
-        "200":
-          description: List of personalized advertisements for the scanned store
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdResponse"
-      security: []
-      x-swagger-router-controller: QRcodes
-
-  /users/{userId}/ads:
-    get:
-      tags: [Recommendations]
-      summary: Get personalized ads
-      description: Retrieve AI-generated personalized advertisements based on user preferences and historical purchase data
-      operationId: getPersonalizedAds
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Successfully retrieved personalized advertisements
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdResponse"
-      security:
-        - oauth2: [user:read]
-      x-swagger-router-controller: Recommendations
-
-  /recommendations:
-    post:
-      tags: [Recommendations]
-      summary: Trigger personalization
-      description: Internal endpoint to initiate AI recommendation process for a specific user-store combination
-      operationId: triggerRecommendations
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user_id: { type: string }
-                store_id: { type: string }
-        required: true
-      responses:
-        "202":
-          description: Recommendation generation process successfully initiated
-      security:
-        - oauth2: [store:write, user:read]
-      x-swagger-router-controller: Recommendations
-
-  /users/{userId}/preferences:
-    put:
-      tags: [User Management]
-      summary: Update preferences
-      description: Allow users to modify their advertising preferences and category interests
-      operationId: updatePreferences
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/User_preferences"
-        required: true
-      responses:
-        "200":
-          description: User preferences successfully updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User_preferences"
-      security:
-        - oauth2: [user:write]
-      x-swagger-router-controller: UserController
-
-  /users/{userId}/purchases:
-    post:
-      tags: [User Management]
-      summary: Log purchase
-      description: Record user purchases to improve recommendation accuracy and maintain purchase history
-      operationId: logPurchase
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Purchase"
-        required: true
-      responses:
-        "201":
-          description: Purchase successfully recorded
-      x-swagger-router-controller: UserController
-
-  /stores/{storeId}/analytics/engagement:
-    get:
-      tags: [Analytics]
-      summary: Get engagement analytics
-      description: Retrieve engagement metrics including click-through rates and ad interaction statistics
-      operationId: getEngagement
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Successful retrieval of engagement analytics
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Analytics"
-      security:
-        - oauth2: [store:read]
-      x-swagger-router-controller: AnalyticsController
-
-  /stores/{storeId}/analytics/demographics:
-    get:
-      tags: [Analytics]
-      summary: Get demographic analytics
-      description: Access demographic data and preference trends of store users
-      operationId: getDemographics
-      parameters:
-        - name: storeId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Successful retrieval of demographic analytics
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Analytics"
-      security:
-        - oauth2: [store:read]
-      x-swagger-router-controller: AnalyticsController
+        - oauth2:
+            - store:write
+      x-swagger-router-controller: Authentication
 
 components:
   schemas:
     User:
+      type: object
       required:
         - email
-        - role
-      type: object
+        - auth0Id
       properties:
-        id:
+        userId:
           type: string
           format: uuid
           readOnly: true
+        auth0Id:
+          type: string
+          description: Auth0 user ID
         email:
           type: string
           format: email
-        role:
+        phone:
           type: string
-          enum:
-            - user
-            - store
+          pattern: ^\+?[\d\s-]+$
         preferences:
-          $ref: "#/components/schemas/User_preferences"
-        privacy_settings:
-          $ref: "#/components/schemas/User_privacy_settings"
-      example:
-        preferences:
-          purchase_history:
-            - purchase_history
-            - purchase_history
-          categories:
-            - categories
-            - categories
-        role: user
-        privacy_settings:
-          data_sharing: true
-          anonymized_id: anonymized_id
-        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
-        email: "johndoe@gmail.com"
-    UserCreate:
-      required:
-        - role
-        - data_sharing
-      type: object
-      properties:
-        role:
-          type: string
-          enum:
-            - user
-            - store
-        data_sharing:
-          type: boolean
-          description: User's consent for data sharing
-    UserUpdate:
-      type: object
-      properties:
-        preferences:
-          type: object
-        privacy_settings:
-          type: object
-    User_preferences:
-      type: object
-      properties:
-        categories:
           type: array
           items:
             type: string
-        purchase_history:
-          type: array
-          items:
-            type: string
-      example:
-        purchase_history:
-          - purchase_history
-          - purchase_history
-        categories:
-          - categories
-          - categories
-    User_privacy_settings:
-      type: object
-      properties:
-        data_sharing:
-          type: boolean
-        anonymized_id:
+          description: User preferences (e.g., electronics/fashion)
+        privacySettings:
+          type: object
+          properties:
+            dataSharingConsent:
+              type: boolean
+              default: false
+            anonymizeData:
+              type: boolean
+              default: false
+            optOutStores:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: List of store IDs user has opted out from
+        dataAccess:
+          type: object
+          properties:
+            allowedDomains:
+              type: array
+              items:
+                type: string
+              description: List of allowed domains for data access
+        createdAt:
           type: string
+          format: date-time
           readOnly: true
-      example:
-        data_sharing: true
-        anonymized_id: anonymized_id
-    Ad:
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Store:
       type: object
-      required: [title, target_categories]
+      required:
+        - name
+        - auth0Id
+        - address
       properties:
-        id:
+        storeId:
           type: string
           format: uuid
           readOnly: true
-        title: { type: string }
-        description: { type: string }
-        target_categories:
-          type: array
-          items: { type: string }
-        media_url: { type: string }
-        validity_period:
-          type: object
-          properties:
-            start: { type: string, format: date-time }
-            end: { type: string, format: date-time }
-    AdResponse:
-      type: object
-      properties:
-        store_id: { type: string }
-        ads:
+        auth0Id:
+          type: string
+          description: Auth0 organization ID
+        name:
+          type: string
+        address:
+          type: string
+        apiKeys:
           type: array
           items:
-            $ref: "#/components/schemas/Ad"
-    qr_data:
+            type: string
+          description: Hashed API keys
+          readOnly: true
+        webhooks:
+          type: array
+          items:
+            type: object
+            required:
+              - url
+              - events
+            properties:
+              url:
+                type: string
+                format: uri
+              events:
+                type: array
+                items:
+                  type: string
+                  enum: [purchase, opt-out]
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UserCreate:
       type: object
+      required:
+        - dataSharingConsent
       properties:
-        store_id: { type: string }
-        user_id: { type: string }
-    Purchase:
+        phone:
+          type: string
+          pattern: ^\+?[\d\s-]+$
+          description: User's phone number (optional)
+        preferences:
+          type: array
+          items:
+            type: string
+        dataSharingConsent:
+          type: boolean
+          description: User's consent for data sharing
+
+    StoreCreate:
       type: object
-      required: [store_id, items]
+      required:
+        - name
+        - address
       properties:
-        store_id: { type: string }
-        items:
+        name:
+          type: string
+        address:
+          type: string
+        webhooks:
           type: array
           items:
             type: object
             properties:
-              product_id: { type: string }
-              category: { type: string }
-    Analytics:
+              url:
+                type: string
+                format: uri
+              events:
+                type: array
+                items:
+                  type: string
+                  enum: [purchase, opt-out]
+
+    UserUpdate:
       type: object
       properties:
-        top_categories:
+        preferences:
           type: array
-          items: { type: string }
-        avg_engagement_time: { type: number }
+          items:
+            type: string
+        privacySettings:
+          type: object
+          properties:
+            dataSharingConsent:
+              type: boolean
+            anonymizeData:
+              type: boolean
+            optOutStores:
+              type: array
+              items:
+                type: string
+                format: uuid
+        dataAccess:
+          type: object
+          properties:
+            allowedDomains:
+              type: array
+              items:
+                type: string
+
+    StoreUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        webhooks:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+                format: uri
+              events:
+                type: array
+                items:
+                  type: string
+                  enum: [purchase, opt-out]
 
   securitySchemes:
     oauth2:
@@ -567,13 +435,3 @@ components:
             user:write: Modify user data
             store:read: Read store data
             store:write: Modify store data
-  headers:
-    Access-Control-Allow-Origin:
-      schema:
-        type: string
-    Access-Control-Allow-Methods:
-      schema:
-        type: string
-    Access-Control-Allow-Headers:
-      schema:
-        type: string
