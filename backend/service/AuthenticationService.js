@@ -1,21 +1,21 @@
 const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache, client } = require('../utils/redisUtil');
-const { generateAnonymizedId } = require('../utils/helperUtil');
+const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 const { assignUserRole, getManagementToken } = require('../utils/auth0Util');
 
 /**
  * Register User
- * Create a new user (user or store).
+ * Create a new regular user account
  *
  * body UserCreate
  * returns User
- * */
-exports.usersPOST = async function usersPOST(req, body) {
+ **/
+exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    const { role, data_sharing } = body;
+    const { phone, preferences, dataSharingConsent } = body;
 
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -39,9 +39,18 @@ exports.usersPOST = async function usersPOST(req, body) {
       });
     }
 
-    // Assign role using client credentials
+    // Check if already registered
+    const registration = await checkExistingRegistration(userData.sub);
+    if (registration.exists) {
+      return respondWithCode(409, {
+        code: 409,
+        message: `This account is already registered as a ${registration.type}`,
+      });
+    }
+
+    // Assign user role
     try {
-      await assignUserRole(userData.sub, role);
+      await assignUserRole(userData.sub, 'user');
     } catch (error) {
       console.error('Role assignment failed:', error);
       return respondWithCode(500, {
@@ -52,44 +61,42 @@ exports.usersPOST = async function usersPOST(req, body) {
 
     // Create user in database
     const user = {
+      auth0Id: userData.sub,
       email: userData.email,
-      role: role,
-      privacy_settings: {
-        data_sharing: data_sharing,
-        anonymized_id: generateAnonymizedId(),
+      phone,
+      preferences: preferences || [],
+      privacySettings: {
+        dataSharingConsent,
+        anonymizeData: false,
+        optOutStores: [],
       },
-      preferences: {
-        categories: [],
-        purchase_history: [],
+      dataAccess: {
+        allowedDomains: [],
       },
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     const result = await db.collection('users').insertOne(user);
-
-    return respondWithCode(201, {
-      ...user,
-      id: result.insertedId,
-    });
+    return respondWithCode(201, { ...user, userId: result.insertedId });
   } catch (error) {
     console.error('User registration failed:', error);
-    return respondWithCode(500, {
-      code: 500,
-      message: 'Internal server error',
-    });
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
 
 /**
- * Delete User
+ * Register Store
+ * Create a new store account
  *
- * userId String
- * no response value expected for this operation
- * */
-exports.usersProfileDELETE = async function usersProfileDELETE(req) {
+ * body StoreCreate
+ * returns Store
+ **/
+exports.registerStore = async function (req, body) {
   try {
     const db = getDB();
+    const { name, address, webhooks } = body;
 
-    // Get token from Authorization header
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return respondWithCode(401, {
@@ -98,80 +105,68 @@ exports.usersProfileDELETE = async function usersProfileDELETE(req) {
       });
     }
 
-    // Get user info from Auth0
-    let auth0Response;
+    // Get store info from Auth0
+    let userData;
     try {
-      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (authError) {
+      userData = response.data;
+    } catch (error) {
       return respondWithCode(401, {
         code: 401,
-        message: 'Invalid authentication token',
+        message: 'Invalid token',
       });
     }
 
-    const userData = auth0Response.data;
+    // Check if already registered
+    const registration = await checkExistingRegistration(userData.sub);
+    if (registration.exists) {
+      return respondWithCode(409, {
+        code: 409,
+        message: `This account is already registered as a ${registration.type}`,
+      });
+    }
 
-    // Delete user from database
+    // Assign store role
     try {
-      const result = await db.collection('users').deleteOne({ email: userData.email });
-
-      if (result.deletedCount === 0) {
-        return respondWithCode(404, {
-          code: 404,
-          message: 'User not found',
-        });
-      }
-
-      // Get fresh management token and delete from Auth0
-      try {
-        const managementToken = await getManagementToken();
-        await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
-          headers: {
-            Authorization: `Bearer ${managementToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (auth0Error) {
-        console.error('Auth0 deletion failed:', auth0Error?.response?.data || auth0Error);
-      }
-
-      // Remove from cache
-      try {
-        await client.del(`user:${userData.sub}`);
-      } catch (cacheError) {
-        console.error('Cache deletion failed:', cacheError);
-      }
-
-      return respondWithCode(204);
-    } catch (dbError) {
-      console.error('Database deletion failed:', dbError);
+      await assignUserRole(userData.sub, 'store');
+    } catch (error) {
+      console.error('Role assignment failed:', error);
       return respondWithCode(500, {
         code: 500,
-        message: 'Failed to delete user',
-        error: dbError.message,
+        message: 'Failed to assign role',
       });
     }
+
+    // Create store in database
+    const store = {
+      auth0Id: userData.sub,
+      name,
+      address,
+      webhooks: webhooks || [],
+      apiKeys: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await db.collection('stores').insertOne(store);
+    return respondWithCode(201, { ...store, storeId: result.insertedId });
   } catch (error) {
-    console.error('Profile deletion failed:', error);
-    return respondWithCode(500, {
-      code: 500,
-      message: 'Internal server error',
-    });
+    console.error('Store registration failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
 /**
  * Get User Profile
+ * Get authenticated user's profile
  *
- * userId String
  * returns User
- * */
-exports.usersProfileGET = async function usersProfileGET(req) {
+ **/
+exports.getUserProfile = async function (req) {
   try {
     const db = getDB();
-
-    // Get token from Authorization header
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return respondWithCode(401, {
@@ -181,71 +176,53 @@ exports.usersProfileGET = async function usersProfileGET(req) {
     }
 
     // Get user info from Auth0
-    let auth0Response;
+    let userData;
     try {
-      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (authError) {
+      userData = response.data;
+    } catch (error) {
       return respondWithCode(401, {
         code: 401,
-        message: 'Invalid authentication token',
+        message: 'Invalid token',
       });
     }
 
-    const userData = auth0Response.data;
+    // Try cache first
+    const cachedUser = await getCache(`user:${userData.sub}`);
+    if (cachedUser) {
+      return respondWithCode(200, JSON.parse(cachedUser));
+    }
 
-    // Find user in database
-    try {
-      const user = await db.collection('users').findOne({ email: userData.email });
-      if (!user) {
-        return respondWithCode(404, {
-          code: 404,
-          message: 'User not found',
-        });
-      }
-
-      // Try to get from cache first
-      const cachedUser = await getCache(`user:${user._id}`);
-      if (cachedUser) {
-        return respondWithCode(200, JSON.parse(cachedUser));
-      }
-
-      // Cache miss - return from DB and update cache
-      await setCache(`user:${user._id}`, JSON.stringify(user), {
-        EX: 3600, // Cache for 1 hour
-      });
-
-      return respondWithCode(200, user);
-    } catch (dbError) {
-      console.error('Database lookup failed:', dbError);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to retrieve user',
-        error: dbError.message,
+    // Get from database
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    if (!user) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
       });
     }
+
+    // Cache the result
+    await setCache(`user:${userData.sub}`, JSON.stringify(user), { EX: 3600 });
+    return respondWithCode(200, user);
   } catch (error) {
-    console.error('Profile retrieval failed:', error);
-    return respondWithCode(500, {
-      code: 500,
-      message: 'Internal server error',
-    });
+    console.error('Get profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
 
 /**
  * Update User Profile
+ * Update authenticated user's profile
  *
  * body UserUpdate
- * userId String
  * returns User
- * */
-exports.usersProfilePUT = async function usersProfilePUT(req, body) {
+ **/
+exports.updateUserProfile = async function (req, body) {
   try {
     const db = getDB();
-
-    // Get token from Authorization header
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return respondWithCode(401, {
@@ -255,76 +232,283 @@ exports.usersProfilePUT = async function usersProfilePUT(req, body) {
     }
 
     // Get user info from Auth0
-    let auth0Response;
+    let userData;
     try {
-      auth0Response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (authError) {
+      userData = response.data;
+    } catch (error) {
       return respondWithCode(401, {
         code: 401,
-        message: 'Invalid authentication token',
+        message: 'Invalid token',
       });
     }
 
-    const userData = auth0Response.data;
+    // Update user
+    const updateData = {
+      ...body,
+      updatedAt: new Date(),
+    };
 
-    // Update user in database
-    try {
-      const result = await db
-        .collection('users')
-        .findOneAndUpdate({ email: userData.email }, { $set: body }, { returnDocument: 'after' });
+    const result = await db
+      .collection('users')
+      .findOneAndUpdate(
+        { auth0Id: userData.sub },
+        { $set: updateData },
+        { returnDocument: 'after' },
+      );
 
-      if (!result) {
-        return respondWithCode(404, {
-          code: 404,
-          message: 'User not found',
-        });
-      }
-
-      // Update cache
-      await setCache(`user:${result._id}`, JSON.stringify(result), {
-        EX: 3600, // Cache for 1 hour
-      });
-
-      return respondWithCode(200, result);
-    } catch (dbError) {
-      console.error('Database update failed:', dbError);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to update user',
-        error: dbError.message,
+    if (!result) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
       });
     }
+
+    // Update cache
+    await setCache(`user:${userData.sub}`, JSON.stringify(result), { EX: 3600 });
+    return respondWithCode(200, result);
   } catch (error) {
-    console.error('Profile update failed:', error);
-    return respondWithCode(500, {
-      code: 500,
-      message: 'Internal server error',
-    });
+    console.error('Update profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
 
-// In Auth0 Dashboard -> Rules -> Create Rule
-function assignRoleToUser(user, context, callback) {
-  // Check email domain or metadata to determine role
-  const role = user.email.endsWith('@store.com') ? 'store' : 'user';
-
-  const roleIds = {
-    store: configuration.STORE_ROLE_ID,
-    user: configuration.USER_ROLE_ID,
-  };
-
-  const ManagementClient = require('auth0').ManagementClient;
-  const management = new ManagementClient({
-    token: auth0.accessToken,
-    domain: auth0.domain,
-  });
-
-  management.assignRolestoUser({ id: user.user_id }, { roles: [roleIds[role]] }, (err) => {
-    if (err) {
-      console.error('Error assigning role:', err);
+/**
+ * Delete User Profile
+ * Delete authenticated user's profile
+ **/
+exports.deleteUserProfile = async function (req) {
+  try {
+    const db = getDB();
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
     }
-    return callback(null, user, context);
-  });
-}
+
+    // Get user info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    // Delete from database
+    const result = await db.collection('users').deleteOne({ auth0Id: userData.sub });
+    if (result.deletedCount === 0) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
+      });
+    }
+
+    // Delete from Auth0
+    try {
+      const managementToken = await getManagementToken();
+      await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
+        headers: {
+          Authorization: `Bearer ${managementToken}`,
+        },
+      });
+    } catch (error) {
+      console.error('Auth0 deletion failed:', error);
+    }
+
+    // Clear cache
+    await client.del(`user:${userData.sub}`);
+    return respondWithCode(204);
+  } catch (error) {
+    console.error('Delete profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get Store Profile
+ * Get authenticated store's profile
+ *
+ * returns Store
+ **/
+exports.getStoreProfile = async function (req) {
+  try {
+    const db = getDB();
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get store info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    // Try cache first
+    const cachedStore = await getCache(`store:${userData.sub}`);
+    if (cachedStore) {
+      return respondWithCode(200, JSON.parse(cachedStore));
+    }
+
+    // Get from database
+    const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
+    if (!store) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+
+    // Cache the result
+    await setCache(`store:${userData.sub}`, JSON.stringify(store), { EX: 3600 });
+    return respondWithCode(200, store);
+  } catch (error) {
+    console.error('Get store profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Update Store Profile
+ * Update authenticated store's profile
+ *
+ * body StoreUpdate
+ * returns Store
+ **/
+exports.updateStoreProfile = async function (req, body) {
+  try {
+    const db = getDB();
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get store info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    // Update store
+    const { name, address, webhooks } = body;
+    const updateData = {
+      name,
+      address,
+      webhooks,
+      updatedAt: new Date(),
+    };
+
+    const result = await db
+      .collection('stores')
+      .findOneAndUpdate(
+        { auth0Id: userData.sub },
+        { $set: updateData },
+        { returnDocument: 'after' },
+      );
+
+    if (!result) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+
+    // Update cache
+    await setCache(`store:${userData.sub}`, JSON.stringify(result), { EX: 3600 });
+    return respondWithCode(200, result);
+  } catch (error) {
+    console.error('Update store profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Delete Store Profile
+ * Delete authenticated store's profile
+ **/
+exports.deleteStoreProfile = async function (req) {
+  try {
+    const db = getDB();
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get store info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    // Delete from database
+    const result = await db.collection('stores').deleteOne({ auth0Id: userData.sub });
+    if (result.deletedCount === 0) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+
+    // Delete from Auth0
+    try {
+      const managementToken = await getManagementToken();
+      await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
+        headers: {
+          Authorization: `Bearer ${managementToken}`,
+        },
+      });
+    } catch (error) {
+      console.error('Auth0 deletion failed:', error);
+    }
+
+    // Clear cache
+    await client.del(`store:${userData.sub}`);
+    return respondWithCode(204);
+  } catch (error) {
+    console.error('Delete store profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};

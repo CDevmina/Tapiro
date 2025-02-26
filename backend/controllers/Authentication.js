@@ -1,8 +1,8 @@
 const utils = require('../utils/writer.js');
 const Authentication = require('../service/AuthenticationService');
 
-module.exports.usersPOST = function usersPOST(req, res, next, body) {
-  Authentication.usersPOST(req, body)
+module.exports.registerUser = function registerUser(req, res, next, body) {
+  Authentication.registerUser(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -11,8 +11,8 @@ module.exports.usersPOST = function usersPOST(req, res, next, body) {
     });
 };
 
-module.exports.usersProfileGET = function usersProfileGET(req, res, next) {
-  Authentication.usersProfileGET(req)
+module.exports.getUserProfile = function getUserProfile(req, res, next) {
+  Authentication.getUserProfile(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -21,8 +21,8 @@ module.exports.usersProfileGET = function usersProfileGET(req, res, next) {
     });
 };
 
-module.exports.usersProfilePUT = function usersProfilePUT(req, res, next, body) {
-  Authentication.usersProfilePUT(req, body)
+module.exports.updateUserProfile = function updateUserProfile(req, res, next, body) {
+  Authentication.updateUserProfile(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -31,8 +31,48 @@ module.exports.usersProfilePUT = function usersProfilePUT(req, res, next, body) 
     });
 };
 
-module.exports.usersProfileDELETE = function usersProfileDELETE(req, res, next) {
-  Authentication.usersProfileDELETE(req)
+module.exports.deleteUserProfile = function deleteUserProfile(req, res, next) {
+  Authentication.deleteUserProfile(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.registerStore = function registerStore(req, res, next, body) {
+  Authentication.registerStore(req, body)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.getStoreProfile = function getStoreProfile(req, res, next) {
+  Authentication.getStoreProfile(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.updateStoreProfile = function updateStoreProfile(req, res, next, body) {
+  Authentication.updateStoreProfile(req, body)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.deleteStoreProfile = function deleteStoreProfile(req, res, next) {
+  Authentication.deleteStoreProfile(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
