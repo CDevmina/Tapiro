@@ -2,7 +2,6 @@ import { createBrowserRouter, RouteObject } from "react-router-dom";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import Layout from "@/components/layout/Layout";
 import Home from "@/pages/Home";
-import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 import Maintenance from "@/pages/Maintenance";
@@ -15,10 +14,6 @@ export const routes: RouteObject[] = [
       {
         index: true,
         element: <Home />,
-      },
-      {
-        path: "login",
-        element: <Login />,
       },
       {
         path: "profile",
