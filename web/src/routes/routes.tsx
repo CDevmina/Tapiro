@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
+import Maintenance from "@/pages/Maintenance";
 
 export const routes: RouteObject[] = [
   {
@@ -26,6 +27,22 @@ export const routes: RouteObject[] = [
             <Profile />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: "maintenance",
+        element: <Maintenance />,
+      },
+      {
+        path: "features",
+        element: <Maintenance />,
+      },
+      {
+        path: "pricing",
+        element: <Maintenance />,
+      },
+      {
+        path: "about",
+        element: <Maintenance />,
       },
       {
         path: "*",

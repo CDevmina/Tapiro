@@ -39,29 +39,22 @@ exports.registerUser = async function (req, body) {
       });
     }
 
-    // Check if already registered
-    const registration = await checkExistingRegistration(userData.sub);
-    if (registration.exists) {
+    // Check if username already exists
+    const existingUser = await db.collection('users').findOne({
+      username: userData.nickname,
+    });
+
+    if (existingUser) {
       return respondWithCode(409, {
         code: 409,
-        message: `This account is already registered as a ${registration.type}`,
-      });
-    }
-
-    // Assign user role
-    try {
-      await assignUserRole(userData.sub, 'user');
-    } catch (error) {
-      console.error('Role assignment failed:', error);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to assign role',
+        message: 'Username already taken',
       });
     }
 
     // Create user in database
     const user = {
       auth0Id: userData.sub,
+      username: userData.nickname,
       email: userData.email,
       phone,
       preferences: preferences || [],
@@ -77,6 +70,8 @@ exports.registerUser = async function (req, body) {
       updatedAt: new Date(),
     };
 
+    await db.collection('users').createIndex({ username: 1 }, { unique: true });
+
     const result = await db.collection('users').insertOne(user);
     return respondWithCode(201, { ...user, userId: result.insertedId });
   } catch (error) {
@@ -84,7 +79,6 @@ exports.registerUser = async function (req, body) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
-
 /**
  * Register Store
  * Create a new store account
@@ -243,6 +237,21 @@ exports.updateUserProfile = async function (req, body) {
         code: 401,
         message: 'Invalid token',
       });
+    }
+
+    // If username is being updated, check for uniqueness
+    if (body.username) {
+      const existingUser = await db.collection('users').findOne({
+        username: body.username,
+        auth0Id: { $ne: userData.sub },
+      });
+
+      if (existingUser) {
+        return respondWithCode(409, {
+          code: 409,
+          message: 'Username already taken',
+        });
+      }
     }
 
     // Update user
