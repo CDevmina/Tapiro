@@ -165,7 +165,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/Store"
         "401":
           description: Unauthorized
         "404":
@@ -195,7 +195,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/Store"
         "401":
           description: Unauthorized
         "404":
@@ -342,12 +342,11 @@ components:
     UserCreate:
       type: object
       required:
+        - username
         - dataSharingConsent
       properties:
-        phone:
+        name:
           type: string
-          pattern: ^\+?[\d\s-]+$
-          description: User's phone number (optional)
         preferences:
           type: array
           items:
@@ -360,12 +359,19 @@ components:
       type: object
       required:
         - name
+        - bussinessType
         - address
       properties:
         name:
           type: string
+        bussinessType:
+          type: string
+          description: Type of business (e.g., retail, restaurant)
         address:
           type: string
+        dataSharingConsent:
+          type: boolean
+          description: Store's consent for data sharing
         webhooks:
           type: array
           items:
@@ -383,6 +389,11 @@ components:
     UserUpdate:
       type: object
       properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 15
+          pattern: "^[a-zA-Z0-9_-]+$"
         preferences:
           type: array
           items:

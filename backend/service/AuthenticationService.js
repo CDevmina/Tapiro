@@ -15,7 +15,7 @@ const { assignUserRole, getManagementToken } = require('../utils/auth0Util');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    const { phone, preferences, dataSharingConsent } = body;
+    const { username, name, phone, preferences, dataSharingConsent } = body;
 
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -41,7 +41,7 @@ exports.registerUser = async function (req, body) {
 
     // Check if username already exists
     const existingUser = await db.collection('users').findOne({
-      username: userData.nickname,
+      username: username,
     });
 
     if (existingUser) {
@@ -54,7 +54,8 @@ exports.registerUser = async function (req, body) {
     // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: userData.nickname,
+      username,
+      name,
       email: userData.email,
       phone,
       preferences: preferences || [],
@@ -89,7 +90,7 @@ exports.registerUser = async function (req, body) {
 exports.registerStore = async function (req, body) {
   try {
     const db = getDB();
-    const { name, address, webhooks } = body;
+    const { name, bussinessType, address, dataSharingConsent, webhooks } = body;
 
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -137,7 +138,9 @@ exports.registerStore = async function (req, body) {
     const store = {
       auth0Id: userData.sub,
       name,
+      bussinessType,
       address,
+      dataSharingConsent,
       webhooks: webhooks || [],
       apiKeys: [],
       createdAt: new Date(),
@@ -239,11 +242,11 @@ exports.updateUserProfile = async function (req, body) {
       });
     }
 
-    // If username is being updated, check for uniqueness
+    // Check username uniqueness if being updated
     if (body.username) {
       const existingUser = await db.collection('users').findOne({
         username: body.username,
-        auth0Id: { $ne: userData.sub },
+        auth0Id: { $ne: userData.sub }, // Exclude current user
       });
 
       if (existingUser) {
@@ -254,9 +257,30 @@ exports.updateUserProfile = async function (req, body) {
       }
     }
 
-    // Update user
+    // Construct update data from allowed fields in schema
     const updateData = {
-      ...body,
+      ...(body.username && { username: body.username }),
+      ...(body.preferences && { preferences: body.preferences }),
+      ...(body.privacySettings && {
+        privacySettings: {
+          ...(body.privacySettings.dataSharingConsent !== undefined && {
+            dataSharingConsent: body.privacySettings.dataSharingConsent,
+          }),
+          ...(body.privacySettings.anonymizeData !== undefined && {
+            anonymizeData: body.privacySettings.anonymizeData,
+          }),
+          ...(body.privacySettings.optOutStores && {
+            optOutStores: body.privacySettings.optOutStores,
+          }),
+        },
+      }),
+      ...(body.dataAccess && {
+        dataAccess: {
+          ...(body.dataAccess.allowedDomains && {
+            allowedDomains: body.dataAccess.allowedDomains,
+          }),
+        },
+      }),
       updatedAt: new Date(),
     };
 
@@ -431,11 +455,10 @@ exports.updateStoreProfile = async function (req, body) {
     }
 
     // Update store
-    const { name, address, webhooks } = body;
     const updateData = {
-      name,
-      address,
-      webhooks,
+      ...(body.name && { name: body.name }),
+      ...(body.address && { address: body.address }),
+      ...(body.webhooks && { webhooks: body.webhooks }),
       updatedAt: new Date(),
     };
 
