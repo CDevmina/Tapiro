@@ -1,5 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const useAuth = () => {
   const {
@@ -9,6 +10,7 @@ export const useAuth = () => {
     loginWithRedirect,
     logout,
   } = useAuth0();
+  const navigate = useNavigate();
 
   const login = useCallback(async () => {
     await loginWithRedirect({
@@ -16,14 +18,9 @@ export const useAuth = () => {
     });
   }, [loginWithRedirect]);
 
-  const register = useCallback(async () => {
-    await loginWithRedirect({
-      appState: { returnTo: window.location.pathname },
-      authorizationParams: {
-        screen_hint: "signup",
-      },
-    });
-  }, [loginWithRedirect]);
+  const register = useCallback(() => {
+    navigate("/register");
+  }, [navigate]);
 
   const logoutUser = useCallback(() => {
     logout({

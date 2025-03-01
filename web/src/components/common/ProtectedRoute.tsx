@@ -1,15 +1,25 @@
+import { useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Navigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Store the current path to redirect back after login
+      login();
+    }
+  }, [isAuthenticated, login, location.pathname]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <LoadingSpinner fullHeight message="Authenticating..." />;
   }
 
   return <>{children}</>;

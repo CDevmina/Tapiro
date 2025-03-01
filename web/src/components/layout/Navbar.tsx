@@ -87,7 +87,10 @@ const Navbar = () => {
                 >
                   Log in
                 </button>
-                <button onClick={() => register()} className="btn btn-primary">
+                <button
+                  onClick={() => navigate("/register")}
+                  className="btn btn-primary"
+                >
                   Sign up
                 </button>
               </div>
