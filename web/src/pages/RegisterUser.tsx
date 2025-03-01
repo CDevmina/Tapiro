@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserService } from "@/services/userService";
 import { BackButton } from "@/components/common/BackButton";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 const RegisterUser = () => {
-  const { isAuthenticated, user, login } = useAuth();
-  const { registerUser } = useUserService();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Form fields
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [preferences, setPreferences] = useState<string[]>([]);
   const [dataSharingConsent, setDataSharingConsent] = useState(false);
@@ -35,37 +37,39 @@ const RegisterUser = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!username) {
+      setError("Username is required");
+      return;
+    }
+
+    if (!dataSharingConsent) {
+      setError("You must consent to data sharing to register");
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 
     try {
-      // If not authenticated yet, redirect to Auth0 login/signup
-      if (!isAuthenticated) {
-        localStorage.setItem("registration_type", "user");
-        localStorage.setItem(
-          "registration_data",
-          JSON.stringify({
-            phone,
-            preferences,
-            dataSharingConsent,
-          })
-        );
-        await login();
-        return;
-      }
+      // Store registration data in sessionStorage
+      sessionStorage.setItem(
+        "registration_data",
+        JSON.stringify({
+          username,
+          name,
+          phone,
+          preferences,
+          dataSharingConsent,
+        })
+      );
 
-      // If already authenticated, complete registration
-      await registerUser({
-        phone,
-        preferences,
-        dataSharingConsent,
-      });
-
-      navigate("/");
+      // Redirect to Auth0 for authentication
+      await login();
     } catch (err) {
       console.error("Registration failed:", err);
-      setError("Registration failed. Please try again.");
-    } finally {
+      setError("Registration process failed. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -82,6 +86,35 @@ const RegisterUser = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium mb-1">
+            Username <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="form-input"
+            required
+            placeholder="Choose a unique username"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium mb-1">
+            Full Name
+          </label>
+          <input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="form-input"
+            placeholder="Your full name"
+          />
+        </div>
+
         <div>
           <label htmlFor="phone" className="block text-sm font-medium mb-1">
             Phone Number (optional)
@@ -128,7 +161,8 @@ const RegisterUser = () => {
             required
           />
           <label htmlFor="dataSharingConsent" className="ml-2 block text-sm">
-            I consent to share my data for personalized advertising
+            I consent to share my data for personalized advertising{" "}
+            <span className="text-red-500">*</span>
           </label>
         </div>
 
@@ -137,7 +171,13 @@ const RegisterUser = () => {
           disabled={isSubmitting}
           className="btn btn-primary w-full"
         >
-          {isSubmitting ? "Creating account..." : "Create Account"}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center">
+              <LoadingSpinner size="small" className="mr-2" /> Signing Up...
+            </span>
+          ) : (
+            "Continue to Sign Up"
+          )}
         </button>
       </form>
     </div>

@@ -3,6 +3,8 @@ import { useAuth } from "../hooks/useAuth";
 
 // User registration request
 interface UserCreate {
+  username: string;
+  name?: string;
   phone?: string;
   preferences?: string[];
   dataSharingConsent: boolean;
@@ -11,7 +13,9 @@ interface UserCreate {
 // Store registration request
 interface StoreCreate {
   name: string;
+  bussinessType: string;
   address: string;
+  dataSharingConsent?: boolean;
   webhooks?: {
     url: string;
     events: Array<"purchase" | "opt-out">;

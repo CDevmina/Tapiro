@@ -1,21 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserService } from "@/services/userService";
+import { BackButton } from "@/components/common/BackButton";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 const RegisterStore = () => {
-  const { isAuthenticated, user, login } = useAuth();
-  const { registerStore } = useUserService();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Form fields based on OpenAPI schema
   const [name, setName] = useState("");
+  const [bussinessType, setBussinessType] = useState("");
   const [address, setAddress] = useState("");
+  const [dataSharingConsent, setDataSharingConsent] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookEvents, setWebhookEvents] = useState<
     Array<"purchase" | "opt-out">
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const businessTypes = [
+    "Retail",
+    "Restaurant",
+    "Technology",
+    "Fashion",
+    "Entertainment",
+    "Healthcare",
+    "Finance",
+    "Education",
+    "Other",
+  ];
 
   const handleEventChange = (event: "purchase" | "opt-out") => {
     if (webhookEvents.includes(event)) {
@@ -27,57 +42,48 @@ const RegisterStore = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!name || !bussinessType || !address) {
+      setError("Name, business type, and address are required fields");
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 
     try {
-      // If not authenticated yet, redirect to Auth0 login/signup
-      if (!isAuthenticated) {
-        localStorage.setItem("registration_type", "store");
-        localStorage.setItem(
-          "registration_data",
-          JSON.stringify({
-            name,
-            address,
-            webhooks: webhookUrl
-              ? [
-                  {
-                    url: webhookUrl,
-                    events: webhookEvents,
-                  },
-                ]
-              : undefined,
-          })
-        );
-        await login();
-        return;
-      }
+      // Store registration data in sessionStorage
+      sessionStorage.setItem(
+        "registration_data",
+        JSON.stringify({
+          name,
+          bussinessType,
+          address,
+          dataSharingConsent,
+          webhooks: webhookUrl
+            ? [
+                {
+                  url: webhookUrl,
+                  events: webhookEvents,
+                },
+              ]
+            : undefined,
+        })
+      );
 
-      // If already authenticated, complete registration
-      await registerStore({
-        name,
-        address,
-        webhooks: webhookUrl
-          ? [
-              {
-                url: webhookUrl,
-                events: webhookEvents,
-              },
-            ]
-          : undefined,
-      });
-
-      navigate("/");
+      // Redirect to Auth0 for authentication
+      await login();
     } catch (err) {
       console.error("Store registration failed:", err);
-      setError("Registration failed. Please try again.");
-    } finally {
+      setError("Registration process failed. Please try again.");
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="max-w-md mx-auto py-12">
+      <BackButton to="/register" />
       <h1 className="text-3xl font-bold mb-8">Create Store Account</h1>
 
       {error && (
@@ -89,7 +95,7 @@ const RegisterStore = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="name" className="block text-sm font-medium mb-1">
-            Store Name
+            Store Name <span className="text-red-500">*</span>
           </label>
           <input
             id="name"
@@ -102,8 +108,31 @@ const RegisterStore = () => {
         </div>
 
         <div>
+          <label
+            htmlFor="bussinessType"
+            className="block text-sm font-medium mb-1"
+          >
+            Business Type <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="bussinessType"
+            value={bussinessType}
+            onChange={(e) => setBussinessType(e.target.value)}
+            className="form-input"
+            required
+          >
+            <option value="">Select a business type</option>
+            {businessTypes.map((type) => (
+              <option key={type} value={type.toLowerCase()}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="address" className="block text-sm font-medium mb-1">
-            Store Address
+            Store Address <span className="text-red-500">*</span>
           </label>
           <textarea
             id="address"
@@ -166,12 +195,31 @@ const RegisterStore = () => {
           </div>
         )}
 
+        <div className="flex items-center">
+          <input
+            id="dataSharingConsent"
+            type="checkbox"
+            checked={dataSharingConsent}
+            onChange={(e) => setDataSharingConsent(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <label htmlFor="dataSharingConsent" className="ml-2 block text-sm">
+            I consent to share store data for marketing purposes
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={isSubmitting}
           className="btn btn-primary w-full"
         >
-          {isSubmitting ? "Creating store..." : "Create Store Account"}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center">
+              <LoadingSpinner size="small" className="mr-2" /> Signing Up...
+            </span>
+          ) : (
+            "Continue to Sign Up"
+          )}
         </button>
       </form>
     </div>

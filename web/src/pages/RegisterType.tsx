@@ -2,6 +2,11 @@ import { Link } from "react-router-dom";
 import { BackButton } from "@/components/common/BackButton";
 
 const RegisterType = () => {
+  const handleAccountTypeSelection = (type: "user" | "store") => {
+    // Store the selected registration type in sessionStorage
+    sessionStorage.setItem("registration_type", type);
+  };
+
   return (
     <div className="max-w-md mx-auto py-12">
       <BackButton to="/" />
@@ -13,6 +18,7 @@ const RegisterType = () => {
         <Link
           to="/register/user"
           className="flex flex-col p-6 border rounded-lg shadow hover:shadow-md transition-all w-full"
+          onClick={() => handleAccountTypeSelection("user")}
         >
           <h2 className="text-xl font-semibold mb-2">Personal Account</h2>
           <p className="text-gray-600 dark:text-gray-400">
@@ -23,6 +29,7 @@ const RegisterType = () => {
         <Link
           to="/register/store"
           className="flex flex-col p-6 border rounded-lg shadow hover:shadow-md transition-all w-full"
+          onClick={() => handleAccountTypeSelection("store")}
         >
           <h2 className="text-xl font-semibold mb-2">Business Account</h2>
           <p className="text-gray-600 dark:text-gray-400">
