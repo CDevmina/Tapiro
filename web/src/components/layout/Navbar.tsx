@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
-  const { isAuthenticated, user, login, logout, register } = useAuth();
+  const { isAuthenticated, user, login, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-lg">
@@ -201,7 +202,7 @@ const Navbar = () => {
                   </button>
                   <button
                     onClick={() => {
-                      register();
+                      navigate("/register");
                       setMobileMenuOpen(false);
                     }}
                     className="btn btn-primary"
