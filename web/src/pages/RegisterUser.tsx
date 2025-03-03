@@ -1,39 +1,44 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { BackButton } from "@/components/common/BackButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 const RegisterUser = () => {
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Form fields
+  // Form fields - basic information
   const [username, setUsername] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [preferences, setPreferences] = useState<string[]>([]);
-  const [dataSharingConsent, setDataSharingConsent] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Common preference categories
-  const preferenceOptions = [
-    "Electronics",
-    "Fashion",
-    "Home",
-    "Beauty",
-    "Sports",
-    "Books",
-  ];
-
-  const handlePreferenceChange = (preference: string) => {
-    if (preferences.includes(preference)) {
-      setPreferences(preferences.filter((p) => p !== preference));
-    } else {
-      setPreferences([...preferences, preference]);
+  // Check for error passed from redirect
+  useEffect(() => {
+    if (location.state?.error) {
+      setError(location.state.error);
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  };
+
+    // Load saved data if any
+    const registrationDataStr = sessionStorage.getItem("registration_data");
+    if (registrationDataStr) {
+      try {
+        const savedData = JSON.parse(registrationDataStr);
+        setUsername(savedData.username || "");
+
+        // Handle name split for existing data
+        if (savedData.name) {
+          const nameParts = savedData.name.split(" ");
+          setFirstName(nameParts[0] || "");
+          setLastName(nameParts.slice(1).join(" ") || "");
+        }
+      } catch (e) {
+        console.error("Error parsing saved registration data:", e);
+      }
+    }
+  }, [location, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +49,15 @@ const RegisterUser = () => {
       return;
     }
 
-    if (!dataSharingConsent) {
-      setError("You must consent to data sharing to register");
+    if (username.length < 3 || username.length > 15) {
+      setError("Username must be between 3 and 15 characters");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      setError(
+        "Username can only contain letters, numbers, underscores, and hyphens"
+      );
       return;
     }
 
@@ -53,23 +65,29 @@ const RegisterUser = () => {
     setIsSubmitting(true);
 
     try {
-      // Store registration data in sessionStorage
-      sessionStorage.setItem(
-        "registration_data",
-        JSON.stringify({
-          username,
-          name,
-          phone,
-          preferences,
-          dataSharingConsent,
-        })
-      );
+      // Join first and last name
+      const name = [firstName, lastName].filter(Boolean).join(" ");
 
-      // Redirect to Auth0 for authentication
-      await login();
+      // Store basic registration data in sessionStorage
+      const currentData = sessionStorage.getItem("registration_data")
+        ? JSON.parse(sessionStorage.getItem("registration_data")!)
+        : {};
+
+      const updatedData = {
+        ...currentData,
+        username,
+        name,
+        registrationAttempts: 0,
+      };
+
+      sessionStorage.setItem("registration_data", JSON.stringify(updatedData));
+      sessionStorage.setItem("registration_type", "user");
+
+      // Navigate to preferences page
+      navigate("/register/user/preferences");
     } catch (err) {
-      console.error("Registration failed:", err);
-      setError("Registration process failed. Please try again.");
+      console.error("Form submission failed:", err);
+      setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -78,6 +96,19 @@ const RegisterUser = () => {
     <div className="max-w-md mx-auto py-12">
       <BackButton to="/register" />
       <h1 className="text-3xl font-bold mb-8">Create User Account</h1>
+
+      <div className="flex mb-6">
+        <div className="flex-1">
+          <div className="bg-blue-500 text-white text-center py-2 px-4 rounded-l">
+            1. Basic Info
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="bg-gray-200 text-gray-500 text-center py-2 px-4 rounded-r">
+            2. Preferences
+          </div>
+        </div>
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -101,69 +132,40 @@ const RegisterUser = () => {
           />
         </div>
 
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">
-            Full Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="form-input"
-            placeholder="Your full name"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium mb-1">
-            Phone Number (optional)
-          </label>
-          <input
-            id="phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="form-input"
-            placeholder="+1 (123) 456-7890"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Preferences (Select all that apply)
-          </label>
-          <div className="space-y-2">
-            {preferenceOptions.map((preference) => (
-              <div key={preference} className="flex items-center">
-                <input
-                  id={`preference-${preference}`}
-                  type="checkbox"
-                  checked={preferences.includes(preference)}
-                  onChange={() => handlePreferenceChange(preference)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <label htmlFor={`preference-${preference}`} className="ml-2">
-                  {preference}
-                </label>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="firstName"
+              className="block text-sm font-medium mb-1"
+            >
+              First Name
+            </label>
+            <input
+              id="firstName"
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="form-input"
+              placeholder="First name"
+            />
           </div>
-        </div>
 
-        <div className="flex items-center">
-          <input
-            id="dataSharingConsent"
-            type="checkbox"
-            checked={dataSharingConsent}
-            onChange={(e) => setDataSharingConsent(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            required
-          />
-          <label htmlFor="dataSharingConsent" className="ml-2 block text-sm">
-            I consent to share my data for personalized advertising{" "}
-            <span className="text-red-500">*</span>
-          </label>
+          <div>
+            <label
+              htmlFor="lastName"
+              className="block text-sm font-medium mb-1"
+            >
+              Last Name
+            </label>
+            <input
+              id="lastName"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="form-input"
+              placeholder="Last name"
+            />
+          </div>
         </div>
 
         <button
@@ -173,7 +175,7 @@ const RegisterUser = () => {
         >
           {isSubmitting ? (
             <span className="flex items-center justify-center">
-              <LoadingSpinner size="small" className="mr-2" /> Signing Up...
+              <LoadingSpinner size="small" className="mr-2" /> Continuing...
             </span>
           ) : (
             "Continue to Sign Up"

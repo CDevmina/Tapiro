@@ -5,7 +5,6 @@ import { useAuth } from "../hooks/useAuth";
 interface UserCreate {
   username: string;
   name?: string;
-  phone?: string;
   preferences?: string[];
   dataSharingConsent: boolean;
 }
@@ -24,6 +23,7 @@ interface StoreCreate {
 
 // User update request
 interface UserUpdate {
+  name?: string;
   preferences?: string[];
   privacySettings?: {
     dataSharingConsent?: boolean;
@@ -51,6 +51,7 @@ interface User {
   auth0Id: string;
   email: string;
   username?: string;
+  name?: string;
   phone?: string;
   preferences?: string[];
   privacySettings?: {
@@ -66,6 +67,7 @@ interface Store {
   storeId?: string;
   auth0Id: string;
   name: string;
+  phone?: string;
   address: string;
   apiKeys?: string[];
   webhooks?: {
