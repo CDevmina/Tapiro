@@ -250,6 +250,8 @@ components:
           minLength: 3
           maxLength: 15
           pattern: "^[a-zA-Z0-9_-]+$"
+        name:
+          type: string
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
@@ -304,6 +306,9 @@ components:
         auth0Id:
           type: string
           description: Auth0 organization ID
+        phone:
+          type: string
+          pattern: ^\+?[\d\s-]+$
         name:
           type: string
         address:
@@ -343,8 +348,11 @@ components:
       type: object
       required:
         - username
+        - name
         - dataSharingConsent
       properties:
+        username:
+          type: string
         name:
           type: string
         preferences:
@@ -389,11 +397,8 @@ components:
     UserUpdate:
       type: object
       properties:
-        username:
+        name:
           type: string
-          minLength: 3
-          maxLength: 15
-          pattern: "^[a-zA-Z0-9_-]+$"
         preferences:
           type: array
           items:

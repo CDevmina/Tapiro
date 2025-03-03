@@ -15,7 +15,7 @@ const { assignUserRole, getManagementToken } = require('../utils/auth0Util');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    const { username, name, phone, preferences, dataSharingConsent } = body;
+    const { username, name, preferences, dataSharingConsent } = body;
 
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -57,7 +57,7 @@ exports.registerUser = async function (req, body) {
       username,
       name,
       email: userData.email,
-      phone,
+      phone: userData.phone_number,
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,
@@ -114,6 +114,18 @@ exports.registerStore = async function (req, body) {
       });
     }
 
+    // Check if store name already exists
+    const existingStore = await db.collection('stores').findOne({
+      name: name,
+    });
+
+    if (existingStore) {
+      return respondWithCode(409, {
+        code: 409,
+        message: 'Store name already taken',
+      });
+    }
+
     // Check if already registered
     const registration = await checkExistingRegistration(userData.sub);
     if (registration.exists) {
@@ -138,6 +150,7 @@ exports.registerStore = async function (req, body) {
     const store = {
       auth0Id: userData.sub,
       name,
+      phone: userData.phone_number,
       bussinessType,
       address,
       dataSharingConsent,
@@ -146,6 +159,8 @@ exports.registerStore = async function (req, body) {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+
+    await db.collection('stores').createIndex({ name: 1 }, { unique: true });
 
     const result = await db.collection('stores').insertOne(store);
     return respondWithCode(201, { ...store, storeId: result.insertedId });
@@ -246,7 +261,7 @@ exports.updateUserProfile = async function (req, body) {
     if (body.username) {
       const existingUser = await db.collection('users').findOne({
         username: body.username,
-        auth0Id: { $ne: userData.sub }, // Exclude current user
+        auth0Id: { $ne: userData.sub },
       });
 
       if (existingUser) {
@@ -259,7 +274,7 @@ exports.updateUserProfile = async function (req, body) {
 
     // Construct update data from allowed fields in schema
     const updateData = {
-      ...(body.username && { username: body.username }),
+      ...(body.name && { username: body.name }),
       ...(body.preferences && { preferences: body.preferences }),
       ...(body.privacySettings && {
         privacySettings: {
@@ -454,9 +469,24 @@ exports.updateStoreProfile = async function (req, body) {
       });
     }
 
+    // Check store name uniqueness if being updated
+    if (body.name) {
+      const existingStore = await db.collection('stores').findOne({
+        name: body.name,
+        auth0Id: { $ne: userData.sub }, // Exclude current store
+      });
+
+      if (existingStore) {
+        return respondWithCode(409, {
+          code: 409,
+          message: 'Store name already taken',
+        });
+      }
+    }
+
     // Update store
     const updateData = {
-      ...(body.name && { name: body.name }),
+      ...(body.name && { name: body.name }), // Also fix the field name here - was "username"
       ...(body.address && { address: body.address }),
       ...(body.webhooks && { webhooks: body.webhooks }),
       updatedAt: new Date(),
