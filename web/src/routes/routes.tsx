@@ -10,6 +10,7 @@ import Maintenance from "@/pages/Maintenance";
 import RegisterUser from "@/pages/RegisterUser";
 import RegisterStore from "@/pages/RegisterStore";
 import RegisterType from "@/pages/RegisterType";
+import RegisterUserPreferences from "../pages/RegisterUserPreferences";
 
 export const routes: RouteObject[] = [
   {
@@ -25,6 +26,10 @@ export const routes: RouteObject[] = [
           {
             path: "register/user",
             element: <RegisterUser />,
+          },
+          {
+            path: "register/user/preferences",
+            element: <RegisterUserPreferences />,
           },
           {
             path: "register/store",
