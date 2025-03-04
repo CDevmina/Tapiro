@@ -30,24 +30,28 @@ export const useAuth = () => {
   }, [navigate]);
 
   // Improved login with better error handling
-  const login = useCallback(async () => {
-    try {
-      const registrationType = sessionStorage.getItem("registration_type");
+  const login = useCallback(
+    async (options?: { isSignUp?: boolean }) => {
+      try {
+        const registrationType = sessionStorage.getItem("registration_type");
+        const isSigningUp = options?.isSignUp || !!registrationType;
 
-      await loginWithRedirect({
-        appState: {
-          returnTo: window.location.pathname,
-          registrationType,
-        },
-        authorizationParams: {
-          screen_hint: "signup",
-        },
-      });
-    } catch (err) {
-      console.error("Login failed:", err);
-      handleLoginError();
-    }
-  }, [loginWithRedirect, handleLoginError]);
+        await loginWithRedirect({
+          appState: {
+            returnTo: window.location.pathname,
+            registrationType,
+          },
+          authorizationParams: {
+            ...(isSigningUp ? { screen_hint: "signup" } : {}),
+          },
+        });
+      } catch (err) {
+        console.error("Login failed:", err);
+        handleLoginError();
+      }
+    },
+    [loginWithRedirect, handleLoginError]
+  );
 
   const register = useCallback(() => {
     navigate("/register");

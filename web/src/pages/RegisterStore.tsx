@@ -120,7 +120,7 @@ const RegisterStore = () => {
       );
 
       // Redirect to Auth0 for authentication
-      await login();
+      await login({ isSignUp: true });
     } catch (err) {
       console.error("Store registration failed:", err);
       setError("Registration process failed. Please try again.");

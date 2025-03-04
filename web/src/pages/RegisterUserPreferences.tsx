@@ -264,7 +264,7 @@ const RegisterUserPreferences = () => {
       sessionStorage.setItem("registration_data", JSON.stringify(updatedData));
 
       // Redirect to Auth0 for authentication
-      await login();
+      await login({ isSignUp: true });
     } catch (err) {
       console.error("Registration failed:", err);
       setError("Registration process failed. Please try again.");
