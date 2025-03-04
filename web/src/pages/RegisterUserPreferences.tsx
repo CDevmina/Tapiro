@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { BackButton } from "@/components/common/BackButton";
@@ -36,81 +36,84 @@ const RegisterUserPreferences = () => {
     name: string;
   } | null>(null);
 
-  // Pinterest-style preference categories with subcategories
-  const preferenceClasses: PreferenceClass[] = [
-    {
-      id: "electronics",
-      name: "Electronics",
-      icon: "💻",
-      subclasses: [
-        { id: "electronics_smartphones", name: "Smartphones" },
-        { id: "electronics_laptops", name: "Laptops" },
-        { id: "electronics_headphones", name: "Headphones" },
-        { id: "electronics_smartwatches", name: "Smartwatches" },
-        { id: "electronics_cameras", name: "Cameras" },
-      ],
-    },
-    {
-      id: "fashion",
-      name: "Fashion",
-      icon: "👔",
-      subclasses: [
-        { id: "fashion_menswear", name: "Menswear" },
-        { id: "fashion_womenswear", name: "Womenswear" },
-        { id: "fashion_accessories", name: "Accessories" },
-        { id: "fashion_footwear", name: "Footwear" },
-        { id: "fashion_jewelry", name: "Jewelry" },
-      ],
-    },
-    {
-      id: "health",
-      name: "Health & Wellness",
-      icon: "💪",
-      subclasses: [
-        { id: "health_fitness", name: "Fitness" },
-        { id: "health_supplements", name: "Supplements" },
-        { id: "health_organic", name: "Organic" },
-        { id: "health_meditation", name: "Meditation" },
-        { id: "health_sleep", name: "Sleep" },
-      ],
-    },
-    {
-      id: "home",
-      name: "Home & Living",
-      icon: "🏠",
-      subclasses: [
-        { id: "home_furniture", name: "Furniture" },
-        { id: "home_decor", name: "Decor" },
-        { id: "home_kitchen", name: "Kitchen" },
-        { id: "home_garden", name: "Garden" },
-        { id: "home_smart", name: "Smart Home" },
-      ],
-    },
-    {
-      id: "food",
-      name: "Food & Drinks",
-      icon: "🍽️",
-      subclasses: [
-        { id: "food_gourmet", name: "Gourmet" },
-        { id: "food_baking", name: "Baking" },
-        { id: "food_coffee", name: "Coffee & Tea" },
-        { id: "food_drinks", name: "Drinks & Cocktails" },
-        { id: "food_restaurants", name: "Restaurants" },
-      ],
-    },
-    {
-      id: "entertainment",
-      name: "Entertainment",
-      icon: "🎬",
-      subclasses: [
-        { id: "entertainment_movies", name: "Movies" },
-        { id: "entertainment_music", name: "Music" },
-        { id: "entertainment_games", name: "Games" },
-        { id: "entertainment_books", name: "Books" },
-        { id: "entertainment_streaming", name: "Streaming" },
-      ],
-    },
-  ];
+  // Memoize preference classes to prevent unnecessary recreations
+  const preferenceClasses = useMemo<PreferenceClass[]>(
+    () => [
+      {
+        id: "electronics",
+        name: "Electronics",
+        icon: "💻",
+        subclasses: [
+          { id: "electronics_smartphones", name: "Smartphones" },
+          { id: "electronics_laptops", name: "Laptops" },
+          { id: "electronics_headphones", name: "Headphones" },
+          { id: "electronics_smartwatches", name: "Smartwatches" },
+          { id: "electronics_cameras", name: "Cameras" },
+        ],
+      },
+      {
+        id: "fashion",
+        name: "Fashion",
+        icon: "👔",
+        subclasses: [
+          { id: "fashion_menswear", name: "Menswear" },
+          { id: "fashion_womenswear", name: "Womenswear" },
+          { id: "fashion_accessories", name: "Accessories" },
+          { id: "fashion_footwear", name: "Footwear" },
+          { id: "fashion_jewelry", name: "Jewelry" },
+        ],
+      },
+      {
+        id: "health",
+        name: "Health & Wellness",
+        icon: "💪",
+        subclasses: [
+          { id: "health_fitness", name: "Fitness" },
+          { id: "health_supplements", name: "Supplements" },
+          { id: "health_organic", name: "Organic" },
+          { id: "health_meditation", name: "Meditation" },
+          { id: "health_sleep", name: "Sleep" },
+        ],
+      },
+      {
+        id: "home",
+        name: "Home & Living",
+        icon: "🏠",
+        subclasses: [
+          { id: "home_furniture", name: "Furniture" },
+          { id: "home_decor", name: "Decor" },
+          { id: "home_kitchen", name: "Kitchen" },
+          { id: "home_garden", name: "Garden" },
+          { id: "home_smart", name: "Smart Home" },
+        ],
+      },
+      {
+        id: "food",
+        name: "Food & Drinks",
+        icon: "🍽️",
+        subclasses: [
+          { id: "food_gourmet", name: "Gourmet" },
+          { id: "food_baking", name: "Baking" },
+          { id: "food_coffee", name: "Coffee & Tea" },
+          { id: "food_drinks", name: "Drinks & Cocktails" },
+          { id: "food_restaurants", name: "Restaurants" },
+        ],
+      },
+      {
+        id: "entertainment",
+        name: "Entertainment",
+        icon: "🎬",
+        subclasses: [
+          { id: "entertainment_movies", name: "Movies" },
+          { id: "entertainment_music", name: "Music" },
+          { id: "entertainment_games", name: "Games" },
+          { id: "entertainment_books", name: "Books" },
+          { id: "entertainment_streaming", name: "Streaming" },
+        ],
+      },
+    ],
+    []
+  ); // Empty dependency array means this will only be created once
 
   useEffect(() => {
     // Check if user completed the first step
@@ -155,7 +158,7 @@ const RegisterUserPreferences = () => {
       console.error("Error parsing saved registration data:", e);
       navigate("/register/user");
     }
-  }, [navigate]);
+  }, [navigate, preferenceClasses]);
 
   const handleCategoryToggle = (categoryId: string) => {
     if (selectedCategories.includes(categoryId)) {

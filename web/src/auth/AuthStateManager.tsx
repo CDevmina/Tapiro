@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useUserService } from "@/services/userService";
 import { ReactNode } from "react";
 import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { tokenManager } from "./TokenManager";
 
 interface AuthStateManagerProps {
   children: ReactNode;
@@ -15,12 +16,201 @@ interface ApiError {
   message: string;
 }
 
+// Define registration data types
+interface BaseRegistrationData {
+  registrationAttempts: number;
+}
+
+interface UserRegistrationData extends BaseRegistrationData {
+  username: string;
+  name?: string;
+  dataSharingConsent: boolean;
+  preferences?: string[];
+}
+
+interface StoreRegistrationData extends BaseRegistrationData {
+  name: string;
+  bussinessType: string;
+  address: string;
+  dataSharingConsent: boolean;
+  webhookUrl?: string;
+  webhookEvents?: Array<"purchase" | "opt-out">;
+}
+
+// Navigation state type
+interface NavigationState {
+  error?: string;
+}
+
 export const AuthStateManager = ({ children }: AuthStateManagerProps) => {
   const { isAuthenticated, user, isLoading, error: auth0Error } = useAuth0();
   const { getUserProfile, registerUser, registerStore } = useUserService();
   const [isInitialized, setIsInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Extract error message from API response
+  const extractErrorMessage = useCallback((error: unknown): string => {
+    return error instanceof AxiosError && error.response?.data?.message
+      ? error.response.data.message
+      : "An unexpected error occurred. Please try again.";
+  }, []);
+
+  // Handle initialization errors
+  const handleInitializationError = useCallback((error: unknown): void => {
+    if (error instanceof AxiosError) {
+      console.error("User initialization failed:", {
+        status: error.response?.status,
+        data: error.response?.data as ApiError,
+      });
+    } else {
+      console.error("Unknown error:", error);
+    }
+    setErrorMessage("Failed to initialize user. Please try again later.");
+  }, []);
+
+  // Clear registration data from session storage
+  const clearRegistrationData = useCallback((): void => {
+    sessionStorage.removeItem("registration_type");
+    sessionStorage.removeItem("registration_data");
+  }, []);
+
+  // Handle conflict errors (email or username already exists)
+  const handleConflictError = useCallback((): void => {
+    // Clear registration data
+    clearRegistrationData();
+
+    // Reset token if needed
+    tokenManager.clearToken();
+
+    // Redirect to login with appropriate message
+    const navigationState: NavigationState = {
+      error:
+        "This email or username is already registered. Please login instead.",
+    };
+
+    navigate("/login", { state: navigationState });
+  }, [clearRegistrationData, navigate]);
+
+  // Check if error is a conflict (duplicate) error
+  const isConflictError = useCallback((error: unknown): boolean => {
+    return (
+      error instanceof AxiosError &&
+      error.response?.status === 409 &&
+      typeof error.response.data?.message === "string" &&
+      error.response.data.message.includes("already taken")
+    );
+  }, []);
+
+  // Handle errors during registration
+  const handleRegistrationError = useCallback(
+    (error: unknown, registrationType: string): void => {
+      // If we get a specific duplicate email/username error
+      if (isConflictError(error)) {
+        handleConflictError();
+      } else {
+        // Handle other registration errors
+        const message = extractErrorMessage(error);
+        setErrorMessage(message);
+
+        // On error, redirect back to the registration page
+        const navigationState: NavigationState = { error: message };
+
+        if (registrationType === "user") {
+          navigate("/register/user", { state: navigationState });
+        } else {
+          navigate("/register/store", { state: navigationState });
+        }
+      }
+    },
+    [isConflictError, handleConflictError, extractErrorMessage, navigate]
+  );
+
+  // Handle too many registration attempts
+  const handleTooManyAttempts = useCallback((): void => {
+    console.warn("Too many registration attempts - possible duplicate account");
+    clearRegistrationData();
+
+    const navigationState: NavigationState = {
+      error:
+        "This email appears to be already registered. Please try logging in instead.",
+    };
+
+    navigate("/login", { state: navigationState });
+  }, [clearRegistrationData, navigate]);
+
+  // Handle registration process
+  const handleRegistration = useCallback(
+    async (
+      registrationType: string,
+      registrationDataStr: string
+    ): Promise<void> => {
+      try {
+        const parsedData = JSON.parse(registrationDataStr);
+        const attempts = parsedData.registrationAttempts || 0;
+
+        // Limit retries to prevent infinite loops
+        if (attempts > 2) {
+          handleTooManyAttempts();
+          return;
+        }
+
+        // Update attempt counter
+        const registrationData = {
+          ...parsedData,
+          registrationAttempts: attempts + 1,
+        };
+
+        sessionStorage.setItem(
+          "registration_data",
+          JSON.stringify(registrationData)
+        );
+
+        // User successfully authenticated with Auth0, now register in our system
+        if (registrationType === "user") {
+          await registerUser(registrationData as UserRegistrationData);
+          console.log("User registration completed");
+        } else if (registrationType === "store") {
+          await registerStore(registrationData as StoreRegistrationData);
+          console.log("Store registration completed");
+        }
+
+        // Clear registration data after successful registration
+        clearRegistrationData();
+
+        // Redirect to home
+        navigate("/");
+      } catch (error) {
+        handleRegistrationError(error, registrationType);
+      }
+    },
+    [
+      handleTooManyAttempts,
+      registerUser,
+      registerStore,
+      clearRegistrationData,
+      navigate,
+      handleRegistrationError,
+    ]
+  );
+
+  // Check if user profile exists
+  const checkUserProfile = useCallback(async (): Promise<void> => {
+    try {
+      const profile = await getUserProfile();
+      console.debug("User profile found:", profile.data);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        // User authenticated but not registered - redirect to registration type page
+        navigate("/register");
+      } else {
+        // Handle other API errors
+        const message = extractErrorMessage(error);
+        setErrorMessage(message);
+        console.error("API error:", error);
+      }
+    }
+  }, [getUserProfile, navigate, extractErrorMessage]);
 
   useEffect(() => {
     // Don't do anything while Auth0 is still loading
@@ -43,126 +233,15 @@ export const AuthStateManager = ({ children }: AuthStateManagerProps) => {
           const registrationDataStr =
             sessionStorage.getItem("registration_data");
 
+          // If we have registration data, proceed with registration flow
           if (registrationType && registrationDataStr) {
-            const registrationData = JSON.parse(registrationDataStr);
-            const attempts = registrationData.registrationAttempts || 0;
-
-            // Limit retries to prevent infinite loops
-            if (attempts > 2) {
-              console.warn(
-                "Too many registration attempts - possible duplicate account"
-              );
-              sessionStorage.removeItem("registration_type");
-              sessionStorage.removeItem("registration_data");
-
-              navigate("/login", {
-                state: {
-                  error:
-                    "This email appears to be already registered. Please try logging in instead.",
-                },
-              });
-              return;
-            }
-
-            // Update attempt counter
-            registrationData.registrationAttempts = attempts + 1;
-            sessionStorage.setItem(
-              "registration_data",
-              JSON.stringify(registrationData)
-            );
-
-            try {
-              // User successfully authenticated with Auth0, now we can register them in our system
-              if (registrationType === "user") {
-                await registerUser(registrationData);
-                console.log("User registration completed");
-              } else if (registrationType === "store") {
-                await registerStore(registrationData);
-                console.log("Store registration completed");
-              }
-
-              // Clear registration data after successful registration
-              sessionStorage.removeItem("registration_type");
-              sessionStorage.removeItem("registration_data");
-
-              // Redirect to home
-              navigate("/");
-            } catch (error) {
-              // If we get a specific duplicate email error
-              if (
-                error instanceof AxiosError &&
-                error.response?.status === 409 &&
-                error.response.data?.message?.includes("already taken")
-              ) {
-                // Clear registration data
-                sessionStorage.removeItem("registration_type");
-                sessionStorage.removeItem("registration_data");
-
-                // Redirect to login
-                navigate("/login", {
-                  state: {
-                    error:
-                      "This email is already registered. Please login instead.",
-                  },
-                });
-              } else {
-                console.error("Registration failed:", error);
-
-                let message = "Registration failed. Please try again.";
-
-                // Extract specific error message if available
-                if (
-                  error instanceof AxiosError &&
-                  error.response?.data?.message
-                ) {
-                  message = error.response.data.message;
-                }
-
-                // Show error message to user
-                setErrorMessage(message);
-
-                // On error, redirect back to the registration page
-                if (registrationType === "user") {
-                  navigate("/register/user", { state: { error: message } });
-                } else {
-                  navigate("/register/store", { state: { error: message } });
-                }
-              }
-            }
+            await handleRegistration(registrationType, registrationDataStr);
           } else {
-            // No pending registration, just check if user profile exists
-            try {
-              const profile = await getUserProfile();
-              console.debug("User profile found:", profile.data);
-            } catch (error) {
-              if (
-                error instanceof AxiosError &&
-                error.response?.status === 404
-              ) {
-                // User authenticated but not registered - redirect to registration type page
-                navigate("/register");
-              } else {
-                // Handle other API errors
-                const message =
-                  error instanceof AxiosError && error.response?.data?.message
-                    ? error.response.data.message
-                    : "Error fetching your profile. Please try again.";
-
-                setErrorMessage(message);
-                console.error("API error:", error);
-              }
-            }
+            // No pending registration, check if user profile exists
+            await checkUserProfile();
           }
         } catch (error) {
-          if (error instanceof AxiosError) {
-            console.error("User initialization failed:", {
-              status: error.response?.status,
-              data: error.response?.data as ApiError,
-            });
-          } else {
-            console.error("Unknown error:", error);
-          }
-          setErrorMessage("Failed to initialize user. Please try again later.");
+          handleInitializationError(error);
         } finally {
           setIsInitialized(true);
         }
@@ -177,15 +256,14 @@ export const AuthStateManager = ({ children }: AuthStateManagerProps) => {
     user,
     isLoading,
     auth0Error,
-    getUserProfile,
-    registerUser,
-    registerStore,
-    navigate,
+    handleRegistration,
+    checkUserProfile,
+    handleInitializationError,
   ]);
 
   // Show loading state while initializing
   if (!isInitialized) {
-    return <LoadingSpinner fullHeight message="Loading application..." />;
+    return <LoadingSpinner message="Loading application..." />;
   }
 
   // Show error state if there was an error

@@ -1,5 +1,4 @@
 import apiClient from "../api/apiClient";
-import { useAuth } from "../hooks/useAuth";
 
 // User registration request
 interface UserCreate {
@@ -79,66 +78,40 @@ interface Store {
 }
 
 export const useUserService = () => {
-  const { getToken } = useAuth();
-
   // User registration
   const registerUser = async (userData: UserCreate) => {
-    const token = await getToken();
-    return apiClient.post<User>("/users/register", userData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.post<User>("/users/register", userData);
   };
 
   // Store registration
   const registerStore = async (storeData: StoreCreate) => {
-    const token = await getToken();
-    return apiClient.post<Store>("/stores/register", storeData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.post<Store>("/stores/register", storeData);
   };
 
   // User profile operations
   const getUserProfile = async () => {
-    const token = await getToken();
-    return apiClient.get<User>("/users/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.get<User>("/users/profile");
   };
 
   const updateUserProfile = async (data: UserUpdate) => {
-    const token = await getToken();
-    return apiClient.put<User>("/users/profile", data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.put<User>("/users/profile", data);
   };
 
   const deleteUserProfile = async () => {
-    const token = await getToken();
-    return apiClient.delete("/users/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.delete("/users/profile");
   };
 
   // Store profile operations
   const getStoreProfile = async () => {
-    const token = await getToken();
-    return apiClient.get<Store>("/stores/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.get<Store>("/stores/profile");
   };
 
   const updateStoreProfile = async (data: StoreUpdate) => {
-    const token = await getToken();
-    return apiClient.put<Store>("/stores/profile", data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.put<Store>("/stores/profile", data);
   };
 
   const deleteStoreProfile = async () => {
-    const token = await getToken();
-    return apiClient.delete("/stores/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return apiClient.delete("/stores/profile");
   };
 
   return {
