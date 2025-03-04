@@ -1,11 +1,4 @@
 import { Auth0Client } from "@auth0/auth0-spa-js";
-import { LRUCache } from "lru-cache";
-
-// In-memory token cache with expiration
-const tokenCache = new LRUCache<string, string>({
-  max: 10,
-  ttl: 1000 * 60 * 50, // 50 minutes
-});
 
 class TokenManager {
   private auth0Client: Auth0Client | null = null;
@@ -20,7 +13,6 @@ class TokenManager {
   // New method to directly set a token
   setToken(token: string) {
     this.currentToken = token;
-    tokenCache.set("access_token", token);
   }
 
   async getToken(): Promise<string> {
@@ -30,13 +22,6 @@ class TokenManager {
         return await this.refreshPromise;
       }
 
-      // Check cache first
-      const cachedToken = tokenCache.get("access_token");
-      if (cachedToken) {
-        return cachedToken;
-      }
-
-      // If no cached token but we have a current token, use it
       if (this.currentToken) {
         return this.currentToken;
       }
@@ -47,7 +32,6 @@ class TokenManager {
           this.refreshPromise = this.auth0Client.getTokenSilently();
           const token = await this.refreshPromise;
           this.currentToken = token;
-          tokenCache.set("access_token", token);
           this.refreshPromise = null;
           return token;
         } catch (refreshError) {
@@ -67,7 +51,6 @@ class TokenManager {
 
   clearToken() {
     this.currentToken = null;
-    tokenCache.delete("access_token");
   }
 }
 

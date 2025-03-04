@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       scope: AUTH_CONFIG.scope,
     },
     useRefreshTokens: true,
-    cacheLocation: "memory",
+    cacheLocation: "localstorage",
     useCookiesForTransactions: true,
   };
 

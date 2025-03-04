@@ -14,14 +14,37 @@ apiClient.interceptors.request.use(async (config) => {
   try {
     // Only add token for authenticated routes
     if (!config.url?.includes("/public/")) {
-      const token = await tokenManager.getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        let retries = 0;
+        const maxRetries = 2;
+
+        while (retries <= maxRetries) {
+          try {
+            const token = await tokenManager.getToken();
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+              return config;
+            }
+            throw new Error("Empty token received");
+          } catch (err) {
+            retries++;
+            if (retries > maxRetries) throw err;
+            // Wait before retrying
+            await new Promise((resolve) => setTimeout(resolve, 500 * retries));
+          }
+        }
+      } catch (tokenError) {
+        console.error(
+          "Token retrieval failed after multiple attempts:",
+          tokenError
+        );
+        // Allow the request to proceed without a token
+        // The server will return 401 which will trigger the response interceptor
       }
     }
     return config;
   } catch (error) {
-    console.error("Token retrieval failed:", error);
+    console.error("Request preparation failed:", error);
     return Promise.reject(error);
   }
 });

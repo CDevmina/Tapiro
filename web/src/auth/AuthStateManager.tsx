@@ -166,6 +166,29 @@ export const AuthStateManager = ({ children }: AuthStateManagerProps) => {
           JSON.stringify(registrationData)
         );
 
+        // NEW CODE: Ensure we have a valid token before proceeding
+        try {
+          // Wait for token to be available (with timeout)
+          let retries = 0;
+          const maxRetries = 3;
+          while (retries < maxRetries) {
+            try {
+              await tokenManager.getToken();
+              break; // Token is available, proceed with registration
+            } catch (tokenError) {
+              retries++;
+              if (retries >= maxRetries) throw tokenError;
+              console.log(`Waiting for token... attempt ${retries}`);
+              await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second between attempts
+            }
+          }
+        } catch (tokenError) {
+          console.error("Failed to get authentication token:", tokenError);
+          throw new Error(
+            "Authentication token unavailable. Please try again."
+          );
+        }
+
         // User successfully authenticated with Auth0, now register in our system
         if (registrationType === "user") {
           await registerUser(registrationData as UserRegistrationData);
