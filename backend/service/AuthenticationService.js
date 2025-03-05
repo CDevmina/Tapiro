@@ -3,7 +3,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache, client } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, getManagementToken } = require('../utils/auth0Util');
+const { assignUserRole, getManagementToken, linkAccounts } = require('../utils/auth0Util');
 
 /**
  * Register User
@@ -33,18 +33,58 @@ exports.registerUser = async function (req, body) {
       });
       userData = response.data;
     } catch (error) {
+      // Special handling for account conflicts
+      if (
+        error.response?.status === 409 ||
+        error.response?.data?.error === 'account_exists_with_different_credential'
+      ) {
+        return respondWithCode(409, {
+          code: 409,
+          message:
+            'An account already exists with this email address. Please use the original login method.',
+          hint: 'Use account linking to connect your accounts',
+        });
+      }
+
       return respondWithCode(401, {
         code: 401,
         message: 'Invalid token',
       });
     }
 
+    // Check if email already exists in our database
+    const existingUserByEmail = await db.collection('users').findOne({
+      email: userData.email,
+    });
+
+    // Handle account linking if the email exists but with a different auth0Id
+    if (existingUserByEmail && existingUserByEmail.auth0Id !== userData.sub) {
+      try {
+        // Link the accounts in Auth0
+        await linkAccounts(existingUserByEmail.auth0Id, userData.sub);
+
+        // Return the existing user
+        return respondWithCode(200, {
+          ...existingUserByEmail,
+          message: 'Account linked successfully',
+          accountLinked: true,
+        });
+      } catch (linkError) {
+        console.error('Account linking failed:', linkError);
+        return respondWithCode(400, {
+          code: 400,
+          message: 'Failed to link accounts. Please contact support.',
+          details: linkError.message,
+        });
+      }
+    }
+
     // Check if username already exists
-    const existingUser = await db.collection('users').findOne({
+    const existingUserByUsername = await db.collection('users').findOne({
       username: userData.nickname,
     });
 
-    if (existingUser) {
+    if (existingUserByUsername) {
       return respondWithCode(409, {
         code: 409,
         message: 'Username already taken',

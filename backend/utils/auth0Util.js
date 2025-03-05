@@ -61,4 +61,54 @@ async function assignUserRole(userId, role) {
   }
 }
 
-module.exports = { getManagementToken, assignUserRole };
+/**
+ * Links two user accounts in Auth0
+ * @param {string} primaryUserId - The main user ID (to keep)
+ * @param {string} secondaryUserId - The user ID to link to primary
+ * @returns {Promise<Object>} - The linked user data
+ */
+async function linkAccounts(primaryUserId, secondaryUserId) {
+  try {
+    const token = await getManagementToken();
+
+    // Get the secondary user's identity provider data
+    const secondaryUserResponse = await axios.get(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${secondaryUserId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    const secondaryUser = secondaryUserResponse.data;
+    if (!secondaryUser.identities || !secondaryUser.identities.length) {
+      throw new Error('No identities found on secondary account');
+    }
+
+    // Get the provider connection info
+    const identity = secondaryUser.identities[0];
+    const provider = identity.provider;
+    const userId = identity.user_id;
+
+    // Link the accounts
+    const response = await axios.post(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${primaryUserId}/identities`,
+      { provider, user_id: userId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Account linking failed:', error?.response?.data || error);
+    throw error;
+  }
+}
+
+module.exports = { getManagementToken, assignUserRole, linkAccounts };
