@@ -4,4 +4,25 @@
 
 /* Additional global styles */
 body {
+  font-family: "Inter", sans-serif;
+  @apply bg-gray-50 text-secondary-900;
+}
+
+/* Animation classes */
+.animate-once {
+  animation-iteration-count: 1;
+}
+
+/* Smooth transitions for all interactive elements */
+a,
+button,
+input,
+select,
+textarea {
+  @apply transition-all duration-200;
+}
+
+/* Focus styles that work for mouse and keyboard */
+:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
 }
