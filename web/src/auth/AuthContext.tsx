@@ -20,22 +20,31 @@ const AuthSetup = ({ children }: { children: ReactNode }) => {
     if (!getAccessTokenSilently || !isAuthenticated) return;
 
     const setupAuth0Client = async () => {
-      try {
-        // Direct approach without using internal methods
-        const token = await getAccessTokenSilently({
-          detailedResponse: false,
-          authorizationParams: {
-            // Explicitly request these scopes to ensure we get a refresh token
-            scope: AUTH_CONFIG.scope,
-          },
-        });
-        tokenManager.setToken(token);
+      // Create and track the initialization promise
+      const initPromise = (async () => {
+        try {
+          // Direct approach without using internal methods
+          const token = await getAccessTokenSilently({
+            detailedResponse: false,
+            authorizationParams: {
+              // Explicitly request these scopes to ensure we get a refresh token
+              scope: AUTH_CONFIG.scope,
+            },
+          });
+          tokenManager.setToken(token);
 
-        // Log success but not the actual token
-        console.debug("Successfully initialized token manager");
-      } catch (err) {
-        console.error("Failed to initialize token manager:", err);
-      }
+          // Log success but not the actual token
+          console.debug("Successfully initialized token manager");
+        } catch (err) {
+          console.error("Failed to initialize token manager:", err);
+        }
+      })();
+
+      // Tell the token manager we're initializing
+      tokenManager.setInitializing(initPromise);
+
+      // Wait for initialization to complete
+      await initPromise;
     };
 
     setupAuth0Client();
