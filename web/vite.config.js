@@ -6,14 +6,9 @@ export default defineConfig({
   server: {
     watch: {
       usePolling: true,
-      interval: 100,
     },
     host: true,
     strictPort: true,
     port: 5173,
-    hmr: {
-      clientPort: 3001,
-      overlay: true,
-    },
   },
 });
