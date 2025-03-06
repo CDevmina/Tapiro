@@ -12,32 +12,25 @@ export function AuthProvider({ children }) {
     getAccessTokenSilently,
   } = useAuth0();
 
-  const [token, setToken] = useState(null);
-  const [tokenLoading, setTokenLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Get token when authenticated
+  // Simplified initialization
   useEffect(() => {
-    const getToken = async () => {
-      if (!isAuthenticated || !user) {
-        setAuthReady(true);
-        return;
-      }
-
+    const prepareAuth = async () => {
       try {
-        setTokenLoading(true);
-        // Get access token
-        const accessToken = await getAccessTokenSilently();
-        setToken(accessToken);
+        if (isAuthenticated && user) {
+          await getAccessTokenSilently();
+        }
       } catch (error) {
-        console.error("Failed to get access token", error);
+        console.error("Auth initialization error:", error);
       } finally {
-        setTokenLoading(false);
+        setIsInitializing(false);
         setAuthReady(true);
       }
     };
 
-    getToken();
+    prepareAuth();
   }, [isAuthenticated, user, getAccessTokenSilently]);
 
   // Auth functions with useCallback
@@ -74,7 +67,7 @@ export function AuthProvider({ children }) {
   );
 
   // Overall loading state
-  const isLoading = auth0Loading || tokenLoading || !authReady;
+  const isLoading = auth0Loading || isInitializing || !authReady;
 
   // Memoize context value
   const value = useMemo(
@@ -84,8 +77,8 @@ export function AuthProvider({ children }) {
       user,
       login,
       logout,
-      token,
-      roles: getRoles(), // Always get fresh roles directly from token
+      getAccessTokenSilently,
+      roles: getRoles(),
       hasRole,
       hasAnyRole,
     }),
@@ -95,7 +88,7 @@ export function AuthProvider({ children }) {
       user,
       login,
       logout,
-      token,
+      getAccessTokenSilently,
       getRoles,
       hasRole,
       hasAnyRole,

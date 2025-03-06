@@ -4,7 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // Create a hook for using authenticated API calls
 export function useAuthFetch() {
-  const { token, getAccessTokenSilently, isAuthenticated, logout } = useAuth();
+  const { getAccessTokenSilently, isAuthenticated, logout } = useAuth();
 
   const fetchWithAuth = async (endpoint, options = {}) => {
     if (!isAuthenticated) {
@@ -12,10 +12,8 @@ export function useAuthFetch() {
     }
 
     try {
-      // Use token from context if available, or get a new one
-      const accessToken = token || (await getAccessTokenSilently());
+      const accessToken = await getAccessTokenSilently();
 
-      // Prepare headers with authentication
       const headers = {
         ...options.headers,
         Authorization: `Bearer ${accessToken}`,
