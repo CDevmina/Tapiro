@@ -245,22 +245,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  release:
-    needs: build
-    name: Create Release
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/Production'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  # release:
+  #   needs: build
+  #   name: Create Release
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/Production'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "18"
 
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+  #     - name: Create Release
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: npx semantic-release
