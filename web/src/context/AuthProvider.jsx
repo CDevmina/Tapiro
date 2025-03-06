@@ -14,25 +14,11 @@ export function AuthProvider({ children }) {
 
   const [token, setToken] = useState(null);
   const [tokenLoading, setTokenLoading] = useState(false);
-  const [roles, setRoles] = useState([]);
   const [authReady, setAuthReady] = useState(false);
 
-  // On mount, try to load persisted roles from localStorage
+  // Get token when authenticated
   useEffect(() => {
-    const persistedRoles = localStorage.getItem("auth_roles");
-    if (persistedRoles) {
-      try {
-        setRoles(JSON.parse(persistedRoles));
-      } catch (error) {
-        console.error("Failed to parse persisted roles", error);
-        localStorage.removeItem("auth_roles");
-      }
-    }
-  }, []);
-
-  // Get token and extract roles when authenticated
-  useEffect(() => {
-    const getTokenAndRoles = async () => {
+    const getToken = async () => {
       if (!isAuthenticated || !user) {
         setAuthReady(true);
         return;
@@ -43,13 +29,6 @@ export function AuthProvider({ children }) {
         // Get access token
         const accessToken = await getAccessTokenSilently();
         setToken(accessToken);
-
-        // Extract roles from user data
-        const userRoles = user?.["https://tapiro.com/roles"] || [];
-
-        // Persist roles for faster loading next time
-        localStorage.setItem("auth_roles", JSON.stringify(userRoles));
-        setRoles(userRoles);
       } catch (error) {
         console.error("Failed to get access token", error);
       } finally {
@@ -58,44 +37,46 @@ export function AuthProvider({ children }) {
       }
     };
 
-    getTokenAndRoles();
+    getToken();
   }, [isAuthenticated, user, getAccessTokenSilently]);
 
-  // Memoize functions with useCallback
+  // Auth functions with useCallback
   const login = useCallback(() => {
     return loginWithRedirect();
   }, [loginWithRedirect]);
 
   const logout = useCallback(() => {
-    // Clear persisted data
-    localStorage.removeItem("auth_roles");
-
     return auth0Logout({
-      logoutParams: {
-        returnTo: window.location.origin,
-      },
+      logoutParams: { returnTo: window.location.origin },
     });
   }, [auth0Logout]);
+
+  // Extract roles directly from user object when needed
+  const getRoles = useCallback(() => {
+    return user?.["https://tapiro.com/roles"] || [];
+  }, [user]);
 
   // Role checking utilities
   const hasRole = useCallback(
     (requiredRole) => {
+      const roles = getRoles();
       return roles.includes(requiredRole);
     },
-    [roles]
+    [getRoles]
   );
 
   const hasAnyRole = useCallback(
     (requiredRoles = []) => {
+      const roles = getRoles();
       return requiredRoles.some((role) => roles.includes(role));
     },
-    [roles]
+    [getRoles]
   );
 
   // Overall loading state
   const isLoading = auth0Loading || tokenLoading || !authReady;
 
-  // Memoize context value with all dependencies
+  // Memoize context value
   const value = useMemo(
     () => ({
       isAuthenticated,
@@ -104,7 +85,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       token,
-      roles,
+      roles: getRoles(), // Always get fresh roles directly from token
       hasRole,
       hasAnyRole,
     }),
@@ -115,7 +96,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       token,
-      roles,
+      getRoles,
       hasRole,
       hasAnyRole,
     ]
