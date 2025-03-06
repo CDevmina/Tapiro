@@ -1,5 +1,6 @@
 import { Auth0Provider } from "@auth0/auth0-react";
 import { useNavigate } from "react-router-dom";
+import { AuthProvider } from "../../context/AuthProvider";
 
 export function Auth0ProviderWithNavigate({ children }) {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export function Auth0ProviderWithNavigate({ children }) {
       cacheLocation="localstorage"
       useRefreshTokens={true}
     >
-      {children}
+      <AuthProvider>{children}</AuthProvider>
     </Auth0Provider>
   );
 }

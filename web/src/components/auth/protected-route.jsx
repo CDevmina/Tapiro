@@ -3,7 +3,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { Spinner } from "../common";
 
 export function ProtectedRoute({ children, requiredRoles = [] }) {
-  const { isAuthenticated, isLoading, roles } = useAuth();
+  const { isAuthenticated, isLoading, hasAnyRole } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -21,12 +21,8 @@ export function ProtectedRoute({ children, requiredRoles = [] }) {
   }
 
   // Check for required roles if specified
-  if (requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some((role) => roles.includes(role));
-
-    if (!hasRequiredRole) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+  if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;
