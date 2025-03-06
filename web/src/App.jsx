@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Unauthorized from "./pages/Unauthorized";
 import Dashboard from "./pages/Dashboard";
+import StoreDashboard from "./pages/StoreDashboard";
 import { ProtectedRoute } from "./components/auth/protected-route";
 
 function App() {
@@ -21,18 +22,32 @@ function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="login" element={<Login />} />
           <Route path="unauthorized" element={<Unauthorized />} />
+
+          {/* User-specific routes */}
           <Route
             path="profile"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={["user"]}>
                 <Profile />
               </ProtectedRoute>
             }
           />
+
+          {/* Store-specific routes */}
+          <Route
+            path="store-dashboard"
+            element={
+              <ProtectedRoute requiredRoles={["store"]}>
+                <StoreDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin dashboard (accessible by both admin and store roles) */}
           <Route
             path="dashboard"
             element={
-              <ProtectedRoute requiredRoles={["admin", "store"]}>
+              <ProtectedRoute requiredRoles={["admin"]}>
                 <Dashboard />
               </ProtectedRoute>
             }

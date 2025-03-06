@@ -3,7 +3,8 @@ import { useAuth } from "../hooks/useAuth";
 import { Button, Avatar } from "./common";
 
 function Header() {
-  const { isAuthenticated, user, login, logout, isLoading } = useAuth();
+  const { isAuthenticated, user, login, logout, isLoading, hasRole } =
+    useAuth();
 
   return (
     <header className="bg-gray-800 text-white">
@@ -27,16 +28,37 @@ function Header() {
               </Link>
             </li>
 
-            {isAuthenticated ? (
+            {isAuthenticated && (
               <>
-                <li>
-                  <Link to="/dashboard" className="hover:text-gray-300">
-                    Dashboard
-                  </Link>
-                </li>
+                {hasRole("user") && (
+                  <li>
+                    <Link to="/profile" className="hover:text-gray-300">
+                      Profile
+                    </Link>
+                  </li>
+                )}
+
+                {hasRole("store") && (
+                  <li>
+                    <Link to="/store-dashboard" className="hover:text-gray-300">
+                      Store Dashboard
+                    </Link>
+                  </li>
+                )}
+
+                {(hasRole("admin") || hasRole("store")) && (
+                  <li>
+                    <Link to="/dashboard" className="hover:text-gray-300">
+                      Admin Dashboard
+                    </Link>
+                  </li>
+                )}
+
                 <li>
                   <div className="flex items-center space-x-4">
-                    <Link to="/profile">
+                    <Link
+                      to={hasRole("store") ? "/store-dashboard" : "/profile"}
+                    >
                       <Avatar src={user?.picture} name={user?.name} size="sm" />
                     </Link>
                     <Button
@@ -50,7 +72,9 @@ function Header() {
                   </div>
                 </li>
               </>
-            ) : (
+            )}
+
+            {!isAuthenticated && (
               <li>
                 <Button
                   onClick={login}
