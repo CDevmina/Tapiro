@@ -46,14 +46,6 @@ function Header() {
                   </li>
                 )}
 
-                {(hasRole("admin") || hasRole("store")) && (
-                  <li>
-                    <Link to="/dashboard" className="hover:text-gray-300">
-                      Admin Dashboard
-                    </Link>
-                  </li>
-                )}
-
                 <li>
                   <div className="flex items-center space-x-4">
                     <Link
