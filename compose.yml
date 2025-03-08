@@ -68,6 +68,24 @@ services:
     networks:
       - tapiro-net
 
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: tapiro-ai
+    volumes:
+      - ./ai-service:/app
+      - /app/__pycache__
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - API_BASE_URL=http://backend:3000
+    ports:
+      - "8000:8000"
+    networks:
+      - tapiro-net
+    depends_on:
+      - backend
+
 networks:
   tapiro-net:
 
