@@ -7,6 +7,12 @@ info:
 tags:
   - name: User Management
     description: Operations for user registration, profile management, and deletion
+  - name: Data Collection
+    description: Operations for submitting user data for targeted advertising
+  - name: Preference Delivery
+    description: Operations for retrieving user preferences for targeted advertising
+  - name: Store Management
+    description: Operations for store registration, profile management, and API key management
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -227,6 +233,136 @@ paths:
             - store:write
       x-swagger-router-controller: Authentication
 
+  /users/data:
+    post:
+      tags: [Data Collection]
+      summary: Submit user data
+      description: Submit purchase/search history for a user (authenticated via API key)
+      operationId: submitUserData
+      security:
+        - apiKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserData"
+        required: true
+      responses:
+        "202":
+          description: Data accepted for processing
+        "401":
+          description: Invalid API key
+        "400":
+          description: Invalid data format
+      x-swagger-router-controller: UserPreferences
+
+  /users/{userId}/preferences:
+    get:
+      tags: [Preference Delivery]
+      summary: Get user preferences
+      description: Retrieve preferences for targeted advertising
+      operationId: getUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - apiKey: []
+      responses:
+        "200":
+          description: UserPreferences retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+        "403":
+          description: No consent for data access
+        "404":
+          description: User not found
+      x-swagger-router-controller: UserPreferences
+
+    delete:
+      tags:
+        - User Management
+      summary: Delete Store Profile
+      description: Delete authenticated store's profile
+      operationId: deleteStoreProfile
+      responses:
+        "204":
+          description: Store profile deleted successfully
+        "401":
+          description: Unauthorized
+        "404":
+          description: Store not found
+        "500":
+          description: Internal server error
+      security:
+        - oauth2:
+            - store:write
+      x-swagger-router-controller: UserPreferences
+
+  /stores/api-keys:
+    post:
+      tags: [Store Management]
+      summary: Generate new API key
+      description: Generates a new API key for the authenticated store
+      operationId: createApiKey
+      responses:
+        "201":
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKey"
+        "401":
+          description: Unauthorized
+      security:
+        - oauth2: [store:write]
+      x-swagger-router-controller: StoreMangement
+
+    get:
+      tags: [Store Management]
+      summary: List API keys
+      description: Returns all active API keys for the store
+      operationId: listApiKeys
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+        "401":
+          description: Unauthorized
+      security:
+        - oauth2: [store:read]
+      x-swagger-router-controller: StoreMangement
+
+  /stores/api-keys/{keyId}:
+    delete:
+      tags: [Store Management]
+      summary: Revoke API key
+      description: Revokes a specific API key
+      operationId: revokeApiKey
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: API key revoked
+        "401":
+          description: Unauthorized
+      security:
+        - oauth2: [store:write]
+      x-swagger-router-controller: StoreMangement
+
 components:
   schemas:
     User:
@@ -407,6 +543,99 @@ components:
               items:
                 type: string
 
+    ApiKey:
+      type: object
+      properties:
+        keyId:
+          type: string
+          format: uuid
+          readOnly: true
+        prefix:
+          type: string
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          type: string
+          enum: [active, revoked]
+
+    UserData:
+      type: object
+      required:
+        - email
+        - dataType
+        - entries
+      properties:
+        email:
+          type: string
+          format: email
+        dataType:
+          type: string
+          enum: [purchase, search]
+        entries:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/PurchaseEntry"
+              - $ref: "#/components/schemas/SearchEntry"
+
+    PurchaseEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseItem"
+        totalAmount:
+          type: number
+          format: float
+
+    PurchaseItem:
+      type: object
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+
+    SearchEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        query:
+          type: string
+        category:
+          type: string
+
+    UserPreferences:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        interests:
+          type: array
+          items:
+            type: string
+        demographics:
+          type: object
+          properties:
+            ageRange:
+              type: string
+            location:
+              type: string
+
     StoreUpdate:
       type: object
       properties:
@@ -429,6 +658,10 @@ components:
                   enum: [purchase, opt-out]
 
   securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
     oauth2:
       type: oauth2
       flows:
