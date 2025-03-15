@@ -285,22 +285,37 @@ paths:
 
     delete:
       tags:
-        - User Management
-      summary: Delete Store Profile
-      description: Delete authenticated store's profile
-      operationId: deleteStoreProfile
+        - Preference Delivery
+      summary: Delete user data for store
+      description: Allows users to delete their personal data for a specific store
+      operationId: deleteUserData
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the store to delete data from
       responses:
         "204":
-          description: Store profile deleted successfully
+          description: User data deleted successfully
         "401":
           description: Unauthorized
+        "403":
+          description: Forbidden - user can only delete their own data
         "404":
-          description: Store not found
+          description: User not found
         "500":
           description: Internal server error
       security:
         - oauth2:
-            - store:write
+            - user:write
       x-swagger-router-controller: UserPreferences
 
   /stores/api-keys:
