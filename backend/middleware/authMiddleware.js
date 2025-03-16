@@ -23,8 +23,8 @@ const checkJwt = expressJwtAuth({
   tokenSigningAlg: 'RS256',
 });
 
-// Role-based access control middleware
-const checkRole = (requiredPermissions) => {
+// Scope-based access control middleware
+const checkScope = (requiredScopes) => {
   return async (req, res, next) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
@@ -33,35 +33,39 @@ const checkRole = (requiredPermissions) => {
       }
 
       // Check Redis cache first
-      const cachedPermissions = await getCache(`permissions:${token}`);
-      if (cachedPermissions) {
-        const permissions = JSON.parse(cachedPermissions);
-        const hasPermission = requiredPermissions.every((p) => permissions.includes(p));
-        if (!hasPermission) {
-          return res.status(403).json({ message: 'Insufficient permissions' });
+      const cachedScopes = await getCache(`scopes:${token}`);
+      if (cachedScopes) {
+        const scopes = JSON.parse(cachedScopes);
+        const hasScope = requiredScopes.every((s) => scopes.includes(s));
+        if (!hasScope) {
+          return res.status(403).json({ message: 'Insufficient scopes' });
         }
         return next();
       }
 
-      // Verify permissions from Auth0
+      // Verify scopes from Auth0
       const response = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const userData = await response.json();
 
-      // Cache permissions
-      await setCache(`permissions:${token}`, JSON.stringify(userData.permissions), {
+      // Get scopes from the token
+      // Auth0 typically includes scopes in the 'scope' property or sometimes in 'permissions'
+      const userScopes = (userData.scope || '').split(' ');
+
+      // Cache scopes
+      await setCache(`scopes:${token}`, JSON.stringify(userScopes), {
         EX: 3600, // Cache for 1 hour
       });
 
-      const hasPermission = requiredPermissions.every((p) => userData.permissions.includes(p));
-      if (!hasPermission) {
-        return res.status(403).json({ message: 'Insufficient permissions' });
+      const hasScope = requiredScopes.every((s) => userScopes.includes(s));
+      if (!hasScope) {
+        return res.status(403).json({ message: 'Insufficient scopes' });
       }
 
       next();
     } catch (error) {
-      console.error('Permission check failed:', error);
+      console.error('Scope check failed:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   };
@@ -70,5 +74,5 @@ const checkRole = (requiredPermissions) => {
 module.exports = {
   auth: auth(config),
   checkJwt,
-  checkRole,
+  checkScope,
 };
