@@ -1,14 +1,16 @@
 const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache } = require('../utils/redisUtil');
+const crypto = require('crypto');
 
 /**
  * Middleware to validate API keys for store endpoints
+ * Returns true if valid, throws error if invalid
  */
-const validateApiKey = async (req) => {
+const validateApiKey = async (req, scopes, schema) => {
   try {
     const apiKey = req.headers['x-api-key'];
     if (!apiKey) {
-      return false;
+      throw new Error('API key required');
     }
 
     // Try to get store ID from cache first
@@ -29,14 +31,21 @@ const validateApiKey = async (req) => {
     });
 
     if (!store) {
-      return false;
+      throw new Error('Invalid API key');
     }
 
     // Find the specific API key
     const foundKey = store.apiKeys.find((key) => key.prefix === prefix && key.status === 'active');
 
     if (!foundKey) {
-      return false;
+      throw new Error('Invalid API key');
+    }
+
+    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+
+    // Check if the hash matches
+    if (keyHash !== foundKey.hash) {
+      throw new Error('Invalid API key');
     }
 
     // Set store ID in request and cache the mapping
@@ -45,7 +54,7 @@ const validateApiKey = async (req) => {
     return true;
   } catch (error) {
     console.error('API key validation failed:', error);
-    return false;
+    throw error;
   }
 };
 

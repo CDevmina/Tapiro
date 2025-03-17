@@ -23,7 +23,7 @@ const corsOptions = {
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
-    middlewares: [cors(corsOptions), auth, checkJwt],
+    middlewares: [cors(corsOptions), auth],
   },
   openApiValidator: {
     validateSecurity: {
