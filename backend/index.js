@@ -3,7 +3,7 @@ const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
 const cors = require('cors');
-const { auth, checkJwt } = require('./middleware/authMiddleware');
+const { auth, checkJwtAndScope } = require('./middleware/authMiddleware');
 const { validateApiKey } = require('./middleware/apiKeyMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
@@ -28,7 +28,7 @@ const options = {
   openApiValidator: {
     validateSecurity: {
       handlers: {
-        oauth2: checkJwt,
+        oauth2: checkJwtAndScope,
         apiKey: validateApiKey,
       },
     },
