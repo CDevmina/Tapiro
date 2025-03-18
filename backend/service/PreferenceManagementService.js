@@ -3,7 +3,6 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL} = require('../utils/cacheConfig');
-const axios = require('axios');
 
 /**
  * Get user preferences for targeted advertising
@@ -127,70 +126,6 @@ exports.optOutFromStore = async function (req, body) {
     return respondWithCode(204);
   } catch (error) {
     console.error('Opt out from store failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
-  }
-};
-
-/**
- * Submit user data for analysis
- */
-exports.submitUserData = async function (req, body) {
-  try {
-    // Validate storeId is set by the API key middleware
-    if (!req.storeId) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid API key',
-      });
-    }
-
-    const db = getDB();
-    const { email, dataType, entries } = body;
-
-    // Find user by email
-    const user = await db.collection('users').findOne({ email });
-    if (!user) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'User not found',
-      });
-    }
-
-    // Check user consent
-    if (!user.privacySettings?.dataSharingConsent) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has not provided consent for data sharing',
-      });
-    }
-
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
-      });
-    }
-
-    // Store the data in appropriate collection
-    await db.collection('userData').insertOne({
-      userId: user._id,
-      storeId: req.storeId,
-      email,
-      dataType,
-      entries,
-      timestamp: new Date(),
-    });
-
-    // Invalidate the preferences cache
-    await setCache(`prefs:${user._id}:${req.storeId}`, '', { EX: 1 });
-
-    return respondWithCode(202, {
-      message: 'Data accepted for processing',
-      userId: user._id.toString(),
-    });
-  } catch (error) {
-    console.error('Submit user data failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
