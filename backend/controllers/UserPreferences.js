@@ -11,8 +11,8 @@ module.exports.getUserPreferences = function getUserPreferences(req, res, next, 
     });
 };
 
-module.exports.deleteUserData = function deleteUserData(req, res, next, userId) {
-  UserPreferences.deleteUserData(req, userId)
+module.exports.optOutFromStore = function optOutFromStore(req, res, next, body) {
+  UserPreferences.optOutFromStore(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })
