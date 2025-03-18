@@ -4,54 +4,21 @@ const { setCache, getCache, client } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 const { assignUserRole, getManagementToken, linkAccounts } = require('../utils/auth0Util');
+const { getUserData } = require('../utils/authUtil');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
 /**
  * Register User
  * Create a new regular user account
- *
- * body UserCreate
- * returns User
- **/
+ */
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
     const { phone, preferences, dataSharingConsent } = body;
 
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      // Special handling for account conflicts
-      if (
-        error.response?.status === 409 ||
-        error.response?.data?.error === 'account_exists_with_different_credential'
-      ) {
-        return respondWithCode(409, {
-          code: 409,
-          message:
-            'An account already exists with this email address. Please use the original login method.',
-          hint: 'Use account linking to connect your accounts',
-        });
-      }
-
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     // Check if email already exists in our database
     const existingUserByEmail = await db.collection('users').findOne({
       email: userData.email,
@@ -119,39 +86,18 @@ exports.registerUser = async function (req, body) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
 /**
  * Register Store
  * Create a new store account
- *
- * body StoreCreate
- * returns Store
- **/
+ */
 exports.registerStore = async function (req, body) {
   try {
     const db = getDB();
     const { name, address, webhooks } = body;
 
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // Check if already registered
     const registration = await checkExistingRegistration(userData.sub);
@@ -195,36 +141,17 @@ exports.registerStore = async function (req, body) {
 /**
  * Get User Profile
  * Get authenticated user's profile
- *
- * returns User
- **/
+ */
 exports.getUserProfile = async function (req) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
-    // Try cache first
-    const cachedUser = await getCache(`user:${userData.sub}`);
+    // Try cache first using standardized cache key
+    const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
+    const cachedUser = await getCache(cacheKey);
     if (cachedUser) {
       return respondWithCode(200, JSON.parse(cachedUser));
     }
@@ -238,8 +165,8 @@ exports.getUserProfile = async function (req) {
       });
     }
 
-    // Cache the result
-    await setCache(`user:${userData.sub}`, JSON.stringify(user), { EX: 3600 });
+    // Cache the result with standardized TTL
+    await setCache(cacheKey, JSON.stringify(user), { EX: CACHE_TTL.USER_DATA });
     return respondWithCode(200, user);
   } catch (error) {
     console.error('Get profile failed:', error);
@@ -250,34 +177,13 @@ exports.getUserProfile = async function (req) {
 /**
  * Update User Profile
  * Update authenticated user's profile
- *
- * body UserUpdate
- * returns User
- **/
+ */
 exports.updateUserProfile = async function (req, body) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // If username is being updated, check for uniqueness
     if (body.username) {
@@ -315,8 +221,9 @@ exports.updateUserProfile = async function (req, body) {
       });
     }
 
-    // Update cache
-    await setCache(`user:${userData.sub}`, JSON.stringify(result), { EX: 3600 });
+    // Update cache with standardized key and TTL
+    const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
+    await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
     return respondWithCode(200, result);
   } catch (error) {
     console.error('Update profile failed:', error);
@@ -327,31 +234,13 @@ exports.updateUserProfile = async function (req, body) {
 /**
  * Delete User Profile
  * Delete authenticated user's profile
- **/
+ */
 exports.deleteUserProfile = async function (req) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // Delete from database
     const result = await db.collection('users').deleteOne({ auth0Id: userData.sub });
@@ -374,8 +263,8 @@ exports.deleteUserProfile = async function (req) {
       console.error('Auth0 deletion failed:', error);
     }
 
-    // Clear cache
-    await client.del(`user:${userData.sub}`);
+    // Clear cache using standardized key
+    await client.del(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete profile failed:', error);
@@ -386,36 +275,17 @@ exports.deleteUserProfile = async function (req) {
 /**
  * Get Store Profile
  * Get authenticated store's profile
- *
- * returns Store
- **/
+ */
 exports.getStoreProfile = async function (req) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
-    // Try cache first
-    const cachedStore = await getCache(`store:${userData.sub}`);
+    // Try cache first using standardized cache key
+    const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
+    const cachedStore = await getCache(cacheKey);
     if (cachedStore) {
       return respondWithCode(200, JSON.parse(cachedStore));
     }
@@ -429,8 +299,8 @@ exports.getStoreProfile = async function (req) {
       });
     }
 
-    // Cache the result
-    await setCache(`store:${userData.sub}`, JSON.stringify(store), { EX: 3600 });
+    // Cache the result with standardized TTL
+    await setCache(cacheKey, JSON.stringify(store), { EX: CACHE_TTL.STORE_DATA });
     return respondWithCode(200, store);
   } catch (error) {
     console.error('Get store profile failed:', error);
@@ -441,34 +311,13 @@ exports.getStoreProfile = async function (req) {
 /**
  * Update Store Profile
  * Update authenticated store's profile
- *
- * body StoreUpdate
- * returns Store
- **/
+ */
 exports.updateStoreProfile = async function (req, body) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // Update store
     const { name, address, webhooks } = body;
@@ -494,8 +343,9 @@ exports.updateStoreProfile = async function (req, body) {
       });
     }
 
-    // Update cache
-    await setCache(`store:${userData.sub}`, JSON.stringify(result), { EX: 3600 });
+    // Update cache with standardized key and TTL
+    const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
+    await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.STORE_DATA });
     return respondWithCode(200, result);
   } catch (error) {
     console.error('Update store profile failed:', error);
@@ -506,31 +356,13 @@ exports.updateStoreProfile = async function (req, body) {
 /**
  * Delete Store Profile
  * Delete authenticated store's profile
- **/
+ */
 exports.deleteStoreProfile = async function (req) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // Delete from database
     const result = await db.collection('stores').deleteOne({ auth0Id: userData.sub });
@@ -553,8 +385,8 @@ exports.deleteStoreProfile = async function (req) {
       console.error('Auth0 deletion failed:', error);
     }
 
-    // Clear cache
-    await client.del(`store:${userData.sub}`);
+    // Clear cache using standardized key
+    await client.del(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete store profile failed:', error);
