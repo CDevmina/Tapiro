@@ -236,7 +236,7 @@ paths:
           description: Invalid API key
         "400":
           description: Invalid data format
-      x-swagger-router-controller: DataCollection
+      x-swagger-router-controller: StoreOperations
 
   /users/{userId}/preferences:
     get:
@@ -263,9 +263,31 @@ paths:
           description: No consent for data access
         "404":
           description: User not found
-      x-swagger-router-controller: PreferenceManagement
+      x-swagger-router-controller: StoreOperations
 
   /users/preferences:
+    get:
+      tags: [Preference Management]
+      summary: Get user preferences
+      description: Get the authenticated user's preferences
+      operationId: getUserOwnPreferences
+      responses:
+        "200":
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: PreferenceManagement
+
     put:
       tags: [Preference Management]
       summary: Update user preferences

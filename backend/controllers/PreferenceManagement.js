@@ -1,8 +1,8 @@
 const utils = require('../utils/writer.js');
 const PreferenceManagement = require('../service/PreferenceManagementService');
 
-module.exports.getUserPreferences = function getUserPreferences(req, res, next, userId) {
-  PreferenceManagement.getUserPreferences(req, userId)
+module.exports.getUserOwnPreferences = function getUserOwnPreferences(req, res, next) {
+  PreferenceManagement.getUserOwnPreferences(req)
     .then((response) => {
       utils.writeJson(res, response);
     })

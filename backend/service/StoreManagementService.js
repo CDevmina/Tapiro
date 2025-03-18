@@ -2,9 +2,9 @@ const crypto = require('crypto');
 const { ObjectId } = require('mongodb');
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
-const { CACHE_KEYS } = require('../utils/cacheConfig');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
 /**
  * Create API Key
@@ -49,8 +49,8 @@ exports.createApiKey = async function (req, body) {
       },
     );
 
-    // Clear store cache to reflect new API key
-    await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, '', { EX: 1 });
+    // Invalidate store cache to reflect new API key
+    await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
 
     return respondWithCode(201, {
       keyId: apiKey.keyId,
@@ -76,7 +76,25 @@ exports.getApiKeys = async function (req) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get store with API keys
+    // Try to get from cache first
+    const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
+    const cachedStore = await getCache(cacheKey);
+    
+    if (cachedStore) {
+      const store = JSON.parse(cachedStore);
+      // Format API keys for response (exclude hash)
+      const apiKeys = (store.apiKeys || []).map((key) => ({
+        keyId: key.keyId,
+        name: key.name,
+        prefix: key.prefix,
+        status: key.status,
+        createdAt: key.createdAt,
+      }));
+      
+      return respondWithCode(200, apiKeys);
+    }
+
+    // Get store with API keys from database
     const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
     if (!store) {
       return respondWithCode(404, {
@@ -84,6 +102,9 @@ exports.getApiKeys = async function (req) {
         message: 'Store not found',
       });
     }
+
+    // Cache the store data
+    await setCache(cacheKey, JSON.stringify(store), { EX: CACHE_TTL.STORE_DATA });
 
     // Format API keys for response (exclude hash)
     const apiKeys = (store.apiKeys || []).map((key) => ({
@@ -112,6 +133,18 @@ exports.deleteApiKey = async function (req, keyId) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
+    // Get the store with API keys first to find the prefix of the key being revoked
+    const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
+    if (!store) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+    
+    // Find the key to be revoked
+    const keyToRevoke = store.apiKeys?.find(k => k.keyId === keyId);
+
     // Update store to remove API key
     const result = await db.collection('stores').updateOne(
       { auth0Id: userData.sub },
@@ -135,8 +168,13 @@ exports.deleteApiKey = async function (req, keyId) {
       });
     }
 
-    // Clear store cache to reflect deleted API key
-    await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, '', { EX: 1 });
+    // Invalidate store cache to reflect deleted API key
+    await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
+    
+    // Also invalidate the API key cache if we found the key
+    if (keyToRevoke) {
+      await invalidateCache(`${CACHE_KEYS.API_KEY}${keyToRevoke.prefix}`);
+    }
 
     return respondWithCode(204);
   } catch (error) {
