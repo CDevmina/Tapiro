@@ -44,7 +44,7 @@ const validateApiKey = async (req, scopes, schema) => {
     const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
     // Check if the hash matches
-    if (keyHash !== foundKey.hash) {
+    if (keyHash !== foundKey.hashedKey) {
       throw new Error('Invalid API key');
     }
 
