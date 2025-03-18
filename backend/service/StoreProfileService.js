@@ -1,5 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
@@ -118,7 +118,7 @@ exports.deleteStoreProfile = async function (req) {
     }
 
     // Clear cache using standardized key
-    await client.del(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete store profile failed:', error);
