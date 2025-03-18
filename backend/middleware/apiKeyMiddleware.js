@@ -1,5 +1,6 @@
 const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache } = require('../utils/redisUtil');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const crypto = require('crypto');
 
 /**
@@ -14,7 +15,8 @@ const validateApiKey = async (req, scopes, schema) => {
     }
 
     // Try to get store ID from cache first
-    const cachedStoreId = await getCache(`apikey:${apiKey}`);
+    const cacheKey = `${CACHE_KEYS.API_KEY}${apiKey}`;
+    const cachedStoreId = await getCache(cacheKey);
     if (cachedStoreId) {
       req.storeId = cachedStoreId;
       return true;
@@ -50,7 +52,7 @@ const validateApiKey = async (req, scopes, schema) => {
 
     // Set store ID in request and cache the mapping
     req.storeId = store._id.toString();
-    await setCache(`apikey:${apiKey}`, req.storeId, { EX: 3600 }); // Cache for 1 hour
+    await setCache(cacheKey, req.storeId, { EX: CACHE_TTL.TOKEN });
     return true;
   } catch (error) {
     console.error('API key validation failed:', error);

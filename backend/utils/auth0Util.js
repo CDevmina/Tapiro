@@ -1,10 +1,11 @@
 const axios = require('axios');
 const { getCache, setCache } = require('./redisUtil');
+const { CACHE_TTL, CACHE_KEYS } = require('./cacheConfig');
 
 async function getManagementToken() {
   try {
     // Check cache first
-    const cachedToken = await getCache('auth0_management_token');
+    const cachedToken = await getCache(CACHE_KEYS.ADMIN_TOKEN);
     if (cachedToken) {
       return cachedToken;
     }
@@ -27,8 +28,8 @@ async function getManagementToken() {
     const token = response.data.access_token;
 
     // Cache the token
-    await setCache('auth0_management_token', token, {
-      EX: 82800, // 23 hours
+    await setCache(CACHE_KEYS.ADMIN_TOKEN, token, {
+      EX: CACHE_TTL.ADMIN_TOKEN,
     });
 
     return token;

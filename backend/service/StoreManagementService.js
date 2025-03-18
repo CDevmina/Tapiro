@@ -1,41 +1,23 @@
 const crypto = require('crypto');
+const { ObjectId } = require('mongodb');
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
-const { getCache, setCache } = require('../utils/redisUtil');
-const axios = require('axios');
+const { setCache, getCache } = require('../utils/redisUtil');
+const { getUserData } = require('../utils/authUtil');
+const { CACHE_KEYS } = require('../utils/cacheConfig');
 
 /**
- * Generate a new API key for a store
- *
- * @param {Object} req - Request object
- * @returns {Promise<Object>} API key details
+ * Create API Key
+ * Create a new API key for store
  */
-exports.createApiKey = async function (req) {
+exports.createApiKey = async function (req, body) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
-    // Get store from database
+    // Check if store exists
     const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
     if (!store) {
       return respondWithCode(404, {
@@ -44,90 +26,58 @@ exports.createApiKey = async function (req) {
       });
     }
 
-    // Generate API key
-    const apiKey = generateApiKey();
-    const keyId = crypto.randomUUID();
-    const prefix = apiKey.substring(0, 8);
+    // Generate a new API key
+    const apiKeyRaw = crypto.randomBytes(32).toString('hex');
+    const prefix = apiKeyRaw.substring(0, 8);
+    const hashedKey = crypto.createHash('sha256').update(apiKeyRaw).digest('hex');
 
-    // Hash the API key for storage
-    const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
-
-    // Store the hashed key in the database
-    const keyData = {
-      keyId,
+    const apiKey = {
+      keyId: new ObjectId().toString(),
       prefix,
       hashedKey,
-      created: new Date(),
+      name: body.name || 'API Key',
       status: 'active',
+      createdAt: new Date(),
     };
 
-    await db
-      .collection('stores')
-      .updateOne({ auth0Id: userData.sub }, { $push: { apiKeys: keyData } });
+    // Add key to store
+    await db.collection('stores').updateOne(
+      { _id: store._id },
+      {
+        $push: { apiKeys: apiKey },
+        $set: { updatedAt: new Date() },
+      },
+    );
 
-    // Invalidate the store cache
-    await setCache(`store:${userData.sub}`, '', { EX: 1 });
+    // Clear store cache to reflect new API key
+    await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, '', { EX: 1 });
 
-    // Return the API key (only time it's sent in plaintext)
     return respondWithCode(201, {
-      keyId,
-      prefix,
-      apiKey, // Only returned once at creation
-      created: keyData.created,
-      status: keyData.status,
+      keyId: apiKey.keyId,
+      name: apiKey.name,
+      prefix: apiKey.prefix,
+      apiKey: apiKeyRaw, // Only time the full key is returned
+      createdAt: apiKey.createdAt,
     });
   } catch (error) {
-    console.error('API key creation failed:', error);
+    console.error('Create API key failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
 
 /**
- * List all API keys for a store
- *
- * @param {Object} req - Request object
- * @returns {Promise<Array>} List of API keys
+ * Get API Keys
+ * Get all API keys for authenticated store
  */
-exports.listApiKeys = async function (req) {
+exports.getApiKeys = async function (req) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
-    // Try cache first
-    const cachedStore = await getCache(`store:${userData.sub}`);
-    let store;
-
-    if (cachedStore) {
-      store = JSON.parse(cachedStore);
-    } else {
-      // Get store from database
-      store = await db.collection('stores').findOne({ auth0Id: userData.sub });
-      if (store) {
-        // Cache the result
-        await setCache(`store:${userData.sub}`, JSON.stringify(store), { EX: 3600 });
-      }
-    }
-
+    // Get store with API keys
+    const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
     if (!store) {
       return respondWithCode(404, {
         code: 404,
@@ -135,86 +85,62 @@ exports.listApiKeys = async function (req) {
       });
     }
 
-    // Return API keys (without hashed value)
+    // Format API keys for response (exclude hash)
     const apiKeys = (store.apiKeys || []).map((key) => ({
       keyId: key.keyId,
+      name: key.name,
       prefix: key.prefix,
-      created: key.created,
       status: key.status,
+      createdAt: key.createdAt,
     }));
 
     return respondWithCode(200, apiKeys);
   } catch (error) {
-    console.error('List API keys failed:', error);
+    console.error('Get API keys failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
 
 /**
- * Revoke an API key
- *
- * @param {Object} req - Request object
- * @param {string} keyId - ID of key to revoke
- * @returns {Promise<Object>} Empty response with 204 status
+ * Delete API Key
+ * Delete an API key for authenticated store
  */
-exports.revokeApiKey = async function (req, keyId) {
+exports.deleteApiKey = async function (req, keyId) {
   try {
     const db = getDB();
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
-    // Get store info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
-    // Update the API key status to revoked
-    const result = await db
-      .collection('stores')
-      .updateOne(
-        { auth0Id: userData.sub, 'apiKeys.keyId': keyId },
-        { $set: { 'apiKeys.$.status': 'revoked' } },
-      );
+    // Update store to remove API key
+    const result = await db.collection('stores').updateOne(
+      { auth0Id: userData.sub },
+      {
+        $pull: { apiKeys: { keyId } },
+        $set: { updatedAt: new Date() },
+      },
+    );
 
     if (result.matchedCount === 0) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+
+    if (result.modifiedCount === 0) {
       return respondWithCode(404, {
         code: 404,
         message: 'API key not found',
       });
     }
 
-    // Invalidate the store cache
-    await setCache(`store:${userData.sub}`, '', { EX: 1 });
+    // Clear store cache to reflect deleted API key
+    await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, '', { EX: 1 });
 
     return respondWithCode(204);
   } catch (error) {
-    console.error('Revoke API key failed:', error);
+    console.error('Delete API key failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
-
-/**
- * Generate a secure random API key
- *
- * @returns {string} Secure random API key
- */
-function generateApiKey() {
-  // Generate a securely random 32-byte buffer and encode as base64
-  const buffer = crypto.randomBytes(32);
-  // Convert to base64 and remove non-alphanumeric characters
-  return buffer.toString('base64').replace(/[+/=]/g, '').substring(0, 32);
-}
