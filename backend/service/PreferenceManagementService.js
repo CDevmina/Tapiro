@@ -1,75 +1,45 @@
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
-const { CACHE_TTL} = require('../utils/cacheConfig');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
-/**
- * Get user preferences for targeted advertising
- */
-exports.getUserPreferences = async function (req, userId) {
+exports.getUserOwnPreferences = async function (req) {
   try {
-    // Validate storeId is set by the API key middleware
-    if (!req.storeId) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid API key',
-      });
-    }
-
+    // Get user data from middleware
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     const db = getDB();
-
-    // Try cache first using preference-specific cache key
-    const cacheKey = `prefs:${userId}:${req.storeId}`;
-    const cachedPrefs = await getCache(cacheKey);
-    if (cachedPrefs) {
-      return respondWithCode(200, JSON.parse(cachedPrefs));
+    
+    // Check cache first - standardized cache key
+    const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+    const cachedPreferences = await getCache(cacheKey);
+    if (cachedPreferences) {
+      return respondWithCode(200, JSON.parse(cachedPreferences));
     }
 
     // Find user in database
-    const user = await db.collection('users').findOne({
-      $or: [{ _id: userId }, { auth0Id: userId }, { username: userId }, { email: userId }],
-    });
-
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
     if (!user) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'User not found',
-      });
+      return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
-      });
-    }
-
-    // Check for consent
-    if (!user.privacySettings?.dataSharingConsent) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has not provided consent for data sharing',
-      });
-    }
-
-    // Prepare user preferences
+    // Return just the preferences part
     const preferences = {
       userId: user._id.toString(),
       interests: user.preferences || [],
-      demographics: {
-        ageRange: user.demographics?.ageRange || 'unknown',
-        location: user.demographics?.location || 'unknown',
-      },
+      demographics: user.demographics || {
+        ageRange: 'unknown',
+        location: 'unknown'
+      }
     };
 
-    // Cache the preferences with standardized TTL
+    // Cache the preferences result with specific TTL
     await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferences);
   } catch (error) {
-    console.error('Get user preferences failed:', error);
+    console.error('Get preferences failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
@@ -120,8 +90,9 @@ exports.optOutFromStore = async function (req, body) {
       },
     );
 
-    // Clear cache - setting TTL to 1 effectively invalidates it
-    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+    // Clear cache using standardized approach
+    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {
@@ -163,10 +134,13 @@ exports.updateUserPreferences = async function (req, body) {
     // Get updated user data
     const updatedUser = await db.collection('users').findOne({ _id: user._id });
 
-    // Clear related caches
+    // Clear related caches using the invalidation helper
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    
+    // Clear store-specific preference caches
     if (user.privacySettings?.optOutStores) {
       for (const storeId of user.privacySettings.optOutStores) {
-        await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }
 
@@ -233,8 +207,9 @@ exports.optInToStore = async function (req, body) {
       },
     );
 
-    // Clear cache
-    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+    // Clear cache using invalidation helper
+    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {

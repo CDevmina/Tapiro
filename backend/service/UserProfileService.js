@@ -1,5 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
@@ -16,7 +16,7 @@ exports.getUserProfile = async function (req) {
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
     // Try cache first using standardized cache key
-    const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
+    const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
     const cachedUser = await getCache(cacheKey);
     if (cachedUser) {
       return respondWithCode(200, JSON.parse(cachedUser));
@@ -85,6 +85,19 @@ exports.updateUserProfile = async function (req, body) {
         code: 404,
         message: 'User not found',
       });
+    }
+
+    // Invalidate user data cache
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+    
+    // Also invalidate preferences cache
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    
+    // If preferences change might affect store data, invalidate those too:
+    if (user.privacySettings?.optOutStores) {
+      for (const storeId of user.privacySettings.optOutStores) {
+        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+      }
     }
 
     // Update cache with standardized key and TTL
