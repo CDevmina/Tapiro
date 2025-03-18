@@ -30,3 +30,23 @@ module.exports.submitUserData = function submitUserData(req, res, next, body) {
       utils.writeJson(res, response);
     });
 };
+
+module.exports.updateUserPreferences = function updateUserPreferences(req, res, next, body) {
+  UserPreferences.updateUserPreferences(req, body)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.optInToStore = function optInToStore(req, res, next, body) {
+  UserPreferences.optInToStore(req, body)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

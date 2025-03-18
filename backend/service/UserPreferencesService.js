@@ -224,3 +224,164 @@ exports.submitUserData = async function (req, body) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
+/**
+ * Update user preferences
+ *
+ * @param {Object} req - Request object
+ * @param {Object} body - Request body containing preferences
+ * @returns {Promise<Object>} Updated preferences
+ */
+exports.updateUserPreferences = async function (req, body) {
+  try {
+    // Security check - must have authorization token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get user info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    const db = getDB();
+
+    // Find user in database using Auth0 ID
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    if (!user) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
+      });
+    }
+
+    // Update only preferences
+    await db.collection('users').updateOne(
+      { _id: user._id },
+      {
+        $set: { 
+          preferences: body.preferences || [],
+          updatedAt: new Date() 
+        },
+      },
+    );
+
+    // Get updated user data
+    const updatedUser = await db.collection('users').findOne({ _id: user._id });
+
+    // Clear related caches
+    if (user.privacySettings?.optOutStores) {
+      for (const storeId of user.privacySettings.optOutStores) {
+        await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+      }
+    }
+
+    // Return updated preferences
+    const preferences = {
+      userId: updatedUser._id.toString(),
+      interests: updatedUser.preferences || [],
+      demographics: {
+        ageRange: updatedUser.demographics?.ageRange || 'unknown',
+        location: updatedUser.demographics?.location || 'unknown',
+      },
+    };
+
+    return respondWithCode(200, preferences);
+  } catch (error) {
+    console.error('Update user preferences failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Opt in to store data collection
+ *
+ * @param {Object} req - Request object
+ * @param {Object} body - Request body containing storeId
+ * @returns {Promise<Object>} Empty response with 204 status
+ */
+exports.optInToStore = async function (req, body) {
+  try {
+    // Security check - must have authorization token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'No authorization token provided',
+      });
+    }
+
+    // Get user info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
+    const db = getDB();
+
+    // Find user in database using Auth0 ID
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    if (!user) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
+      });
+    }
+
+    // Get store ID from request body
+    const { storeId } = body;
+    if (!storeId) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'Store ID is required',
+      });
+    }
+
+    // Validate that store exists
+    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    if (!storeExists) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+
+    // Remove store from opt-out list
+    await db.collection('users').updateOne(
+      { _id: user._id },
+      {
+        $pull: { 'privacySettings.optOutStores': storeId },
+        $set: { updatedAt: new Date() },
+      },
+    );
+
+    // Clear cache
+    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+
+    return respondWithCode(204);
+  } catch (error) {
+    console.error('Opt in to store failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
