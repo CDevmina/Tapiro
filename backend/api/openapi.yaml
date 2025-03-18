@@ -370,6 +370,15 @@ paths:
       summary: Generate new API key
       description: Generates a new API key for the authenticated store
       operationId: createApiKey
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name for the API key
       responses:
         "201":
           description: API key created
@@ -387,7 +396,7 @@ paths:
       tags: [Store Management]
       summary: List API keys
       description: Returns all active API keys for the store
-      operationId: listApiKeys
+      operationId: getApiKeys
       responses:
         "200":
           description: List of API keys
