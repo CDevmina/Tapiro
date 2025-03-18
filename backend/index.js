@@ -3,7 +3,8 @@ const path = require('path');
 const http = require('http');
 const oas3Tools = require('oas3-tools');
 const cors = require('cors');
-const { auth, checkJwt } = require('./middleware/authMiddleware');
+const { auth, checkJwtAndScope } = require('./middleware/authMiddleware');
+const { validateApiKey } = require('./middleware/apiKeyMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 
@@ -13,7 +14,7 @@ const serverPort = process.env.PORT;
 const corsOptions = {
   origin: [process.env.FRONTEND_URL],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   credentials: true,
   maxAge: 86400,
 };
@@ -22,7 +23,15 @@ const corsOptions = {
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
-    middlewares: [cors(corsOptions), auth, checkJwt],
+    middlewares: [cors(corsOptions), auth],
+  },
+  openApiValidator: {
+    validateSecurity: {
+      handlers: {
+        oauth2: checkJwtAndScope,
+        apiKey: validateApiKey,
+      },
+    },
   },
 };
 
