@@ -1,6 +1,7 @@
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache } = require('../utils/redisUtil');
+const axios = require('axios');
 
 /**
  * Get user preferences for targeted advertising
@@ -77,15 +78,15 @@ exports.getUserPreferences = async function (req, userId) {
 };
 
 /**
- * Delete user data for a store
+ * Opt out from store data collection
  *
  * @param {Object} req - Request object
- * @param {string} userId - ID of the user
+ * @param {Object} body - Request body containing storeId
  * @returns {Promise<Object>} Empty response with 204 status
  */
-exports.deleteUserData = async function (req, userId) {
+exports.optOutFromStore = async function (req, body) {
   try {
-    // Security check - only users themselves should be able to delete their data
+    // Security check - must have authorization token
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return respondWithCode(401, {
@@ -94,13 +95,24 @@ exports.deleteUserData = async function (req, userId) {
       });
     }
 
+    // Get user info from Auth0
+    let userData;
+    try {
+      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      userData = response.data;
+    } catch (error) {
+      return respondWithCode(401, {
+        code: 401,
+        message: 'Invalid token',
+      });
+    }
+
     const db = getDB();
 
-    // Find user in database
-    const user = await db.collection('users').findOne({
-      $or: [{ _id: userId }, { auth0Id: userId }],
-    });
-
+    // Find user in database using Auth0 ID
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
     if (!user) {
       return respondWithCode(404, {
         code: 404,
@@ -108,12 +120,21 @@ exports.deleteUserData = async function (req, userId) {
       });
     }
 
-    // Get store ID from request (set by middleware)
-    const storeId = req.params.storeId || req.body.storeId;
+    // Get store ID from request body
+    const { storeId } = body;
     if (!storeId) {
       return respondWithCode(400, {
         code: 400,
         message: 'Store ID is required',
+      });
+    }
+
+    // Validate that store exists
+    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    if (!storeExists) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
       });
     }
 
@@ -127,11 +148,11 @@ exports.deleteUserData = async function (req, userId) {
     );
 
     // Clear cache
-    await setCache(`prefs:${userId}:${storeId}`, '', { EX: 1 });
+    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
 
     return respondWithCode(204);
   } catch (error) {
-    console.error('Delete user data failed:', error);
+    console.error('Opt out from store failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
