@@ -1,14 +1,12 @@
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache } = require('../utils/redisUtil');
+const { getUserData } = require('../utils/authUtil');
+const { CACHE_TTL} = require('../utils/cacheConfig');
 const axios = require('axios');
 
 /**
  * Get user preferences for targeted advertising
- *
- * @param {Object} req - Request object
- * @param {string} userId - ID of the user
- * @returns {Promise<Object>} User preferences
  */
 exports.getUserPreferences = async function (req, userId) {
   try {
@@ -22,8 +20,9 @@ exports.getUserPreferences = async function (req, userId) {
 
     const db = getDB();
 
-    // Try cache first (store-specific user preferences)
-    const cachedPrefs = await getCache(`prefs:${userId}:${req.storeId}`);
+    // Try cache first using preference-specific cache key
+    const cacheKey = `prefs:${userId}:${req.storeId}`;
+    const cachedPrefs = await getCache(cacheKey);
     if (cachedPrefs) {
       return respondWithCode(200, JSON.parse(cachedPrefs));
     }
@@ -60,15 +59,14 @@ exports.getUserPreferences = async function (req, userId) {
     const preferences = {
       userId: user._id.toString(),
       interests: user.preferences || [],
-      // Additional demographic data would be here if available
       demographics: {
         ageRange: user.demographics?.ageRange || 'unknown',
         location: user.demographics?.location || 'unknown',
       },
     };
 
-    // Cache the preferences
-    await setCache(`prefs:${userId}:${req.storeId}`, JSON.stringify(preferences), { EX: 3600 });
+    // Cache the preferences with standardized TTL
+    await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferences);
   } catch (error) {
@@ -79,36 +77,12 @@ exports.getUserPreferences = async function (req, userId) {
 
 /**
  * Opt out from store data collection
- *
- * @param {Object} req - Request object
- * @param {Object} body - Request body containing storeId
- * @returns {Promise<Object>} Empty response with 204 status
  */
 exports.optOutFromStore = async function (req, body) {
   try {
-    // Security check - must have authorization token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     const db = getDB();
 
     // Find user in database using Auth0 ID
@@ -147,7 +121,7 @@ exports.optOutFromStore = async function (req, body) {
       },
     );
 
-    // Clear cache
+    // Clear cache - setting TTL to 1 effectively invalidates it
     await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
 
     return respondWithCode(204);
@@ -159,10 +133,6 @@ exports.optOutFromStore = async function (req, body) {
 
 /**
  * Submit user data for analysis
- *
- * @param {Object} req - Request object
- * @param {Object} body - User data
- * @returns {Promise<Object>} Confirmation message
  */
 exports.submitUserData = async function (req, body) {
   try {
@@ -227,36 +197,12 @@ exports.submitUserData = async function (req, body) {
 
 /**
  * Update user preferences
- *
- * @param {Object} req - Request object
- * @param {Object} body - Request body containing preferences
- * @returns {Promise<Object>} Updated preferences
  */
 exports.updateUserPreferences = async function (req, body) {
   try {
-    // Security check - must have authorization token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     const db = getDB();
 
     // Find user in database using Auth0 ID
@@ -308,36 +254,12 @@ exports.updateUserPreferences = async function (req, body) {
 
 /**
  * Opt in to store data collection
- *
- * @param {Object} req - Request object
- * @param {Object} body - Request body containing storeId
- * @returns {Promise<Object>} Empty response with 204 status
  */
 exports.optInToStore = async function (req, body) {
   try {
-    // Security check - must have authorization token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'No authorization token provided',
-      });
-    }
-
-    // Get user info from Auth0
-    let userData;
-    try {
-      const response = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      userData = response.data;
-    } catch (error) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid token',
-      });
-    }
-
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     const db = getDB();
 
     // Find user in database using Auth0 ID

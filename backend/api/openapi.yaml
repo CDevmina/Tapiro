@@ -5,14 +5,16 @@ info:
   version: 1.0.0
   contact: { name: Tapiro Support, email: tapirosupport@gmail.com }
 tags:
+  - name: Authentication
+    description: Account registration and authentication operations
   - name: User Management
-    description: Operations for user registration, profile management, and deletion
+    description: User profile and data management operations
+  - name: Store Management
+    description: Store profile, API key, and integration management
   - name: Data Collection
     description: Operations for submitting user data for targeted advertising
-  - name: Preference Delivery
-    description: Operations for retrieving user preferences for targeted advertising
-  - name: Store Management
-    description: Operations for store registration, profile management, and API key management
+  - name: Preference Management
+    description: Operations for managing user preferences and opt-in/out settings
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -20,17 +22,10 @@ servers:
     description: Production API
   - url: http://localhost:3000
     description: Development API
-security:
-  - oauth2:
-      - user:read
-      - user:write
-      - store:read
-      - store:write
 paths:
   /users/register:
     post:
-      tags:
-        - User Management
+      tags: [Authentication]
       summary: Register User
       description: Create a new regular user account
       operationId: registerUser
@@ -57,8 +52,7 @@ paths:
 
   /stores/register:
     post:
-      tags:
-        - User Management
+      tags: [Authentication]
       summary: Register Store
       description: Create a new store account
       operationId: registerStore
@@ -85,8 +79,7 @@ paths:
 
   /users/profile:
     get:
-      tags:
-        - User Management
+      tags: [User Management]
       summary: Get User Profile
       description: Get authenticated user's profile
       operationId: getUserProfile
@@ -104,13 +97,11 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - user:read
-      x-swagger-router-controller: Authentication
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
 
     put:
-      tags:
-        - User Management
+      tags: [User Management]
       summary: Update User Profile
       description: Update authenticated user's profile
       operationId: updateUserProfile
@@ -134,13 +125,11 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - user:write
-      x-swagger-router-controller: Authentication
+        - oauth2: [user:write]
+      x-swagger-router-controller: UserProfile
 
     delete:
-      tags:
-        - User Management
+      tags: [User Management]
       summary: Delete User Profile
       description: Delete authenticated user's profile
       operationId: deleteUserProfile
@@ -154,14 +143,12 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - user:write
-      x-swagger-router-controller: Authentication
+        - oauth2: [user:write]
+      x-swagger-router-controller: UserProfile
 
   /stores/profile:
     get:
-      tags:
-        - User Management
+      tags: [Store Management]
       summary: Get Store Profile
       description: Get authenticated store's profile
       operationId: getStoreProfile
@@ -179,13 +166,11 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - store:read
-      x-swagger-router-controller: Authentication
+        - oauth2: [store:read]
+      x-swagger-router-controller: StoreProfile
 
     put:
-      tags:
-        - User Management
+      tags: [Store Management]
       summary: Update Store Profile
       description: Update authenticated store's profile
       operationId: updateStoreProfile
@@ -209,13 +194,11 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - store:write
-      x-swagger-router-controller: Authentication
+        - oauth2: [store:write]
+      x-swagger-router-controller: StoreProfile
 
     delete:
-      tags:
-        - User Management
+      tags: [Store Management]
       summary: Delete Store Profile
       description: Delete authenticated store's profile
       operationId: deleteStoreProfile
@@ -229,9 +212,8 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - store:write
-      x-swagger-router-controller: Authentication
+        - oauth2: [store:write]
+      x-swagger-router-controller: StoreProfile
 
   /users/data:
     post:
@@ -254,11 +236,11 @@ paths:
           description: Invalid API key
         "400":
           description: Invalid data format
-      x-swagger-router-controller: UserPreferences
+      x-swagger-router-controller: DataCollection
 
   /users/{userId}/preferences:
     get:
-      tags: [Preference Delivery]
+      tags: [Preference Management]
       summary: Get user preferences
       description: Retrieve preferences for targeted advertising
       operationId: getUserPreferences
@@ -281,12 +263,63 @@ paths:
           description: No consent for data access
         "404":
           description: User not found
-      x-swagger-router-controller: UserPreferences
+      x-swagger-router-controller: PreferenceManagement
+
+  /users/preferences:
+    put:
+      tags: [Preference Management]
+      summary: Update user preferences
+      description: Update the user's interest preferences and related settings
+      operationId: updateUserPreferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+        required: true
+      responses:
+        "200":
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      security:
+        - oauth2: [user:write]
+      x-swagger-router-controller: PreferenceManagement
+
+  /users/preferences/opt-in:
+    post:
+      tags: [Preference Management]
+      summary: Opt in to store data collection
+      description: Removes a store from the user's opt-out list to allow data collection
+      operationId: optInToStore
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreActionRequest"
+        required: true
+      responses:
+        "204":
+          description: Successfully opted in to store
+        "401":
+          description: Unauthorized
+        "404":
+          description: Store not found
+        "500":
+          description: Internal server error
+      security:
+        - oauth2: [user:write]
+      x-swagger-router-controller: PreferenceManagement
 
   /users/preferences/opt-out:
     post:
-      tags:
-        - Preference Delivery
+      tags: [Preference Management]
       summary: Opt out from store data collection
       description: Adds a store to the user's opt-out list to prevent data collection
       operationId: optOutFromStore
@@ -306,9 +339,8 @@ paths:
         "500":
           description: Internal server error
       security:
-        - oauth2:
-            - user:write
-      x-swagger-router-controller: UserPreferences
+        - oauth2: [user:write]
+      x-swagger-router-controller: PreferenceManagement
 
   /stores/api-keys:
     post:
@@ -369,62 +401,6 @@ paths:
       security:
         - oauth2: [store:write]
       x-swagger-router-controller: StoreManagement
-
-  /users/preferences:
-    put:
-      tags:
-        - Preference Delivery
-      summary: Update user preferences
-      description: Update only the user's interest preferences without changing other profile settings
-      operationId: updateUserPreferences
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdatePreferencesRequest"
-        required: true
-      responses:
-        "200":
-          description: Preferences updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserPreferences"
-        "401":
-          description: Unauthorized
-        "500":
-          description: Internal server error
-      security:
-        - oauth2:
-            - user:write
-      x-swagger-router-controller: UserPreferences
-
-  /users/preferences/opt-in:
-    post:
-      tags:
-        - Preference Delivery
-      summary: Opt in to store data collection
-      description: Removes a store from the user's opt-out list to allow data collection
-      operationId: optInToStore
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StoreActionRequest"
-        required: true
-      responses:
-        "204":
-          description: Successfully opted in to store
-        "401":
-          description: Unauthorized
-        "404":
-          description: Store not found
-        "500":
-          description: Internal server error
-      security:
-        - oauth2:
-            - user:write
-      x-swagger-router-controller: UserPreferences
 
 components:
   schemas:
@@ -586,6 +562,7 @@ components:
           type: array
           items:
             type: string
+          description: User interest preferences (e.g., electronics, fashion)
         privacySettings:
           type: object
           properties:
@@ -616,7 +593,7 @@ components:
         prefix:
           type: string
           readOnly: true
-        created:
+        createdAt:
           type: string
           format: date-time
           readOnly: true
@@ -729,15 +706,6 @@ components:
           type: string
           format: uuid
           description: ID of the store to opt in to or opt out from
-
-    UpdatePreferencesRequest:
-      type: object
-      properties:
-        preferences:
-          type: array
-          items:
-            type: string
-          description: User interest preferences (e.g., electronics, fashion)
 
   securitySchemes:
     apiKey:
