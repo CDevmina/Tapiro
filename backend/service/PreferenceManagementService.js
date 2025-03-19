@@ -3,6 +3,7 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const { ObjectId } = require('mongodb'); // Add this import
 
 exports.getUserOwnPreferences = async function (req) {
   try {
@@ -47,7 +48,7 @@ exports.getUserOwnPreferences = async function (req) {
 /**
  * Opt out from store data collection
  */
-exports.optOutFromStore = async function (req, body) {
+exports.optOutFromStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
@@ -63,8 +64,6 @@ exports.optOutFromStore = async function (req, body) {
       });
     }
 
-    // Get store ID from request body
-    const { storeId } = body;
     if (!storeId) {
       return respondWithCode(400, {
         code: 400,
@@ -72,8 +71,19 @@ exports.optOutFromStore = async function (req, body) {
       });
     }
 
-    // Validate that store exists
-    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    // Convert storeId to ObjectId before querying
+    let storeObjectId;
+    try {
+      storeObjectId = new ObjectId(storeId);
+    } catch (error) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'Invalid store ID format',
+      });
+    }
+
+    // Validate that store exists - use ObjectId
+    const storeExists = await db.collection('stores').findOne({ _id: storeObjectId });
     if (!storeExists) {
       return respondWithCode(404, {
         code: 404,
@@ -164,7 +174,7 @@ exports.updateUserPreferences = async function (req, body) {
 /**
  * Opt in to store data collection
  */
-exports.optInToStore = async function (req, body) {
+exports.optInToStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
@@ -180,17 +190,18 @@ exports.optInToStore = async function (req, body) {
       });
     }
 
-    // Get store ID from request body
-    const { storeId } = body;
-    if (!storeId) {
+    let storeObjectId;
+    try {
+      storeObjectId = new ObjectId(storeId);
+    } catch (error) {
       return respondWithCode(400, {
         code: 400,
-        message: 'Store ID is required',
+        message: 'Invalid store ID format',
       });
     }
 
-    // Validate that store exists
-    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    // Validate that store exists - use ObjectId
+    const storeExists = await db.collection('stores').findOne({ _id: storeObjectId });
     if (!storeExists) {
       return respondWithCode(404, {
         code: 404,
