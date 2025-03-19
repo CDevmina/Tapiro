@@ -21,8 +21,8 @@ module.exports.updateUserPreferences = function updateUserPreferences(req, res, 
     });
 };
 
-module.exports.optInToStore = function optInToStore(req, res, next, body) {
-  PreferenceManagement.optInToStore(req, body)
+module.exports.optInToStore = function optInToStore(req, res, next, storeId) {
+  PreferenceManagement.optInToStore(req, storeId)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -31,8 +31,8 @@ module.exports.optInToStore = function optInToStore(req, res, next, body) {
     });
 };
 
-module.exports.optOutFromStore = function optOutFromStore(req, res, next, body) {
-  PreferenceManagement.optOutFromStore(req, body)
+module.exports.optOutFromStore = function optOutFromStore(req, res, next, storeId) {
+  PreferenceManagement.optOutFromStore(req, storeId)
     .then((response) => {
       utils.writeJson(res, response);
     })

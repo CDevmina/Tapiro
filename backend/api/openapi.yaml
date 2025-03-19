@@ -322,18 +322,19 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
-  /users/preferences/opt-in:
+  /users/preferences/opt-in/{storeId}:
     post:
       tags: [Preference Management]
       summary: Opt in to store data collection
       description: Removes a store from the user's opt-out list to allow data collection
       operationId: optInToStore
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StoreActionRequest"
-        required: true
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          description: ID of the store to opt in to
+          schema:
+            type: string
       responses:
         "204":
           description: Successfully opted in to store
@@ -347,18 +348,19 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
-  /users/preferences/opt-out:
+  /users/preferences/opt-out/{storeId}:
     post:
       tags: [Preference Management]
       summary: Opt out from store data collection
       description: Adds a store to the user's opt-out list to prevent data collection
       operationId: optOutFromStore
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StoreActionRequest"
-        required: true
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          description: ID of the store to opt out from
+          schema:
+            type: string
       responses:
         "204":
           description: Successfully opted out from store
@@ -726,16 +728,6 @@ components:
                 items:
                   type: string
                   enum: [purchase, opt-out]
-
-    StoreActionRequest:
-      type: object
-      required:
-        - storeId
-      properties:
-        storeId:
-          type: string
-          format: uuid
-          description: ID of the store to opt in to or opt out from
 
     ApiKeyCreate:
       type: object
