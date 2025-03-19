@@ -22,7 +22,7 @@ module.exports.getApiKeys = function getApiKeys(req, res, next) {
 };
 
 module.exports.revokeApiKey = function revokeApiKey(req, res, next, keyId) {
-  StoreManagement.deleteApiKey(req, keyId)
+  StoreManagement.revokeApiKey(req, keyId)
     .then((response) => {
       utils.writeJson(res, response);
     })

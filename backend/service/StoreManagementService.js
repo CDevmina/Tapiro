@@ -126,7 +126,7 @@ exports.getApiKeys = async function (req) {
  * Delete API Key
  * Delete an API key for authenticated store
  */
-exports.deleteApiKey = async function (req, keyId) {
+exports.revokeApiKey = async function (req, keyId) {
   try {
     const db = getDB();
     

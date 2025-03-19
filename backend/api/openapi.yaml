@@ -29,6 +29,8 @@ paths:
       summary: Register User
       description: Create a new regular user account
       operationId: registerUser
+      security:
+        - oauth2: []
       requestBody:
         content:
           application/json:
@@ -46,6 +48,8 @@ paths:
           description: Invalid input
         "401":
           description: Unauthorized
+        "409":
+          description: User already exists or username taken
         "500":
           description: Internal server error
       x-swagger-router-controller: Authentication
@@ -56,6 +60,8 @@ paths:
       summary: Register Store
       description: Create a new store account
       operationId: registerStore
+      security:
+        - oauth2: []
       requestBody:
         content:
           application/json:
@@ -73,6 +79,8 @@ paths:
           description: Invalid input
         "401":
           description: Unauthorized
+        "409":
+          description: Account already registered
         "500":
           description: Internal server error
       x-swagger-router-controller: Authentication
@@ -374,11 +382,8 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: Name for the API key
+              $ref: "#/components/schemas/ApiKeyCreate"
+        required: false
       responses:
         "201":
           description: API key created
@@ -403,9 +408,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ApiKey"
+                $ref: "#/components/schemas/ApiKeyList"
         "401":
           description: Unauthorized
       security:
@@ -550,10 +553,6 @@ components:
       required:
         - dataSharingConsent
       properties:
-        phone:
-          type: string
-          pattern: ^\+?[\d\s-]+$
-          description: User's phone number (optional)
         preferences:
           type: array
           items:
@@ -737,6 +736,18 @@ components:
           type: string
           format: uuid
           description: ID of the store to opt in to or opt out from
+
+    ApiKeyCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name for the API key
+
+    ApiKeyList:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApiKey"
 
   securitySchemes:
     apiKey:
