@@ -3,6 +3,7 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const { getManagementToken } = require('../utils/auth0Util');
 
 /**
  * Get User Profile
