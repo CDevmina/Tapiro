@@ -1,8 +1,8 @@
 const utils = require('../utils/writer.js');
-const Authentication = require('../service/AuthenticationService');
+const StoreOperations = require('../service/StoreOperationsService');
 
-module.exports.registerUser = function registerUser(req, res, next, body) {
-  Authentication.registerUser(req, body)
+module.exports.getUserPreferences = function getUserPreferences(req, res, next, userId) {
+  StoreOperations.getUserPreferences(req, userId)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -11,8 +11,8 @@ module.exports.registerUser = function registerUser(req, res, next, body) {
     });
 };
 
-module.exports.registerStore = function registerStore(req, res, next, body) {
-  Authentication.registerStore(req, body)
+module.exports.submitUserData = function submitUserData(req, res, next, body) {
+  StoreOperations.submitUserData(req, body)
     .then((response) => {
       utils.writeJson(res, response);
     })

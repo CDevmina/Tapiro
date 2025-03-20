@@ -1,76 +1,46 @@
 const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
-const { CACHE_TTL} = require('../utils/cacheConfig');
-const axios = require('axios');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const { ObjectId } = require('mongodb'); // Add this import
 
-/**
- * Get user preferences for targeted advertising
- */
-exports.getUserPreferences = async function (req, userId) {
+exports.getUserOwnPreferences = async function (req) {
   try {
-    // Validate storeId is set by the API key middleware
-    if (!req.storeId) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid API key',
-      });
-    }
-
+    // Get user data from middleware
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    
     const db = getDB();
-
-    // Try cache first using preference-specific cache key
-    const cacheKey = `prefs:${userId}:${req.storeId}`;
-    const cachedPrefs = await getCache(cacheKey);
-    if (cachedPrefs) {
-      return respondWithCode(200, JSON.parse(cachedPrefs));
+    
+    // Check cache first - standardized cache key
+    const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+    const cachedPreferences = await getCache(cacheKey);
+    if (cachedPreferences) {
+      return respondWithCode(200, JSON.parse(cachedPreferences));
     }
 
     // Find user in database
-    const user = await db.collection('users').findOne({
-      $or: [{ _id: userId }, { auth0Id: userId }, { username: userId }, { email: userId }],
-    });
-
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
     if (!user) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'User not found',
-      });
+      return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
-      });
-    }
-
-    // Check for consent
-    if (!user.privacySettings?.dataSharingConsent) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has not provided consent for data sharing',
-      });
-    }
-
-    // Prepare user preferences
+    // Return just the preferences part
     const preferences = {
       userId: user._id.toString(),
       interests: user.preferences || [],
-      demographics: {
-        ageRange: user.demographics?.ageRange || 'unknown',
-        location: user.demographics?.location || 'unknown',
-      },
+      demographics: user.demographics || {
+        ageRange: 'unknown',
+        location: 'unknown'
+      }
     };
 
-    // Cache the preferences with standardized TTL
+    // Cache the preferences result with specific TTL
     await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferences);
   } catch (error) {
-    console.error('Get user preferences failed:', error);
+    console.error('Get preferences failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
@@ -78,7 +48,7 @@ exports.getUserPreferences = async function (req, userId) {
 /**
  * Opt out from store data collection
  */
-exports.optOutFromStore = async function (req, body) {
+exports.optOutFromStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
@@ -94,8 +64,6 @@ exports.optOutFromStore = async function (req, body) {
       });
     }
 
-    // Get store ID from request body
-    const { storeId } = body;
     if (!storeId) {
       return respondWithCode(400, {
         code: 400,
@@ -103,8 +71,19 @@ exports.optOutFromStore = async function (req, body) {
       });
     }
 
-    // Validate that store exists
-    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    // Convert storeId to ObjectId before querying
+    let storeObjectId;
+    try {
+      storeObjectId = new ObjectId(storeId);
+    } catch (error) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'Invalid store ID format',
+      });
+    }
+
+    // Validate that store exists - use ObjectId
+    const storeExists = await db.collection('stores').findOne({ _id: storeObjectId });
     if (!storeExists) {
       return respondWithCode(404, {
         code: 404,
@@ -121,76 +100,13 @@ exports.optOutFromStore = async function (req, body) {
       },
     );
 
-    // Clear cache - setting TTL to 1 effectively invalidates it
-    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+    // Clear cache using standardized approach
+    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {
     console.error('Opt out from store failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
-  }
-};
-
-/**
- * Submit user data for analysis
- */
-exports.submitUserData = async function (req, body) {
-  try {
-    // Validate storeId is set by the API key middleware
-    if (!req.storeId) {
-      return respondWithCode(401, {
-        code: 401,
-        message: 'Invalid API key',
-      });
-    }
-
-    const db = getDB();
-    const { email, dataType, entries } = body;
-
-    // Find user by email
-    const user = await db.collection('users').findOne({ email });
-    if (!user) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'User not found',
-      });
-    }
-
-    // Check user consent
-    if (!user.privacySettings?.dataSharingConsent) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has not provided consent for data sharing',
-      });
-    }
-
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
-      });
-    }
-
-    // Store the data in appropriate collection
-    await db.collection('userData').insertOne({
-      userId: user._id,
-      storeId: req.storeId,
-      email,
-      dataType,
-      entries,
-      timestamp: new Date(),
-    });
-
-    // Invalidate the preferences cache
-    await setCache(`prefs:${user._id}:${req.storeId}`, '', { EX: 1 });
-
-    return respondWithCode(202, {
-      message: 'Data accepted for processing',
-      userId: user._id.toString(),
-    });
-  } catch (error) {
-    console.error('Submit user data failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
@@ -228,10 +144,13 @@ exports.updateUserPreferences = async function (req, body) {
     // Get updated user data
     const updatedUser = await db.collection('users').findOne({ _id: user._id });
 
-    // Clear related caches
+    // Clear related caches using the invalidation helper
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    
+    // Clear store-specific preference caches
     if (user.privacySettings?.optOutStores) {
       for (const storeId of user.privacySettings.optOutStores) {
-        await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }
 
@@ -255,7 +174,7 @@ exports.updateUserPreferences = async function (req, body) {
 /**
  * Opt in to store data collection
  */
-exports.optInToStore = async function (req, body) {
+exports.optInToStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
@@ -271,17 +190,18 @@ exports.optInToStore = async function (req, body) {
       });
     }
 
-    // Get store ID from request body
-    const { storeId } = body;
-    if (!storeId) {
+    let storeObjectId;
+    try {
+      storeObjectId = new ObjectId(storeId);
+    } catch (error) {
       return respondWithCode(400, {
         code: 400,
-        message: 'Store ID is required',
+        message: 'Invalid store ID format',
       });
     }
 
-    // Validate that store exists
-    const storeExists = await db.collection('stores').findOne({ _id: storeId });
+    // Validate that store exists - use ObjectId
+    const storeExists = await db.collection('stores').findOne({ _id: storeObjectId });
     if (!storeExists) {
       return respondWithCode(404, {
         code: 404,
@@ -298,8 +218,9 @@ exports.optInToStore = async function (req, body) {
       },
     );
 
-    // Clear cache
-    await setCache(`prefs:${user._id}:${storeId}`, '', { EX: 1 });
+    // Clear cache using invalidation helper
+    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {

@@ -29,6 +29,8 @@ paths:
       summary: Register User
       description: Create a new regular user account
       operationId: registerUser
+      security:
+        - oauth2: []
       requestBody:
         content:
           application/json:
@@ -46,6 +48,8 @@ paths:
           description: Invalid input
         "401":
           description: Unauthorized
+        "409":
+          description: User already exists or username taken
         "500":
           description: Internal server error
       x-swagger-router-controller: Authentication
@@ -56,6 +60,8 @@ paths:
       summary: Register Store
       description: Create a new store account
       operationId: registerStore
+      security:
+        - oauth2: []
       requestBody:
         content:
           application/json:
@@ -73,6 +79,8 @@ paths:
           description: Invalid input
         "401":
           description: Unauthorized
+        "409":
+          description: Account already registered
         "500":
           description: Internal server error
       x-swagger-router-controller: Authentication
@@ -236,7 +244,7 @@ paths:
           description: Invalid API key
         "400":
           description: Invalid data format
-      x-swagger-router-controller: DataCollection
+      x-swagger-router-controller: StoreOperations
 
   /users/{userId}/preferences:
     get:
@@ -263,9 +271,31 @@ paths:
           description: No consent for data access
         "404":
           description: User not found
-      x-swagger-router-controller: PreferenceManagement
+      x-swagger-router-controller: StoreOperations
 
   /users/preferences:
+    get:
+      tags: [Preference Management]
+      summary: Get user preferences
+      description: Get the authenticated user's preferences
+      operationId: getUserOwnPreferences
+      responses:
+        "200":
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: PreferenceManagement
+
     put:
       tags: [Preference Management]
       summary: Update user preferences
@@ -292,18 +322,19 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
-  /users/preferences/opt-in:
+  /users/preferences/opt-in/{storeId}:
     post:
       tags: [Preference Management]
       summary: Opt in to store data collection
       description: Removes a store from the user's opt-out list to allow data collection
       operationId: optInToStore
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StoreActionRequest"
-        required: true
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          description: ID of the store to opt in to
+          schema:
+            type: string
       responses:
         "204":
           description: Successfully opted in to store
@@ -317,18 +348,19 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
-  /users/preferences/opt-out:
+  /users/preferences/opt-out/{storeId}:
     post:
       tags: [Preference Management]
       summary: Opt out from store data collection
       description: Adds a store to the user's opt-out list to prevent data collection
       operationId: optOutFromStore
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StoreActionRequest"
-        required: true
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          description: ID of the store to opt out from
+          schema:
+            type: string
       responses:
         "204":
           description: Successfully opted out from store
@@ -348,6 +380,12 @@ paths:
       summary: Generate new API key
       description: Generates a new API key for the authenticated store
       operationId: createApiKey
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyCreate"
+        required: false
       responses:
         "201":
           description: API key created
@@ -365,16 +403,14 @@ paths:
       tags: [Store Management]
       summary: List API keys
       description: Returns all active API keys for the store
-      operationId: listApiKeys
+      operationId: getApiKeys
       responses:
         "200":
           description: List of API keys
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ApiKey"
+                $ref: "#/components/schemas/ApiKeyList"
         "401":
           description: Unauthorized
       security:
@@ -400,6 +436,45 @@ paths:
           description: Unauthorized
       security:
         - oauth2: [store:write]
+      x-swagger-router-controller: StoreManagement
+
+  /stores/api-keys/{keyId}/usage:
+    get:
+      tags: [Store Management]
+      summary: Get API key usage statistics
+      description: Returns usage data for a specific API key
+      operationId: getApiKeyUsage
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: API key usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyUsage"
+        "401":
+          description: Unauthorized
+        "404":
+          description: API key not found
+      security:
+        - oauth2: [store:read]
       x-swagger-router-controller: StoreManagement
 
 components:
@@ -519,10 +594,6 @@ components:
       required:
         - dataSharingConsent
       properties:
-        phone:
-          type: string
-          pattern: ^\+?[\d\s-]+$
-          description: User's phone number (optional)
         preferences:
           type: array
           items:
@@ -697,15 +768,47 @@ components:
                   type: string
                   enum: [purchase, opt-out]
 
-    StoreActionRequest:
+    ApiKeyCreate:
       type: object
-      required:
-        - storeId
       properties:
-        storeId:
+        name:
           type: string
-          format: uuid
-          description: ID of the store to opt in to or opt out from
+          description: Name for the API key
+
+    ApiKeyList:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApiKey"
+
+    ApiKeyUsage:
+      type: object
+      properties:
+        keyId:
+          type: string
+        prefix:
+          type: string
+        name:
+          type: string
+        totalRequests:
+          type: integer
+        methodBreakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        endpointBreakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        dailyUsage:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
 
   securitySchemes:
     apiKey:

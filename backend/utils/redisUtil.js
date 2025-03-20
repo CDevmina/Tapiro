@@ -1,5 +1,6 @@
 require('dotenv').config();
 const redis = require('redis');
+const { CACHE_TTL } = require('./cacheConfig');
 
 const client = redis.createClient({
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
@@ -23,9 +24,16 @@ async function setCache(key, value, options = {}) {
   return client.set(key, value, options);
 }
 
-module.exports = {
+// Add this function to your existing redisUtil.js
+async function invalidateCache(key) {
+  return setCache(key, '', { EX: CACHE_TTL.INVALIDATION });
+}
+
+// Export the new function
+module.exports = { 
   client,
   connectRedis,
   getCache,
   setCache,
+  invalidateCache 
 };
