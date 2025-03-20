@@ -5,8 +5,9 @@ const CACHE_TTL = {
   TOKEN: 3600,        // Regular tokens - 1 hour
   ADMIN_TOKEN: 82800, // Management tokens - 23 hours
   USER_DATA: 3600,    // User profiles - 1 hour
-  STORE_DATA: 3600,    // Store profiles - 1 hour
-  INVALIDATION: 1,   // Short TTL for invalidation
+  STORE_DATA: 3600,   // Store profiles - 1 hour
+  API_KEY: 1800,      // API keys - 30 minutes
+  INVALIDATION: 1,    // Short TTL for invalidation
 };
 
 /**

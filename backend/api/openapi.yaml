@@ -438,6 +438,45 @@ paths:
         - oauth2: [store:write]
       x-swagger-router-controller: StoreManagement
 
+  /stores/api-keys/{keyId}/usage:
+    get:
+      tags: [Store Management]
+      summary: Get API key usage statistics
+      description: Returns usage data for a specific API key
+      operationId: getApiKeyUsage
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: API key usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyUsage"
+        "401":
+          description: Unauthorized
+        "404":
+          description: API key not found
+      security:
+        - oauth2: [store:read]
+      x-swagger-router-controller: StoreManagement
+
 components:
   schemas:
     User:
@@ -740,6 +779,36 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/ApiKey"
+
+    ApiKeyUsage:
+      type: object
+      properties:
+        keyId:
+          type: string
+        prefix:
+          type: string
+        name:
+          type: string
+        totalRequests:
+          type: integer
+        methodBreakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        endpointBreakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        dailyUsage:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
 
   securitySchemes:
     apiKey:

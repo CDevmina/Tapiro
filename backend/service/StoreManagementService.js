@@ -144,6 +144,9 @@ exports.revokeApiKey = async function (req, keyId) {
     
     // Find the key to be revoked
     const keyToRevoke = store.apiKeys?.find(k => k.keyId === keyId);
+    if (keyToRevoke) {
+      console.log(`Revoking API key with ID: ${keyId}, prefix: ${keyToRevoke.prefix}`);
+    }
 
     // Update store to remove API key
     const result = await db.collection('stores').updateOne(
@@ -171,14 +174,98 @@ exports.revokeApiKey = async function (req, keyId) {
     // Invalidate store cache to reflect deleted API key
     await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
     
-    // Also invalidate the API key cache if we found the key
-    if (keyToRevoke) {
-      await invalidateCache(`${CACHE_KEYS.API_KEY}${keyToRevoke.prefix}`);
-    }
-
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete API key failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get API Key Usage
+ * Get usage statistics for a specific API key
+ */
+exports.getApiKeyUsage = async function (req, keyId, startDate, endDate) {
+  try {
+    const db = getDB();
+    
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+
+    // Get the store
+    const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
+    if (!store) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'Store not found',
+      });
+    }
+    
+    // Find the specified API key
+    const apiKey = store.apiKeys?.find(k => k.keyId === keyId);
+    if (!apiKey) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'API key not found',
+      });
+    }
+
+    // Prepare date filter
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      dateFilter.$lte = new Date(endDate);
+    }
+    
+    // Build the query
+    const query = { 
+      apiKeyId: keyId,
+      storeId: store._id.toString()
+    };
+    
+    if (Object.keys(dateFilter).length > 0) {
+      query.timestamp = dateFilter;
+    }
+
+    // Get usage data
+    const usageData = await db.collection('apiUsage').find(query).toArray();
+    
+    // Process the data to generate statistics
+    const methodBreakdown = {};
+    const endpointBreakdown = {};
+    const dailyUsage = {};
+    
+    usageData.forEach(record => {
+      // Count methods
+      methodBreakdown[record.method] = (methodBreakdown[record.method] || 0) + 1;
+      
+      // Count endpoints
+      endpointBreakdown[record.endpoint] = (endpointBreakdown[record.endpoint] || 0) + 1;
+      
+      // Group by day for the chart
+      const day = record.timestamp.toISOString().split('T')[0];
+      dailyUsage[day] = (dailyUsage[day] || 0) + 1;
+    });
+    
+    // Format daily usage for the response
+    const dailyUsageArray = Object.entries(dailyUsage).map(([date, count]) => ({
+      date,
+      count
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    return respondWithCode(200, {
+      keyId: apiKey.keyId,
+      prefix: apiKey.prefix,
+      name: apiKey.name,
+      totalRequests: usageData.length,
+      methodBreakdown,
+      endpointBreakdown,
+      dailyUsage: dailyUsageArray
+    });
+  } catch (error) {
+    console.error('Get API key usage failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
