@@ -30,3 +30,13 @@ module.exports.revokeApiKey = function revokeApiKey(req, res, next, keyId) {
       utils.writeJson(res, response);
     });
 };
+
+module.exports.getApiKeyUsage = function getApiKeyUsage(req, res, next, keyId) {
+  StoreManagement.getApiKeyUsage(req, keyId)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+}
