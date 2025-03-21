@@ -150,7 +150,7 @@ exports.deleteUserProfile = async function (req) {
     }
 
     // Clear cache using standardized key
-    await client.del(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete profile failed:', error);
