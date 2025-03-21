@@ -12,9 +12,9 @@ const { getManagementToken } = require('../utils/auth0Util');
 exports.getUserProfile = async function (req) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Try cache first using standardized cache key
     const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
@@ -48,9 +48,9 @@ exports.getUserProfile = async function (req) {
 exports.updateUserProfile = async function (req, body) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // If username is being updated, check for uniqueness
     if (body.username) {
@@ -69,9 +69,15 @@ exports.updateUserProfile = async function (req, body) {
 
     // Update user
     const updateData = {
-      ...body,
       updatedAt: new Date(),
     };
+
+    // Only add fields that are provided in the request
+    if (body.username !== undefined) updateData.username = body.username;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.preferences !== undefined) updateData.preferences = body.preferences;
+    if (body.privacySettings !== undefined) updateData.privacySettings = body.privacySettings;
+    if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
 
     const result = await db
       .collection('users')
@@ -90,14 +96,14 @@ exports.updateUserProfile = async function (req, body) {
 
     // Invalidate user data cache
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
-    
+
     // Also invalidate preferences cache
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    
+
     // If preferences change might affect store data, invalidate those too:
-    if (user.privacySettings?.optOutStores) {
-      for (const storeId of user.privacySettings.optOutStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    if (result.privacySettings?.optOutStores) {
+      for (const storeId of result.privacySettings.optOutStores) {
+        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${result._id}:${storeId}`);
       }
     }
 
@@ -118,9 +124,9 @@ exports.updateUserProfile = async function (req, body) {
 exports.deleteUserProfile = async function (req) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Delete from database
     const result = await db.collection('users').deleteOne({ auth0Id: userData.sub });

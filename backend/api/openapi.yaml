@@ -487,7 +487,6 @@ components:
       properties:
         userId:
           type: string
-          format: uuid
           readOnly: true
         auth0Id:
           type: string
@@ -521,7 +520,6 @@ components:
               type: array
               items:
                 type: string
-                format: uuid
               description: List of store IDs user has opted out from
         dataAccess:
           type: object
@@ -549,7 +547,6 @@ components:
       properties:
         storeId:
           type: string
-          format: uuid
           readOnly: true
         auth0Id:
           type: string
@@ -645,7 +642,6 @@ components:
               type: array
               items:
                 type: string
-                format: uuid
         dataAccess:
           type: object
           properties:
@@ -734,7 +730,6 @@ components:
       properties:
         userId:
           type: string
-          format: uuid
         interests:
           type: array
           items:

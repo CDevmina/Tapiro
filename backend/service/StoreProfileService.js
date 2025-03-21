@@ -13,9 +13,9 @@ const { getManagementToken } = require('../utils/auth0Util');
 exports.getStoreProfile = async function (req) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Try cache first using standardized cache key
     const cacheKey = `${CACHE_KEYS.STORE_DATA}${userData.sub}`;
@@ -49,18 +49,18 @@ exports.getStoreProfile = async function (req) {
 exports.updateStoreProfile = async function (req, body) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Update store
-    const { name, address, webhooks } = body;
     const updateData = {
-      name,
-      address,
-      webhooks,
       updatedAt: new Date(),
     };
+
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.address !== undefined) updateData.address = body.address;
+    if (body.webhooks !== undefined) updateData.webhooks = body.webhooks;
 
     const result = await db
       .collection('stores')
@@ -94,9 +94,9 @@ exports.updateStoreProfile = async function (req, body) {
 exports.deleteStoreProfile = async function (req) {
   try {
     const db = getDB();
-    
+
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Delete from database
     const result = await db.collection('stores').deleteOne({ auth0Id: userData.sub });
