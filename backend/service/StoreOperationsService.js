@@ -26,23 +26,13 @@ exports.getUserPreferences = async function (req, userId) {
       return respondWithCode(200, JSON.parse(cachedPrefs));
     }
 
-    // Find user in database
-    const user = await db.collection('users').findOne({
-      $or: [{ _id: userId }, { auth0Id: userId }, { username: userId }, { email: userId }],
-    });
+    // Find user in database by email only
+    const user = await db.collection('users').findOne({ email: userId });
 
     if (!user) {
       return respondWithCode(404, {
         code: 404,
         message: 'User not found',
-      });
-    }
-
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
       });
     }
 
@@ -52,6 +42,20 @@ exports.getUserPreferences = async function (req, userId) {
         code: 403,
         message: 'User has not provided consent for data sharing',
       });
+    }
+
+    // Check if user has explicitly opted in to this store
+    const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
+    
+    // Auto opt-in the user if not already opted in
+    if (!isOptedIn) {
+      await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+          $addToSet: { 'privacySettings.optInStores': req.storeId },
+          $set: { updatedAt: new Date() },
+        }
+      );
     }
 
     // Prepare user preferences
@@ -108,12 +112,18 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
-      });
+    // Check if user has explicitly opted in to this store
+    const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
+    
+    // Auto opt-in the user if not already opted in
+    if (!isOptedIn) {
+      await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+          $addToSet: { 'privacySettings.optInStores': req.storeId },
+          $set: { updatedAt: new Date() },
+        }
+      );
     }
 
     // Store the data in appropriate collection
@@ -131,8 +141,8 @@ exports.submitUserData = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
     return respondWithCode(202, {
-      message: 'Data accepted for processing',
-      userId: user._id.toString(),
+      code: 202,
+      message: 'Data accepted for processing'
     });
   } catch (error) {
     console.error('Submit user data failed:', error);

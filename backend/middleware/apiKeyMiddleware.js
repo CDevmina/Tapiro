@@ -1,5 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const crypto = require('crypto');
 const { ObjectId } = require('mongodb'); // Make sure you have this import
@@ -61,7 +61,7 @@ const validateApiKey = async (req, scopes, schema) => {
       // If key is no longer active, remove from cache and reject
       if (!storeWithKey) {
         console.log(`API key ${prefix} was in cache but is no longer active`);
-        await client.del(cacheKey);
+        await invalidateCache(cacheKey);
         throw new Error('API key revoked or invalid');
       }
       

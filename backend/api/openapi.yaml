@@ -439,7 +439,7 @@ paths:
       x-swagger-router-controller: StoreManagement
 
   /stores/api-keys/{keyId}/usage:
-    get:
+    post:
       tags: [Store Management]
       summary: Get API key usage statistics
       description: Returns usage data for a specific API key
@@ -450,18 +450,21 @@ paths:
           required: true
           schema:
             type: string
-        - name: startDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: endDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                  description: Optional start date for filtering usage data
+                endDate:
+                  type: string
+                  format: date
+                  description: Optional end date for filtering usage data
+        required: false
       responses:
         "200":
           description: API key usage statistics

@@ -91,11 +91,11 @@ exports.optOutFromStore = async function (req, storeId) {
       });
     }
 
-    // Add store to opt-out list
+    // Remove store from opt-in list
     await db.collection('users').updateOne(
       { _id: user._id },
       {
-        $addToSet: { 'privacySettings.optOutStores': storeId },
+        $pull: { 'privacySettings.optInStores': storeId },
         $set: { updatedAt: new Date() },
       },
     );
@@ -209,11 +209,11 @@ exports.optInToStore = async function (req, storeId) {
       });
     }
 
-    // Remove store from opt-out list
+    // Add store to opt-in list
     await db.collection('users').updateOne(
       { _id: user._id },
       {
-        $pull: { 'privacySettings.optOutStores': storeId },
+        $addToSet: { 'privacySettings.optInStores': storeId },
         $set: { updatedAt: new Date() },
       },
     );
