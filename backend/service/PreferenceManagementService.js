@@ -64,14 +64,6 @@ exports.optOutFromStore = async function (req, storeId) {
       });
     }
 
-    if (!storeId) {
-      return respondWithCode(400, {
-        code: 400,
-        message: 'Store ID is required',
-      });
-    }
-
-    // Convert storeId to ObjectId before querying
     let storeObjectId;
     try {
       storeObjectId = new ObjectId(storeId);
@@ -91,11 +83,12 @@ exports.optOutFromStore = async function (req, storeId) {
       });
     }
 
-    // Remove store from opt-in list
+    // Remove from opt-in list and add to opt-out list
     await db.collection('users').updateOne(
       { _id: user._id },
       {
         $pull: { 'privacySettings.optInStores': storeId },
+        $addToSet: { 'privacySettings.optOutStores': storeId },
         $set: { updatedAt: new Date() },
       },
     );
@@ -103,6 +96,7 @@ exports.optOutFromStore = async function (req, storeId) {
     // Clear cache using standardized approach
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // Add this line
 
     return respondWithCode(204);
   } catch (error) {
@@ -208,12 +202,13 @@ exports.optInToStore = async function (req, storeId) {
         message: 'Store not found',
       });
     }
-
-    // Add store to opt-in list
+    
+    // Add store to opt-in list AND remove from opt-out list if present
     await db.collection('users').updateOne(
       { _id: user._id },
       {
         $addToSet: { 'privacySettings.optInStores': storeId },
+        $pull: { 'privacySettings.optOutStores': storeId },
         $set: { updatedAt: new Date() },
       },
     );
@@ -221,6 +216,7 @@ exports.optInToStore = async function (req, storeId) {
     // Clear cache using invalidation helper
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {

@@ -44,10 +44,19 @@ exports.getUserPreferences = async function (req, userId) {
       });
     }
 
+    // Check if user has explicitly opted out from this store
+    const isOptedOut = user.privacySettings?.optOutStores?.includes(req.storeId);
+    if (isOptedOut) {
+      return respondWithCode(403, {
+        code: 403,
+        message: 'No consent: user has opted out from sharing data with this store',
+      });
+    }
+
     // Check if user has explicitly opted in to this store
     const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
     
-    // Auto opt-in the user if not already opted in
+    // Only auto opt-in if not in opt-out list (which we've already checked)
     if (!isOptedIn) {
       await db.collection('users').updateOne(
         { _id: user._id },
@@ -155,10 +164,19 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
+    // Check if user has explicitly opted out from this store
+    const isOptedOut = user.privacySettings?.optOutStores?.includes(req.storeId);
+    if (isOptedOut) {
+      return respondWithCode(403, {
+        code: 403,
+        message: 'No consent: user has opted out from sharing data with this store',
+      });
+    }
+
     // Check if user has explicitly opted in to this store
     const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
     
-    // Auto opt-in the user if not already opted in
+    // Auto opt-in the user only if not opted out and not already opted in
     if (!isOptedIn) {
       await db.collection('users').updateOne(
         { _id: user._id },

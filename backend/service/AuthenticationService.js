@@ -93,6 +93,7 @@ exports.registerUser = async function (req, body) {
         dataSharingConsent,
         anonymizeData: false,
         optInStores: [],
+        optOutStores: [],
       },
       dataAccess: {
         allowedDomains: [],
