@@ -79,12 +79,17 @@ services:
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - API_BASE_URL=http://backend:3000
+      - MONGODB_DB_NAME=tapiro
+      - BACKEND_API_URL=http://backend:3000
+      - SECRET_KEY=${AI_SERVICE_API_KEY}
+      - DEBUG=true
     ports:
       - "8000:8000"
     networks:
       - tapiro-net
     depends_on:
       - backend
+      - redis
 
 networks:
   tapiro-net:
