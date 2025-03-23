@@ -93,7 +93,50 @@ exports.submitUserData = async function (req, body) {
     }
 
     const db = getDB();
-    const { email, dataType, entries } = body;
+    const { email, dataType, entries, metadata } = body;
+
+    // Validate entries format based on dataType
+    if (!Array.isArray(entries)) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'Entries must be an array',
+      });
+    }
+
+    // Validate entries based on dataType
+    if (dataType === 'purchase') {
+      for (const entry of entries) {
+        if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
+          return respondWithCode(400, {
+            code: 400,
+            message: 'Purchase entries require timestamp and items array',
+          });
+        }
+        
+        for (const item of entry.items) {
+          if (!item.name) {
+            return respondWithCode(400, {
+              code: 400,
+              message: 'Each purchase item requires a name',
+            });
+          }
+        }
+      }
+    } else if (dataType === 'search') {
+      for (const entry of entries) {
+        if (!entry.timestamp || !entry.query) {
+          return respondWithCode(400, {
+            code: 400,
+            message: 'Search entries require timestamp and query',
+          });
+        }
+      }
+    } else {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'dataType must be either "purchase" or "search"',
+      });
+    }
 
     // Find user by email
     const user = await db.collection('users').findOne({ email });
@@ -133,6 +176,8 @@ exports.submitUserData = async function (req, body) {
       email,
       dataType,
       entries,
+      metadata,
+      processedStatus: 'pending',
       timestamp: new Date(),
     });
 

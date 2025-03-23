@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = "1.0.0";  // Increment this when schemas change
+const SCHEMA_VERSION = "1.0.1";
 
 // User schema
 const userSchema = {
@@ -42,7 +42,7 @@ const userSchema = {
           properties: {
             dataSharingConsent: { bsonType: 'bool' },
             anonymizeData: { bsonType: 'bool' },
-            optOutStores: { bsonType: 'array' }
+            optInStores: { bsonType: 'array' }
           }
         },
         dataAccess: {
@@ -155,9 +155,86 @@ const userDataSchema = {
           enum: ['purchase', 'search'],
           description: 'Type of data being stored'
         },
-        entries: { bsonType: 'array' },
+        entries: {
+          bsonType: 'array',
+          items: {
+            bsonType: 'object'
+          }
+        },
+        metadata: {
+          bsonType: 'object',
+          description: 'Additional metadata about the collection event',
+          properties: {
+            source: { bsonType: 'string' },
+            deviceType: { bsonType: 'string' },
+            sessionId: { bsonType: 'string' }
+          }
+        },
+        processedStatus: {
+          bsonType: 'string',
+          enum: ['pending', 'processed', 'failed'],
+          description: 'Status of algorithm processing',
+        },
         timestamp: { bsonType: 'date' }
-      }
+      },
+      allOf: [
+        {
+          if: { properties: { dataType: { enum: ['purchase'] } } },
+          then: {
+            properties: {
+              entries: {
+                bsonType: 'array',
+                items: {
+                  bsonType: 'object',
+                  required: ['timestamp', 'items'],
+                  properties: {
+                    timestamp: { bsonType: 'date' },
+                    items: { 
+                      bsonType: 'array',
+                      items: {
+                        bsonType: 'object',
+                        required: ['name'],
+                        properties: {
+                          sku: { bsonType: 'string' },
+                          name: { bsonType: 'string' },
+                          category: { bsonType: 'string' },
+                          price: { bsonType: 'double' },
+                          quantity: { bsonType: 'int' }
+                        }
+                      }
+                    },
+                    totalAmount: { bsonType: 'double' }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          if: { properties: { dataType: { enum: ['search'] } } },
+          then: {
+            properties: {
+              entries: {
+                bsonType: 'array',
+                items: {
+                  bsonType: 'object',
+                  required: ['timestamp', 'query'],
+                  properties: {
+                    timestamp: { bsonType: 'date' },
+                    query: { bsonType: 'string' },
+                    category: { bsonType: 'string' },
+                    results: { bsonType: 'int' },
+                    clicked: { 
+                      bsonType: 'array',
+                      items: { bsonType: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   },
   validationLevel: 'moderate',

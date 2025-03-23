@@ -148,8 +148,8 @@ exports.updateUserPreferences = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     
     // Clear store-specific preference caches
-    if (user.privacySettings?.optOutStores) {
-      for (const storeId of user.privacySettings.optOutStores) {
+    if (user.privacySettings?.optInStores) {
+      for (const storeId of user.privacySettings.optInStores) {
         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }

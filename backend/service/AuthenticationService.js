@@ -18,6 +18,15 @@ exports.registerUser = async function (req, body) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
     
+    // Check if already registered as a user or store
+    const registration = await checkExistingRegistration(userData.sub);
+    if (registration.exists) {
+      return respondWithCode(409, {
+        code: 409,
+        message: `This account is already registered as a ${registration.type}`,
+      });
+    }
+    
     // Check if email already exists in our database
     const existingUserByEmail = await db.collection('users').findOne({
       email: userData.email,
@@ -83,7 +92,7 @@ exports.registerUser = async function (req, body) {
       privacySettings: {
         dataSharingConsent,
         anonymizeData: false,
-        optOutStores: [],
+        optInStores: [],
       },
       dataAccess: {
         allowedDomains: [],

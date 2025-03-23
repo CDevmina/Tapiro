@@ -15,6 +15,8 @@ tags:
     description: Operations for submitting user data for targeted advertising
   - name: Preference Management
     description: Operations for managing user preferences and opt-in/out settings
+  - name: Data Retrival
+    description: Operations for retrieving user preferences and data
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -248,7 +250,7 @@ paths:
 
   /users/{userId}/preferences:
     get:
-      tags: [Preference Management]
+      tags: [Data Retrival]
       summary: Get user preferences
       description: Retrieve preferences for targeted advertising
       operationId: getUserPreferences
@@ -519,7 +521,7 @@ components:
             anonymizeData:
               type: boolean
               default: false
-            optOutStores:
+            optInStores:
               type: array
               items:
                 type: string
@@ -641,7 +643,7 @@ components:
               type: boolean
             anonymizeData:
               type: boolean
-            optOutStores:
+            optInStores:
               type: array
               items:
                 type: string
@@ -684,15 +686,34 @@ components:
         dataType:
           type: string
           enum: [purchase, search]
+          description: Type of data being stored (purchase or search history)
         entries:
           type: array
           items:
             oneOf:
               - $ref: "#/components/schemas/PurchaseEntry"
               - $ref: "#/components/schemas/SearchEntry"
+        metadata:
+          type: object
+          description: Additional metadata about the collection event
+          properties:
+            source:
+              type: string
+            deviceType:
+              type: string
+            sessionId:
+              type: string
+        processedStatus:
+          type: string
+          enum: [pending, processed, failed]
+          default: pending
+          description: Status of algorithm processing
 
     PurchaseEntry:
       type: object
+      required:
+        - timestamp
+        - items
       properties:
         timestamp:
           type: string
@@ -707,10 +728,14 @@ components:
 
     PurchaseItem:
       type: object
+      required:
+        - name
       properties:
         sku:
           type: string
         name:
+          type: string
+        category:
           type: string
         quantity:
           type: integer
@@ -719,6 +744,9 @@ components:
 
     SearchEntry:
       type: object
+      required:
+        - timestamp
+        - query
       properties:
         timestamp:
           type: string
@@ -727,6 +755,12 @@ components:
           type: string
         category:
           type: string
+        results:
+          type: integer
+        clicked:
+          type: array
+          items:
+            type: string
 
     UserPreferences:
       type: object
