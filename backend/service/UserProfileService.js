@@ -101,8 +101,8 @@ exports.updateUserProfile = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     // If preferences change might affect store data, invalidate those too:
-    if (result.privacySettings?.optOutStores) {
-      for (const storeId of result.privacySettings.optOutStores) {
+    if (result.privacySettings?.optInStores) {
+      for (const storeId of result.privacySettings.optInStores) {
         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${result._id}:${storeId}`);
       }
     }
