@@ -26,23 +26,13 @@ exports.getUserPreferences = async function (req, userId) {
       return respondWithCode(200, JSON.parse(cachedPrefs));
     }
 
-    // Find user in database
-    const user = await db.collection('users').findOne({
-      $or: [{ _id: userId }, { auth0Id: userId }, { username: userId }, { email: userId }],
-    });
+    // Find user in database by email only
+    const user = await db.collection('users').findOne({ email: userId });
 
     if (!user) {
       return respondWithCode(404, {
         code: 404,
         message: 'User not found',
-      });
-    }
-
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
-      return respondWithCode(403, {
-        code: 403,
-        message: 'User has opted out from this store',
       });
     }
 
@@ -52,6 +42,29 @@ exports.getUserPreferences = async function (req, userId) {
         code: 403,
         message: 'User has not provided consent for data sharing',
       });
+    }
+
+    // Check if user has explicitly opted out from this store
+    const isOptedOut = user.privacySettings?.optOutStores?.includes(req.storeId);
+    if (isOptedOut) {
+      return respondWithCode(403, {
+        code: 403,
+        message: 'No consent: user has opted out from sharing data with this store',
+      });
+    }
+
+    // Check if user has explicitly opted in to this store
+    const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
+    
+    // Only auto opt-in if not in opt-out list (which we've already checked)
+    if (!isOptedIn) {
+      await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+          $addToSet: { 'privacySettings.optInStores': req.storeId },
+          $set: { updatedAt: new Date() },
+        }
+      );
     }
 
     // Prepare user preferences
@@ -89,7 +102,50 @@ exports.submitUserData = async function (req, body) {
     }
 
     const db = getDB();
-    const { email, dataType, entries } = body;
+    const { email, dataType, entries, metadata } = body;
+
+    // Validate entries format based on dataType
+    if (!Array.isArray(entries)) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'Entries must be an array',
+      });
+    }
+
+    // Validate entries based on dataType
+    if (dataType === 'purchase') {
+      for (const entry of entries) {
+        if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
+          return respondWithCode(400, {
+            code: 400,
+            message: 'Purchase entries require timestamp and items array',
+          });
+        }
+        
+        for (const item of entry.items) {
+          if (!item.name) {
+            return respondWithCode(400, {
+              code: 400,
+              message: 'Each purchase item requires a name',
+            });
+          }
+        }
+      }
+    } else if (dataType === 'search') {
+      for (const entry of entries) {
+        if (!entry.timestamp || !entry.query) {
+          return respondWithCode(400, {
+            code: 400,
+            message: 'Search entries require timestamp and query',
+          });
+        }
+      }
+    } else {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'dataType must be either "purchase" or "search"',
+      });
+    }
 
     // Find user by email
     const user = await db.collection('users').findOne({ email });
@@ -108,12 +164,27 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
-    // Check if user has opted out from this store
-    if (user.privacySettings?.optOutStores?.includes(req.storeId)) {
+    // Check if user has explicitly opted out from this store
+    const isOptedOut = user.privacySettings?.optOutStores?.includes(req.storeId);
+    if (isOptedOut) {
       return respondWithCode(403, {
         code: 403,
-        message: 'User has opted out from this store',
+        message: 'No consent: user has opted out from sharing data with this store',
       });
+    }
+
+    // Check if user has explicitly opted in to this store
+    const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
+    
+    // Auto opt-in the user only if not opted out and not already opted in
+    if (!isOptedIn) {
+      await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+          $addToSet: { 'privacySettings.optInStores': req.storeId },
+          $set: { updatedAt: new Date() },
+        }
+      );
     }
 
     // Store the data in appropriate collection
@@ -123,6 +194,8 @@ exports.submitUserData = async function (req, body) {
       email,
       dataType,
       entries,
+      metadata,
+      processedStatus: 'pending',
       timestamp: new Date(),
     });
 
@@ -131,8 +204,8 @@ exports.submitUserData = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
     return respondWithCode(202, {
-      message: 'Data accepted for processing',
-      userId: user._id.toString(),
+      code: 202,
+      message: 'Data accepted for processing'
     });
   } catch (error) {
     console.error('Submit user data failed:', error);

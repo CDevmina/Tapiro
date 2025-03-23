@@ -15,6 +15,8 @@ tags:
     description: Operations for submitting user data for targeted advertising
   - name: Preference Management
     description: Operations for managing user preferences and opt-in/out settings
+  - name: Data Retrival
+    description: Operations for retrieving user preferences and data
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -248,7 +250,7 @@ paths:
 
   /users/{userId}/preferences:
     get:
-      tags: [Preference Management]
+      tags: [Data Retrival]
       summary: Get user preferences
       description: Retrieve preferences for targeted advertising
       operationId: getUserPreferences
@@ -439,7 +441,7 @@ paths:
       x-swagger-router-controller: StoreManagement
 
   /stores/api-keys/{keyId}/usage:
-    get:
+    post:
       tags: [Store Management]
       summary: Get API key usage statistics
       description: Returns usage data for a specific API key
@@ -450,18 +452,21 @@ paths:
           required: true
           schema:
             type: string
-        - name: startDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: endDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                  description: Optional start date for filtering usage data
+                endDate:
+                  type: string
+                  format: date
+                  description: Optional end date for filtering usage data
+        required: false
       responses:
         "200":
           description: API key usage statistics
@@ -487,7 +492,6 @@ components:
       properties:
         userId:
           type: string
-          format: uuid
           readOnly: true
         auth0Id:
           type: string
@@ -517,11 +521,10 @@ components:
             anonymizeData:
               type: boolean
               default: false
-            optOutStores:
+            optInStores:
               type: array
               items:
                 type: string
-                format: uuid
               description: List of store IDs user has opted out from
         dataAccess:
           type: object
@@ -549,7 +552,6 @@ components:
       properties:
         storeId:
           type: string
-          format: uuid
           readOnly: true
         auth0Id:
           type: string
@@ -641,11 +643,10 @@ components:
               type: boolean
             anonymizeData:
               type: boolean
-            optOutStores:
+            optInStores:
               type: array
               items:
                 type: string
-                format: uuid
         dataAccess:
           type: object
           properties:
@@ -681,19 +682,71 @@ components:
       properties:
         email:
           type: string
-          format: email
+          description: User's email address
         dataType:
           type: string
           enum: [purchase, search]
+          description: Type of data being submitted
         entries:
           type: array
+          description: Array of data entries
           items:
-            oneOf:
-              - $ref: "#/components/schemas/PurchaseEntry"
-              - $ref: "#/components/schemas/SearchEntry"
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+                description: When the event occurred
+              items:
+                type: array
+                description: For purchase data - products purchased
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    price:
+                      type: number
+                    quantity:
+                      type: integer
+                    category:
+                      type: string
+              query:
+                type: string
+                description: For search data - search query
+              category:
+                type: string
+                description: For search data - category searched
+              results:
+                type: integer
+                description: For search data - number of results
+              clicked:
+                type: array
+                description: For search data - items clicked
+                items:
+                  type: string
+              totalAmount:
+                type: number
+                description: For purchase data - total purchase amount
+        metadata:
+          type: object
+          description: Additional information about the collection event
+          properties:
+            source:
+              type: string
+              description: Source of the data (web, mobile, pos, etc)
+            deviceType:
+              type: string
+              description: Type of device used
+            sessionId:
+              type: string
+              description: Unique identifier for the user session
 
     PurchaseEntry:
       type: object
+      required:
+        - timestamp
+        - items
       properties:
         timestamp:
           type: string
@@ -708,10 +761,14 @@ components:
 
     PurchaseItem:
       type: object
+      required:
+        - name
       properties:
         sku:
           type: string
         name:
+          type: string
+        category:
           type: string
         quantity:
           type: integer
@@ -720,6 +777,9 @@ components:
 
     SearchEntry:
       type: object
+      required:
+        - timestamp
+        - query
       properties:
         timestamp:
           type: string
@@ -728,13 +788,18 @@ components:
           type: string
         category:
           type: string
+        results:
+          type: integer
+        clicked:
+          type: array
+          items:
+            type: string
 
     UserPreferences:
       type: object
       properties:
         userId:
           type: string
-          format: uuid
         interests:
           type: array
           items:

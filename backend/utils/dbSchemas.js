@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = "1.0.0";  // Increment this when schemas change
+const SCHEMA_VERSION = "1.0.4";
 
 // User schema
 const userSchema = {
@@ -42,6 +42,7 @@ const userSchema = {
           properties: {
             dataSharingConsent: { bsonType: 'bool' },
             anonymizeData: { bsonType: 'bool' },
+            optInStores: { bsonType: 'array' },
             optOutStores: { bsonType: 'array' }
           }
         },
@@ -155,7 +156,24 @@ const userDataSchema = {
           enum: ['purchase', 'search'],
           description: 'Type of data being stored'
         },
-        entries: { bsonType: 'array' },
+        entries: { 
+          bsonType: 'array',
+          items: { bsonType: 'object' }
+        },
+        metadata: {
+          bsonType: 'object',
+          description: 'Additional metadata about the collection event',
+          properties: {
+            source: { bsonType: 'string' },
+            deviceType: { bsonType: 'string' },
+            sessionId: { bsonType: 'string' }
+          }
+        },
+        processedStatus: {
+          bsonType: 'string',
+          enum: ['pending', 'processed', 'failed'],
+          description: 'Status of algorithm processing',
+        },
         timestamp: { bsonType: 'date' }
       }
     }

@@ -64,14 +64,6 @@ exports.optOutFromStore = async function (req, storeId) {
       });
     }
 
-    if (!storeId) {
-      return respondWithCode(400, {
-        code: 400,
-        message: 'Store ID is required',
-      });
-    }
-
-    // Convert storeId to ObjectId before querying
     let storeObjectId;
     try {
       storeObjectId = new ObjectId(storeId);
@@ -91,10 +83,11 @@ exports.optOutFromStore = async function (req, storeId) {
       });
     }
 
-    // Add store to opt-out list
+    // Remove from opt-in list and add to opt-out list
     await db.collection('users').updateOne(
       { _id: user._id },
       {
+        $pull: { 'privacySettings.optInStores': storeId },
         $addToSet: { 'privacySettings.optOutStores': storeId },
         $set: { updatedAt: new Date() },
       },
@@ -103,6 +96,7 @@ exports.optOutFromStore = async function (req, storeId) {
     // Clear cache using standardized approach
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // Add this line
 
     return respondWithCode(204);
   } catch (error) {
@@ -148,8 +142,8 @@ exports.updateUserPreferences = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     
     // Clear store-specific preference caches
-    if (user.privacySettings?.optOutStores) {
-      for (const storeId of user.privacySettings.optOutStores) {
+    if (user.privacySettings?.optInStores) {
+      for (const storeId of user.privacySettings.optInStores) {
         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }
@@ -208,11 +202,12 @@ exports.optInToStore = async function (req, storeId) {
         message: 'Store not found',
       });
     }
-
-    // Remove store from opt-out list
+    
+    // Add store to opt-in list AND remove from opt-out list if present
     await db.collection('users').updateOne(
       { _id: user._id },
       {
+        $addToSet: { 'privacySettings.optInStores': storeId },
         $pull: { 'privacySettings.optOutStores': storeId },
         $set: { updatedAt: new Date() },
       },
@@ -221,6 +216,7 @@ exports.optInToStore = async function (req, storeId) {
     // Clear cache using invalidation helper
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {

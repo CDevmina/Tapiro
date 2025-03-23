@@ -144,16 +144,31 @@ exports.revokeApiKey = async function (req, keyId) {
     
     // Find the key to be revoked
     const keyToRevoke = store.apiKeys?.find(k => k.keyId === keyId);
-    if (keyToRevoke) {
-      console.log(`Revoking API key with ID: ${keyId}, prefix: ${keyToRevoke.prefix}`);
+    if (!keyToRevoke) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'API key not found',
+      });
     }
+    
+    // Check if the key is already revoked
+    if (keyToRevoke.status === 'revoked') {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'API key is already revoked',
+      });
+    }
+    
+    console.log(`Revoking API key with ID: ${keyId}, prefix: ${keyToRevoke.prefix}`);
 
-    // Update store to remove API key
+    // Update API key status to "revoked" instead of removing it
     const result = await db.collection('stores').updateOne(
-      { auth0Id: userData.sub },
+      { auth0Id: userData.sub, 'apiKeys.keyId': keyId },
       {
-        $pull: { apiKeys: { keyId } },
-        $set: { updatedAt: new Date() },
+        $set: { 
+          'apiKeys.$.status': 'revoked',
+          updatedAt: new Date() 
+        },
       },
     );
 
@@ -164,19 +179,12 @@ exports.revokeApiKey = async function (req, keyId) {
       });
     }
 
-    if (result.modifiedCount === 0) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'API key not found',
-      });
-    }
-
-    // Invalidate store cache to reflect deleted API key
+    // Invalidate store cache to reflect modified API key
     await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
     
     return respondWithCode(204);
   } catch (error) {
-    console.error('Delete API key failed:', error);
+    console.error('Revoke API key failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
@@ -185,7 +193,7 @@ exports.revokeApiKey = async function (req, keyId) {
  * Get API Key Usage
  * Get usage statistics for a specific API key
  */
-exports.getApiKeyUsage = async function (req, keyId, startDate, endDate) {
+exports.getApiKeyUsage = async function (req, keyId) {
   try {
     const db = getDB();
     
@@ -201,7 +209,7 @@ exports.getApiKeyUsage = async function (req, keyId, startDate, endDate) {
       });
     }
     
-    // Find the specified API key
+    // Find the API key
     const apiKey = store.apiKeys?.find(k => k.keyId === keyId);
     if (!apiKey) {
       return respondWithCode(404, {
@@ -210,6 +218,9 @@ exports.getApiKeyUsage = async function (req, keyId, startDate, endDate) {
       });
     }
 
+    // Get date parameters from request body instead of query parameters
+    const { startDate, endDate } = req.body || {};
+    
     // Prepare date filter
     const dateFilter = {};
     if (startDate) {
