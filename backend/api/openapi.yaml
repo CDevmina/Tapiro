@@ -682,32 +682,65 @@ components:
       properties:
         email:
           type: string
-          format: email
+          description: User's email address
         dataType:
           type: string
           enum: [purchase, search]
-          description: Type of data being stored (purchase or search history)
+          description: Type of data being submitted
         entries:
           type: array
+          description: Array of data entries
           items:
-            oneOf:
-              - $ref: "#/components/schemas/PurchaseEntry"
-              - $ref: "#/components/schemas/SearchEntry"
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+                description: When the event occurred
+              items:
+                type: array
+                description: For purchase data - products purchased
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    price:
+                      type: number
+                    quantity:
+                      type: integer
+                    category:
+                      type: string
+              query:
+                type: string
+                description: For search data - search query
+              category:
+                type: string
+                description: For search data - category searched
+              results:
+                type: integer
+                description: For search data - number of results
+              clicked:
+                type: array
+                description: For search data - items clicked
+                items:
+                  type: string
+              totalAmount:
+                type: number
+                description: For purchase data - total purchase amount
         metadata:
           type: object
-          description: Additional metadata about the collection event
+          description: Additional information about the collection event
           properties:
             source:
               type: string
+              description: Source of the data (web, mobile, pos, etc)
             deviceType:
               type: string
+              description: Type of device used
             sessionId:
               type: string
-        processedStatus:
-          type: string
-          enum: [pending, processed, failed]
-          default: pending
-          description: Status of algorithm processing
+              description: Unique identifier for the user session
 
     PurchaseEntry:
       type: object
