@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from app.models.preferences import UserPreferences, UserDataEntry
 from app.db.mongodb import get_database
 from app.services.preferenceProcessor import process_user_data
+from app.core.security import get_api_key
 
 router = APIRouter()
 
@@ -21,7 +22,8 @@ async def get_user_preferences(user_id: str, db=Depends(get_database)):
 @router.post("/data/process", status_code=202)
 async def process_user_data_endpoint(
     data: UserDataEntry = Body(...),
-    db=Depends(get_database)
+    db=Depends(get_database),
+    api_key: str = Depends(get_api_key)  # Add this line
 ):
     """
     Process user data to update preferences

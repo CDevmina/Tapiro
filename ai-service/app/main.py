@@ -1,15 +1,25 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
 from app.core.config import settings
 from app.api.router import api_router
 from app.db.mongodb import connect_to_mongodb, close_mongodb_connection
 
+# Define API key security scheme
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="AI Recommendation Service for Tapiro",
+    description="AI Recommendation Service for Tapiro - Provides personalized product recommendations based on user behavior and preferences",
     version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "Root", "description": "Root endpoint"},
+        {"name": "Health", "description": "Health check endpoints"},
+        {"name": "Preferences", "description": "User preference management endpoints"},
+    ]
 )
 
 # Configure CORS
