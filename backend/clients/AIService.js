@@ -3,8 +3,8 @@ const { getCache, setCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
 // Get environment variables
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000/api';
-const AI_SERVICE_API_KEY = process.env.SECRET_KEY;
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
+const AI_SERVICE_API_KEY = process.env.AI_SERVICE_API_KEY;
 
 /**
  * Process user data by sending it to AI service

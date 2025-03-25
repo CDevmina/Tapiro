@@ -27,6 +27,8 @@ services:
       - FRONTEND_URL=http://web:5173
       - AUTH0_M2M_CLIENT_ID=${AUTH0_M2M_CLIENT_ID}
       - AUTH0_M2M_CLIENT_SECRET=${AUTH0_M2M_CLIENT_SECRET}
+      - AI_SERVICE_URL=http://ai-service:8000/api
+      - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
     ports:
       - "3000:3000"
     depends_on:
