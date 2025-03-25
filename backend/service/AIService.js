@@ -1,18 +1,19 @@
 const axios = require('axios');
-const { setCache, getCache } = require('../utils/redisUtil');
+const { getCache, setCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000';
-const AI_SERVICE_API_KEY = process.env.AI_SERVICE_API_KEY;
+// Get environment variables
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000/api';
+const AI_SERVICE_API_KEY = process.env.SECRET_KEY;
 
 /**
- * Process user data through AI service
- * @param {Object} userData - User data to process
- * @returns {Promise<Object>} - Processing result or status
+ * Process user data by sending it to AI service
+ * @param {Object} userData - The user data to process
+ * @returns {Promise<Object>} - Processing status
  */
 exports.processUserData = async function (userData) {
   try {
-    const response = await axios.post(`${AI_SERVICE_URL}/api/users/data/process`, userData, {
+    const response = await axios.post(`${AI_SERVICE_URL}/users/data/process`, userData, {
       headers: {
         'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
@@ -21,14 +22,14 @@ exports.processUserData = async function (userData) {
 
     return response.data;
   } catch (error) {
-    console.error('AI service processing failed:', error?.response?.data || error);
+    console.error('AI service data processing failed:', error?.response?.data || error);
     throw error;
   }
 };
 
 /**
  * Get user preferences from AI service
- * @param {string} userId - User ID to get preferences for
+ * @param {string} userId - The user ID
  * @returns {Promise<Object>} - User preferences
  */
 exports.getUserPreferences = async function (userId) {
@@ -41,7 +42,7 @@ exports.getUserPreferences = async function (userId) {
   }
 
   try {
-    const response = await axios.get(`${AI_SERVICE_URL}/api/users/${userId}/preferences`, {
+    const response = await axios.get(`${AI_SERVICE_URL}/users/${userId}/preferences`, {
       headers: {
         'X-API-Key': AI_SERVICE_API_KEY,
       },
@@ -56,5 +57,22 @@ exports.getUserPreferences = async function (userId) {
   } catch (error) {
     console.error('AI service preferences fetch failed:', error?.response?.data || error);
     throw error;
+  }
+};
+
+/**
+ * Check AI service health
+ * @returns {Promise<Object>} - Health status
+ */
+exports.checkHealth = async function () {
+  try {
+    const response = await axios.get(`${AI_SERVICE_URL}/health`, {
+      headers: {
+        'X-API-Key': AI_SERVICE_API_KEY,
+      },
+    });
+    return { status: 'connected', details: response.data };
+  } catch (error) {
+    return { status: 'disconnected', details: error.message };
   }
 };

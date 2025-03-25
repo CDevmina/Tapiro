@@ -81,6 +81,23 @@ exports.getUserPreferences = async function (req, userId) {
     // Cache the preferences with standardized TTL
     await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
 
+    // Try to get preferences from AI service
+    try {
+      const aiPreferences = await AIService.getUserPreferences(userId);
+
+      // Map AI service response to expected format if needed
+      return respondWithCode(200, {
+        userId: aiPreferences.user_id,
+        interests: aiPreferences.preferences.map((p) => p.category),
+        demographics: {
+          ageRange: user?.demographics?.ageRange || 'unknown',
+          location: user?.demographics?.location || 'unknown',
+        },
+      });
+    } catch (aiError) {
+      console.error('AI service fetch failed, falling back to local data:', aiError);
+    }
+
     return respondWithCode(200, preferences);
   } catch (error) {
     console.error('Get user preferences failed:', error);
@@ -188,7 +205,7 @@ exports.submitUserData = async function (req, body) {
       );
     }
 
-    // Store the data in appropriate collection
+    // Store SINGLE COPY of data with audit fields included
     const result = await db.collection('userData').insertOne({
       userId: user._id,
       storeId: req.storeId,
@@ -200,32 +217,42 @@ exports.submitUserData = async function (req, body) {
       timestamp: new Date(),
     });
 
-    AIService.processUserData({
-      email,
-      data_type: dataType,
-      entries,
-      metadata: {
-        ...metadata,
-        storeId: req.storeId,
-        userId: user._id.toString(),
-      },
-    }).catch((err) => {
-      console.error('Failed to send data to AI service:', err);
-      // Update processing status to failed
-      db.collection('userData').updateOne(
-        { _id: result.insertedId },
-        { $set: { processedStatus: 'failed' } },
-      );
-    });
-
     // Invalidate the preferences cache
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${req.storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
-    return respondWithCode(202, {
-      code: 202,
-      message: 'Data accepted for processing',
-    });
+    // SINGLE API CALL to the AI service
+    try {
+      const aiResponse = await AIService.processUserData({
+        email,
+        data_type: dataType,
+        entries,
+        metadata: {
+          ...metadata,
+          storeId: req.storeId,
+          userId: user._id.toString(),
+          timestamp: new Date(),
+        },
+      });
+
+      return respondWithCode(202, {
+        message: 'Data accepted for processing',
+        aiProcessing: aiResponse.status,
+      });
+    } catch (aiError) {
+      console.error('AI service processing failed, but data was stored:', aiError);
+
+      // Update status to failed
+      await db
+        .collection('userData')
+        .updateOne({ _id: result.insertedId }, { $set: { processedStatus: 'failed' } });
+
+      // Still return 202 since we saved the data and can process it later
+      return respondWithCode(202, {
+        message: 'Data accepted but AI processing delayed',
+        retryScheduled: true,
+      });
+    }
   } catch (error) {
     console.error('Submit user data failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });

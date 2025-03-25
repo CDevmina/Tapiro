@@ -27,3 +27,12 @@ async def close_mongodb_connection():
     global client
     if client:
         client.close()
+
+async def is_database_connected(db) -> bool:
+    """Check if the database is connected"""
+    try:
+        # Try a simple command to check if DB is responsive
+        await db.command("ping")
+        return True
+    except Exception:
+        return False
