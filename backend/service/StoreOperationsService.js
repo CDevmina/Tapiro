@@ -2,7 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const AIService = require('./AIService');
+const AIService = require('../clients/AIService');
 
 /**
  * Get user preferences for targeted advertising
@@ -80,23 +80,6 @@ exports.getUserPreferences = async function (req, userId) {
 
     // Cache the preferences with standardized TTL
     await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
-
-    // Try to get preferences from AI service
-    try {
-      const aiPreferences = await AIService.getUserPreferences(userId);
-
-      // Map AI service response to expected format if needed
-      return respondWithCode(200, {
-        userId: aiPreferences.user_id,
-        interests: aiPreferences.preferences.map((p) => p.category),
-        demographics: {
-          ageRange: user?.demographics?.ageRange || 'unknown',
-          location: user?.demographics?.location || 'unknown',
-        },
-      });
-    } catch (aiError) {
-      console.error('AI service fetch failed, falling back to local data:', aiError);
-    }
 
     return respondWithCode(200, preferences);
   } catch (error) {

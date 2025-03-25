@@ -11,30 +11,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get(
-    "/{user_id}/preferences", 
-    response_model=UserPreferences,
-    description="Get user preferences based on processed data",
-    summary="Get user preferences"
-)
-async def get_user_preferences(user_id: str, db=Depends(get_database)):
-    """
-    Get user preferences based on processed data
-    """
-    # Log the request for debugging
-    logger.info(f"GET request received for user_id: {user_id}")
-    
-    # Return dummy data for testing connection
-    return {
-        "user_id": user_id,
-        "preferences": [
-            {"category": "electronics", "score": 0.8},
-            {"category": "books", "score": 0.6},
-            {"category": "clothing", "score": 0.4}
-        ],
-        "updated_at": datetime.now()
-    }
-
 @router.post(
     "/data/process", 
     status_code=202,
