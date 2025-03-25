@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
 from app.models.preferences import UserPreferences, UserDataEntry
 from app.db.mongodb import get_database
+from app.services.preferenceProcessor import process_user_data  # Import processing function
 import logging
 from datetime import datetime
 from typing import Dict, Any
@@ -33,10 +34,22 @@ async def process_user_data_endpoint(
     logger.info(f"  Data type: {data.data_type}")
     logger.info(f"  Number of entries: {len(data.entries)}")
     
-    # Just return success without doing any actual processing
-    return {
-        "status": "accepted",
-        "message": "Data received successfully (no processing implemented yet)",
-        "user_id": user_id,
-        "preferences_updated": False  # Set to False since no actual update is happening
-    }
+    try:
+        result = await process_user_data(data, db)
+        
+        return {
+            "status": "success",
+            "message": "Data processed successfully",
+            "user_id": result.user_id,
+            "preferences_updated": True,
+            "preferences_count": len(result.preferences)
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        # Log the error and return a 500 error
+        logger.error(f"Error processing data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing data: {str(e)}"
+        )
