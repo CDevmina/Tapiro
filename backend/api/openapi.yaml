@@ -17,8 +17,6 @@ tags:
     description: Operations for managing user preferences and opt-in/out settings
   - name: Data Retrival
     description: Operations for retrieving user preferences and data
-  - name: Health
-    description: Operations for checking API health status
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -484,38 +482,6 @@ paths:
         - oauth2: [store:read]
       x-swagger-router-controller: StoreManagement
 
-  /health:
-    get:
-      tags:
-        - Health
-      summary: Check API health status
-      description: Returns health status of the API and its dependencies
-      operationId: healthCheck
-      responses:
-        "200":
-          description: Health check successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-      x-swagger-router-controller: Health
-
-  /ping:
-    get:
-      tags:
-        - Health
-      summary: Simple uptime check
-      description: Returns a 200 status if the API is running
-      operationId: ping
-      responses:
-        "200":
-          description: API is up and running
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PingStatus"
-      x-swagger-router-controller: Health
-
 components:
   schemas:
     User:
@@ -908,49 +874,6 @@ components:
                 format: date
               count:
                 type: integer
-
-    HealthStatus:
-      type: object
-      properties:
-        status:
-          type: string
-          example: healthy
-          description: Overall health status of the API
-        timestamp:
-          type: string
-          format: date-time
-          description: Time when health check was performed
-        service:
-          type: string
-          example: tapiro-api
-          description: Name of the service
-        dependencies:
-          type: object
-          properties:
-            database:
-              type: string
-              example: connected
-              description: MongoDB connection status
-            cache:
-              type: string
-              example: connected
-              description: Redis cache connection status
-            auth:
-              type: string
-              example: connected
-              description: Auth0 service connection status
-
-    PingStatus:
-      type: object
-      properties:
-        status:
-          type: string
-          example: ok
-          description: Service status indicator
-        timestamp:
-          type: string
-          format: date-time
-          description: Time when ping request was processed
 
   securitySchemes:
     apiKey:
