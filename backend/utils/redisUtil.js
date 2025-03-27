@@ -29,11 +29,22 @@ async function invalidateCache(key) {
   return setCache(key, '', { EX: CACHE_TTL.INVALIDATION });
 }
 
+// Modified ping function to handle health checks safely
+async function pingRedis() {
+  try {
+    return await client.ping();
+  } catch (error) {
+    console.error('Redis ping error:', error);
+    return null;
+  }
+}
+
 // Export the new function
-module.exports = { 
+module.exports = {
   client,
   connectRedis,
   getCache,
   setCache,
-  invalidateCache 
+  invalidateCache,
+  pingRedis,
 };

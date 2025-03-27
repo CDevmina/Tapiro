@@ -2,6 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const AIService = require('../clients/AIService');
 
 /**
  * Get user preferences for targeted advertising
@@ -55,7 +56,7 @@ exports.getUserPreferences = async function (req, userId) {
 
     // Check if user has explicitly opted in to this store
     const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
-    
+
     // Only auto opt-in if not in opt-out list (which we've already checked)
     if (!isOptedIn) {
       await db.collection('users').updateOne(
@@ -63,7 +64,7 @@ exports.getUserPreferences = async function (req, userId) {
         {
           $addToSet: { 'privacySettings.optInStores': req.storeId },
           $set: { updatedAt: new Date() },
-        }
+        },
       );
     }
 
@@ -121,7 +122,7 @@ exports.submitUserData = async function (req, body) {
             message: 'Purchase entries require timestamp and items array',
           });
         }
-        
+
         for (const item of entry.items) {
           if (!item.name) {
             return respondWithCode(400, {
@@ -175,7 +176,7 @@ exports.submitUserData = async function (req, body) {
 
     // Check if user has explicitly opted in to this store
     const isOptedIn = user.privacySettings?.optInStores?.includes(req.storeId);
-    
+
     // Auto opt-in the user only if not opted out and not already opted in
     if (!isOptedIn) {
       await db.collection('users').updateOne(
@@ -183,12 +184,12 @@ exports.submitUserData = async function (req, body) {
         {
           $addToSet: { 'privacySettings.optInStores': req.storeId },
           $set: { updatedAt: new Date() },
-        }
+        },
       );
     }
 
-    // Store the data in appropriate collection
-    await db.collection('userData').insertOne({
+    // Store SINGLE COPY of data with audit fields included
+    const result = await db.collection('userData').insertOne({
       userId: user._id,
       storeId: req.storeId,
       email,
@@ -203,10 +204,38 @@ exports.submitUserData = async function (req, body) {
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${req.storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
-    return respondWithCode(202, {
-      code: 202,
-      message: 'Data accepted for processing'
-    });
+    // SINGLE API CALL to the AI service
+    try {
+      const aiResponse = await AIService.processUserData({
+        email,
+        data_type: dataType,
+        entries,
+        metadata: {
+          ...metadata,
+          storeId: req.storeId,
+          userId: user._id.toString(),
+          timestamp: new Date(),
+        },
+      });
+
+      return respondWithCode(202, {
+        message: 'Data accepted for processing',
+        aiProcessing: aiResponse.status,
+      });
+    } catch (aiError) {
+      console.error('AI service processing failed, but data was stored:', aiError);
+
+      // Update status to failed
+      await db
+        .collection('userData')
+        .updateOne({ _id: result.insertedId }, { $set: { processedStatus: 'failed' } });
+
+      // Still return 202 since we saved the data and can process it later
+      return respondWithCode(202, {
+        message: 'Data accepted but AI processing delayed',
+        retryScheduled: true,
+      });
+    }
   } catch (error) {
     console.error('Submit user data failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
