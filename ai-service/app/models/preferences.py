@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Union, Literal
 from datetime import datetime
 
 class UserPreference(BaseModel):
@@ -16,6 +16,6 @@ class UserPreferences(BaseModel):
 class UserDataEntry(BaseModel):
     """User data entry from store"""
     email: str
-    data_type: str
+    data_type: Literal['purchase', 'search'] 
     entries: List[dict]
     metadata: Optional[dict] = None
