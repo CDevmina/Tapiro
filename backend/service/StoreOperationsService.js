@@ -3,6 +3,7 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
+const { validateCategoryId, validateAttributes } = require('../utils/taxonomyValidator');
 
 /**
  * Get user preferences for targeted advertising
@@ -113,7 +114,7 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
-    // Validate entries based on dataType
+    // Enhanced validation based on taxonomy
     if (dataType === 'purchase') {
       for (const entry of entries) {
         if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
@@ -130,6 +131,27 @@ exports.submitUserData = async function (req, body) {
               message: 'Each purchase item requires a name',
             });
           }
+
+          // Use imported validator functions
+          if (item.category) {
+            const isValid = validateCategoryId(item.category);
+            if (!isValid) {
+              return respondWithCode(400, {
+                code: 400,
+                message: `Invalid category: ${item.category}. Please use valid category ID or name.`,
+              });
+            }
+          }
+
+          if (item.attributes) {
+            const validationResult = validateAttributes(item.category, item.attributes);
+            if (!validationResult.valid) {
+              return respondWithCode(400, {
+                code: 400,
+                message: validationResult.message,
+              });
+            }
+          }
         }
       }
     } else if (dataType === 'search') {
@@ -139,6 +161,17 @@ exports.submitUserData = async function (req, body) {
             code: 400,
             message: 'Search entries require timestamp and query',
           });
+        }
+
+        // Validate category if provided
+        if (entry.category) {
+          const isValid = validateCategoryId(entry.category);
+          if (!isValid) {
+            return respondWithCode(400, {
+              code: 400,
+              message: `Invalid category: ${entry.category}. Please use valid category ID or name.`,
+            });
+          }
         }
       }
     } else {
@@ -188,7 +221,7 @@ exports.submitUserData = async function (req, body) {
       );
     }
 
-    // Store SINGLE COPY of data with audit fields included
+    // Store data with audit fields included
     const result = await db.collection('userData').insertOne({
       userId: user._id,
       storeId: req.storeId,

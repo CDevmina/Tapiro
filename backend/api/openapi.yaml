@@ -691,47 +691,16 @@ components:
           type: array
           description: Array of data entries
           items:
-            type: object
-            properties:
-              timestamp:
-                type: string
-                format: date-time
-                description: When the event occurred
-              items:
-                type: array
-                description: For purchase data - products purchased
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    price:
-                      type: number
-                    quantity:
-                      type: integer
-                    category:
-                      type: string
-              query:
-                type: string
-                description: For search data - search query
-              category:
-                type: string
-                description: For search data - category searched
-              results:
-                type: integer
-                description: For search data - number of results
-              clicked:
-                type: array
-                description: For search data - items clicked
-                items:
-                  type: string
-              totalAmount:
-                type: number
-                description: For purchase data - total purchase amount
+            oneOf:
+              - $ref: "#/components/schemas/PurchaseEntry"
+              - $ref: "#/components/schemas/SearchEntry"
         metadata:
           type: object
           description: Additional information about the collection event
           properties:
+            userId:
+              type: string
+              description: Optional user ID if known
             source:
               type: string
               description: Source of the data (web, mobile, pos, etc)
@@ -763,6 +732,7 @@ components:
       type: object
       required:
         - name
+        - category
       properties:
         sku:
           type: string
@@ -770,10 +740,36 @@ components:
           type: string
         category:
           type: string
+          description: Category ID (e.g., "101") or name (e.g., "smartphones")
         quantity:
           type: integer
+          default: 1
         price:
           type: number
+        attributes:
+          type: object
+          properties:
+            price_range:
+              type: string
+              enum: [budget, mid_range, premium, luxury]
+            brand:
+              type: string
+            color:
+              type: string
+            material:
+              type: string
+            style:
+              type: string
+            room:
+              type: string
+            size:
+              type: string
+            feature:
+              type: string
+            season:
+              type: string
+            gender:
+              type: string
 
     SearchEntry:
       type: object
@@ -800,17 +796,92 @@ components:
       properties:
         userId:
           type: string
-        interests:
+        preferences:
           type: array
           items:
-            type: string
-        demographics:
+            $ref: "#/components/schemas/PreferenceItem"
+        updated_at:
+          type: string
+          format: date-time
+
+    PreferenceItem:
+      type: object
+      required:
+        - category
+        - score
+      properties:
+        category:
+          type: string
+          description: Category ID or name (e.g., "101" or "smartphones")
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Preference score (0.0-1.0)
+        attributes:
           type: object
           properties:
-            ageRange:
-              type: string
-            location:
-              type: string
+            price_range:
+              type: object
+              properties:
+                budget:
+                  type: number
+                  format: float
+                mid_range:
+                  type: number
+                  format: float
+                premium:
+                  type: number
+                  format: float
+                luxury:
+                  type: number
+                  format: float
+            color:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            brand:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            material:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            style:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            room:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            size:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            feature:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            season:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            gender:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
 
     StoreUpdate:
       type: object

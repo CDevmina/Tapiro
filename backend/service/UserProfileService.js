@@ -4,6 +4,11 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { getManagementToken } = require('../utils/auth0Util');
+const {
+  validateCategoryId,
+  validateAttributes,
+  getCategoryMainType,
+} = require('../utils/taxonomyValidator');
 
 /**
  * Get User Profile
@@ -65,6 +70,44 @@ exports.updateUserProfile = async function (req, body) {
           message: 'Username already taken',
         });
       }
+    }
+
+    // Validate preferences against taxonomy if they're being updated
+    if (body.preferences) {
+      const normalizedPreferences = [];
+
+      for (const pref of body.preferences) {
+        // Validate category exists
+        if (!validateCategoryId(pref.category)) {
+          return respondWithCode(400, {
+            code: 400,
+            message: `Invalid category: ${pref.category}`,
+          });
+        }
+
+        // Normalize category
+        const normalizedCategory = getCategoryMainType(pref.category);
+
+        // Validate attributes if present
+        if (pref.attributes) {
+          const result = validateAttributes(pref.category, pref.attributes);
+          if (!result.valid) {
+            return respondWithCode(400, {
+              code: 400,
+              message: result.message,
+            });
+          }
+        }
+
+        // Store with normalized category
+        normalizedPreferences.push({
+          ...pref,
+          category: normalizedCategory,
+        });
+      }
+
+      // Replace with normalized preferences
+      body.preferences = normalizedPreferences;
     }
 
     // Update user

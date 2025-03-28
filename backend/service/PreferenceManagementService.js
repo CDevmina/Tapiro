@@ -3,15 +3,20 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const { ObjectId } = require('mongodb'); // Add this import
+const { ObjectId } = require('mongodb');
+const {
+  validateCategoryId,
+  validateAttributes,
+  getCategoryMainType,
+} = require('../utils/taxonomyValidator');
 
 exports.getUserOwnPreferences = async function (req) {
   try {
     // Get user data from middleware
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
-    
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
     const db = getDB();
-    
+
     // Check cache first - standardized cache key
     const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
     const cachedPreferences = await getCache(cacheKey);
@@ -31,8 +36,8 @@ exports.getUserOwnPreferences = async function (req) {
       interests: user.preferences || [],
       demographics: user.demographics || {
         ageRange: 'unknown',
-        location: 'unknown'
-      }
+        location: 'unknown',
+      },
     };
 
     // Cache the preferences result with specific TTL
@@ -51,8 +56,8 @@ exports.getUserOwnPreferences = async function (req) {
 exports.optOutFromStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
-    
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
     const db = getDB();
 
     // Find user in database using Auth0 ID
@@ -111,8 +116,8 @@ exports.optOutFromStore = async function (req, storeId) {
 exports.updateUserPreferences = async function (req, body) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
-    
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
     const db = getDB();
 
     // Find user in database using Auth0 ID
@@ -124,13 +129,51 @@ exports.updateUserPreferences = async function (req, body) {
       });
     }
 
-    // Update only preferences
+    // Validate preferences against taxonomy
+    if (body.preferences) {
+      const normalizedPreferences = [];
+
+      for (const pref of body.preferences) {
+        // Validate category exists
+        if (!validateCategoryId(pref.category)) {
+          return respondWithCode(400, {
+            code: 400,
+            message: `Invalid category: ${pref.category}`,
+          });
+        }
+
+        // Normalize category to ensure consistency
+        const normalizedCategory = getCategoryMainType(pref.category);
+
+        // Validate attributes if present
+        if (pref.attributes) {
+          const result = validateAttributes(pref.category, pref.attributes);
+          if (!result.valid) {
+            return respondWithCode(400, {
+              code: 400,
+              message: result.message,
+            });
+          }
+        }
+
+        // Store with normalized category
+        normalizedPreferences.push({
+          ...pref,
+          category: normalizedCategory,
+        });
+      }
+
+      // Replace with normalized preferences
+      body.preferences = normalizedPreferences;
+    }
+
+    // Update preferences with validated data
     await db.collection('users').updateOne(
       { _id: user._id },
       {
-        $set: { 
+        $set: {
           preferences: body.preferences || [],
-          updatedAt: new Date() 
+          updatedAt: new Date(),
         },
       },
     );
@@ -140,7 +183,7 @@ exports.updateUserPreferences = async function (req, body) {
 
     // Clear related caches using the invalidation helper
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    
+
     // Clear store-specific preference caches
     if (user.privacySettings?.optInStores) {
       for (const storeId of user.privacySettings.optInStores) {
@@ -171,8 +214,8 @@ exports.updateUserPreferences = async function (req, body) {
 exports.optInToStore = async function (req, storeId) {
   try {
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
-    
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
     const db = getDB();
 
     // Find user in database using Auth0 ID
@@ -202,7 +245,7 @@ exports.optInToStore = async function (req, storeId) {
         message: 'Store not found',
       });
     }
-    
+
     // Add store to opt-in list AND remove from opt-out list if present
     await db.collection('users').updateOne(
       { _id: user._id },
