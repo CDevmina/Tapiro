@@ -33,11 +33,8 @@ exports.getUserOwnPreferences = async function (req) {
     // Return just the preferences part
     const preferences = {
       userId: user._id.toString(),
-      interests: user.preferences || [],
-      demographics: user.demographics || {
-        ageRange: 'unknown',
-        location: 'unknown',
-      },
+      preferences: user.preferences || [],
+      updatedAt: user.updatedAt || new Date(),
     };
 
     // Cache the preferences result with specific TTL
@@ -193,12 +190,9 @@ exports.updateUserPreferences = async function (req, body) {
 
     // Return updated preferences
     const preferences = {
-      userId: updatedUser._id.toString(),
-      interests: updatedUser.preferences || [],
-      demographics: {
-        ageRange: updatedUser.demographics?.ageRange || 'unknown',
-        location: updatedUser.demographics?.location || 'unknown',
-      },
+      userId: user._id.toString(),
+      preferences: user.preferences || [], // Fixed: consistent naming
+      updatedAt: user.updatedAt || new Date(),
     };
 
     return respondWithCode(200, preferences);

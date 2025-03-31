@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union, Literal
+from typing import List, Optional, Dict, Literal
 from datetime import datetime
 
 class UserPreference(BaseModel):
     """User preference for a specific category"""
     category: str
     score: float = Field(..., ge=0.0, le=1.0)
+    attributes: Optional[Dict[str, Dict[str, float]]] = None
     
 class UserPreferences(BaseModel):
     """Collection of user preferences"""
