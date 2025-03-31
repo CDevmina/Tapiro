@@ -20,9 +20,116 @@ def normalize_category(category: str) -> str:
     # Convert to lowercase for consistency
     category = category.lower().strip()
     
-    # Basic normalization mapping (simplified version of taxonomy system)
-    category_mapping = {
-        # Electronics
+    # Handle numeric category IDs first
+    if category.isdigit():
+        category_num = int(category)
+        # Map category IDs to names based on your taxonomy
+        if 100 <= category_num < 200:
+            main_category = "electronics"
+            # Electronics subcategories
+            if category_num == 101:
+                return "smartphones"
+            elif category_num == 102:
+                return "computers"
+            elif category_num == 103:
+                return "audio"
+            elif category_num == 104:
+                return "tvs_displays"
+            elif category_num == 105:
+                return "cameras"
+            elif category_num == 106:
+                return "wearables"
+            elif category_num == 107:
+                return "gaming"
+            elif category_num == 108:
+                return "smart_home"
+            elif category_num == 109:
+                return "tablets"
+            elif category_num == 110:
+                return "accessories"
+            return main_category
+            
+        elif 200 <= category_num < 300:
+            main_category = "clothing"
+            # Clothing subcategories
+            if category_num == 201:
+                return "mens_clothing"
+            elif category_num == 202:
+                return "womens_clothing"
+            elif category_num == 203:
+                return "childrens_clothing"
+            elif category_num == 204:
+                return "footwear"
+            elif category_num == 205:
+                return "clothing_accessories"
+            elif category_num == 206:
+                return "activewear"
+            elif category_num == 207:
+                return "formal_wear"
+            elif category_num == 208:
+                return "underwear"
+            elif category_num == 209:
+                return "seasonal"
+            elif category_num == 210:
+                return "sustainable_fashion"
+            return main_category
+            
+        elif 300 <= category_num < 400:
+            main_category = "home_garden"
+            # Home & Garden subcategories
+            if category_num == 301:
+                return "furniture"
+            elif category_num == 302:
+                return "kitchen"
+            elif category_num == 303:
+                return "home_decor"
+            elif category_num == 304:
+                return "bedding_bath"
+            elif category_num == 305:
+                return "storage"
+            elif category_num == 306:
+                return "garden"
+            elif category_num == 307:
+                return "lighting"
+            elif category_num == 308:
+                return "appliances"
+            elif category_num == 309:
+                return "home_improvement"
+            elif category_num == 310:
+                return "home_office"
+            return main_category
+            
+        # Add more category ranges for 400-1000
+        elif 400 <= category_num < 500:
+            return "beauty_personal_care"
+        elif 500 <= category_num < 600:
+            return "sports_outdoors"
+        elif 600 <= category_num < 700:
+            return "books_media"
+        elif 700 <= category_num < 800:
+            return "food_grocery"
+        elif 800 <= category_num < 900:
+            return "automotive"
+        elif 900 <= category_num < 1000:
+            return "health_wellness"
+        elif 1000 <= category_num < 1100:
+            return "toys_games"
+            
+        # Fallback for any other numeric category
+        return "general"
+    
+    # Direct category mapping for common categories
+    direct_mapping = {
+        "electronics": "electronics",
+        "clothing": "clothing",
+        "home": "home_garden",
+    }
+    
+    if category in direct_mapping:
+        return direct_mapping[category]
+    
+    # Pattern-based mapping - REMOVE or move the '.*' pattern to the end
+    pattern_mapping = {
         r'(phone|smartphone|mobile|cell)': 'smartphones',
         r'(laptop|computer|desktop|pc)': 'computers',
         r'(tv|television|screen|monitor)': 'tvs_displays',
@@ -40,17 +147,16 @@ def normalize_category(category: str) -> str:
         r'(kitchen|cookware|appliance)': 'kitchen',
         r'(décor|decor|ornament)': 'home_decor',
         r'(garden|outdoor|plant)': 'garden',
-        
-        # Default
-        r'.*': 'general'
+        # ...other patterns
     }
     
-    # Find the matching category
-    for pattern, normalized in category_mapping.items():
+    # Use regex only if no direct match
+    for pattern, normalized in pattern_mapping.items():
         if re.match(pattern, category):
             return normalized
     
-    return category
+    # Fallback - only if no other match found
+    return "general"
 
 async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     """Process user data and update their preferences"""
