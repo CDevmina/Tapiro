@@ -97,6 +97,7 @@ services:
       - BACKEND_API_URL=http://backend:3000
       - SECRET_KEY=${AI_SERVICE_API_KEY}
       - DEBUG=true
+      - REDIS_HOST=redis
     ports:
       - "8000:8000"
     networks:

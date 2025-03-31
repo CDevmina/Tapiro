@@ -33,6 +33,10 @@ class Settings(BaseSettings):
         "http://backend:3000",
         "http://web:5173"
     ]
+    
+    # Redis settings
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
 
 # Create global settings object
 settings = Settings()

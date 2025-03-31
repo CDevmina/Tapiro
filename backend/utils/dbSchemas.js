@@ -2,8 +2,89 @@
  * MongoDB schema definitions for data validation
  */
 
+// Import taxonomy constants
+const { CATEGORY_ATTRIBUTES } = require('./taxonomyConstants');
+
 // Schema version tracking
-const SCHEMA_VERSION = "1.0.4";
+const SCHEMA_VERSION = '1.0.6';
+
+/**
+ * Generate schema properties for user preferences attributes (distribution format)
+ * @returns {Object} MongoDB schema properties for preference attributes
+ */
+function generatePreferenceAttributeProperties() {
+  const properties = {};
+
+  // Extract all unique attribute names from all categories
+  const allAttributeNames = new Set();
+
+  Object.values(CATEGORY_ATTRIBUTES).forEach((categoryAttrs) => {
+    Object.keys(categoryAttrs).forEach((attrName) => {
+      allAttributeNames.add(attrName);
+    });
+  });
+
+  // Create schema definition for each attribute
+  allAttributeNames.forEach((attrName) => {
+    // For price_range, we know the exact values
+    if (attrName === 'price_range') {
+      properties[attrName] = {
+        bsonType: 'object',
+        properties: {
+          budget: { bsonType: 'double' },
+          mid_range: { bsonType: 'double' },
+          premium: { bsonType: 'double' },
+          luxury: { bsonType: 'double' },
+        },
+      };
+    } else {
+      // For other attributes, we define them as generic objects
+      // Each attribute can have any string key with double values
+      properties[attrName] = { bsonType: 'object' };
+    }
+  });
+
+  return properties;
+}
+
+/**
+ * Generate schema properties for user data attributes (enum format)
+ * @returns {Object} MongoDB schema properties for data attributes
+ */
+function generateDataAttributeProperties() {
+  const properties = {};
+
+  // Collect all unique attribute names and their possible values
+  Object.values(CATEGORY_ATTRIBUTES).forEach((categoryAttrs) => {
+    Object.entries(categoryAttrs).forEach(([attrName, attrValues]) => {
+      // If we already defined this attribute, skip
+      if (properties[attrName]) return;
+
+      // If attribute has predefined values (array), create an enum
+      if (Array.isArray(attrValues)) {
+        properties[attrName] = {
+          bsonType: 'string',
+          enum: attrValues,
+        };
+      } else if (attrName === 'rating') {
+        // Special case for numeric ratings
+        properties[attrName] = {
+          bsonType: 'int',
+          minimum: Math.min(...attrValues),
+          maximum: Math.max(...attrValues),
+        };
+      } else if (attrValues === 'numeric') {
+        // For numeric fields like release_year
+        properties[attrName] = { bsonType: 'int' };
+      } else {
+        // Default to string for other attributes
+        properties[attrName] = { bsonType: 'string' };
+      }
+    });
+  });
+
+  return properties;
+}
 
 // User schema
 const userSchema = {
@@ -12,29 +93,45 @@ const userSchema = {
       bsonType: 'object',
       required: ['auth0Id', 'email', 'username', 'privacySettings', 'createdAt'],
       properties: {
-        schemaVersion: { 
+        schemaVersion: {
           bsonType: 'string',
-          description: 'Schema version for tracking changes'
+          description: 'Schema version for tracking changes',
         },
         auth0Id: {
           bsonType: 'string',
-          description: 'Auth0 user ID'
+          description: 'Auth0 user ID',
         },
         email: {
           bsonType: 'string',
-          description: 'User email address'
+          description: 'User email address',
         },
         username: {
           bsonType: 'string',
-          description: 'Username'
+          description: 'Username',
         },
         phone: {
           bsonType: ['string', 'null'],
-          description: 'Phone number'
+          description: 'Phone number',
         },
         preferences: {
           bsonType: 'array',
-          description: 'User interests and preferences'
+          description: 'User interests and preferences',
+          items: {
+            bsonType: 'object',
+            required: ['category', 'score'],
+            properties: {
+              category: { bsonType: 'string' },
+              score: {
+                bsonType: 'double',
+                minimum: 0.0,
+                maximum: 1.0,
+              },
+              attributes: {
+                bsonType: 'object',
+                properties: generatePreferenceAttributeProperties(),
+              },
+            },
+          },
         },
         privacySettings: {
           bsonType: 'object',
@@ -43,22 +140,22 @@ const userSchema = {
             dataSharingConsent: { bsonType: 'bool' },
             anonymizeData: { bsonType: 'bool' },
             optInStores: { bsonType: 'array' },
-            optOutStores: { bsonType: 'array' }
-          }
+            optOutStores: { bsonType: 'array' },
+          },
         },
         dataAccess: {
           bsonType: 'object',
           properties: {
-            allowedDomains: { bsonType: 'array' }
-          }
+            allowedDomains: { bsonType: 'array' },
+          },
         },
         createdAt: { bsonType: 'date' },
-        updatedAt: { bsonType: 'date' }
-      }
-    }
+        updatedAt: { bsonType: 'date' },
+      },
+    },
   },
   validationLevel: 'moderate',
-  validationAction: 'error'
+  validationAction: 'error',
 };
 
 // Store schema
@@ -70,19 +167,19 @@ const storeSchema = {
       properties: {
         auth0Id: {
           bsonType: 'string',
-          description: 'Auth0 store ID'
+          description: 'Auth0 store ID',
         },
         name: {
           bsonType: 'string',
-          description: 'Store name'
+          description: 'Store name',
         },
         email: {
           bsonType: 'string',
-          description: 'Store email address'
+          description: 'Store email address',
         },
         address: {
           bsonType: 'string',
-          description: 'Physical address'
+          description: 'Physical address',
         },
         webhooks: {
           bsonType: 'array',
@@ -92,9 +189,9 @@ const storeSchema = {
             required: ['url', 'events'],
             properties: {
               url: { bsonType: 'string' },
-              events: { bsonType: 'array' }
-            }
-          }
+              events: { bsonType: 'array' },
+            },
+          },
         },
         apiKeys: {
           bsonType: 'array',
@@ -107,17 +204,17 @@ const storeSchema = {
               hashedKey: { bsonType: 'string' },
               name: { bsonType: 'string' },
               status: { bsonType: 'string' },
-              createdAt: { bsonType: 'date' }
-            }
-          }
+              createdAt: { bsonType: 'date' },
+            },
+          },
         },
         createdAt: { bsonType: 'date' },
-        updatedAt: { bsonType: 'date' }
-      }
-    }
+        updatedAt: { bsonType: 'date' },
+      },
+    },
   },
   validationLevel: 'moderate',
-  validationAction: 'error'
+  validationAction: 'error',
 };
 
 // API Usage schema
@@ -133,12 +230,12 @@ const apiUsageSchema = {
         endpoint: { bsonType: 'string' },
         method: { bsonType: 'string' },
         timestamp: { bsonType: 'date' },
-        userAgent: { bsonType: 'string' }
-      }
-    }
+        userAgent: { bsonType: 'string' },
+      },
+    },
   },
   validationLevel: 'moderate',
-  validationAction: 'error'
+  validationAction: 'error',
 };
 
 // User Data schema
@@ -151,14 +248,49 @@ const userDataSchema = {
         userId: { bsonType: 'objectId' },
         storeId: { bsonType: 'string' },
         email: { bsonType: 'string' },
-        dataType: { 
+        dataType: {
           bsonType: 'string',
           enum: ['purchase', 'search'],
-          description: 'Type of data being stored'
+          description: 'Type of data being stored',
         },
-        entries: { 
+        entries: {
           bsonType: 'array',
-          items: { bsonType: 'object' }
+          items: {
+            bsonType: 'object',
+            required: ['timestamp'],
+            properties: {
+              timestamp: { bsonType: 'date' },
+              items: {
+                bsonType: 'array',
+                description: 'For purchase data',
+                items: {
+                  bsonType: 'object',
+                  required: ['name', 'category'],
+                  properties: {
+                    name: { bsonType: 'string' },
+                    category: { bsonType: 'string' },
+                    price: { bsonType: 'double' },
+                    quantity: { bsonType: 'int' },
+                    attributes: {
+                      bsonType: 'object',
+                      description: 'Category-specific attributes',
+                      properties: generateDataAttributeProperties(),
+                    },
+                  },
+                },
+              },
+              query: {
+                bsonType: 'string',
+                description: 'For search data',
+              },
+              category: { bsonType: 'string' },
+              results: { bsonType: 'int' },
+              clicked: {
+                bsonType: 'array',
+                items: { bsonType: 'string' },
+              },
+            },
+          },
         },
         metadata: {
           bsonType: 'object',
@@ -166,20 +298,20 @@ const userDataSchema = {
           properties: {
             source: { bsonType: 'string' },
             deviceType: { bsonType: 'string' },
-            sessionId: { bsonType: 'string' }
-          }
+            sessionId: { bsonType: 'string' },
+          },
         },
         processedStatus: {
           bsonType: 'string',
           enum: ['pending', 'processed', 'failed'],
           description: 'Status of algorithm processing',
         },
-        timestamp: { bsonType: 'date' }
-      }
-    }
+        timestamp: { bsonType: 'date' },
+      },
+    },
   },
   validationLevel: 'moderate',
-  validationAction: 'error'
+  validationAction: 'error',
 };
 
 module.exports = {
@@ -187,5 +319,5 @@ module.exports = {
   storeSchema,
   apiUsageSchema,
   userDataSchema,
-  SCHEMA_VERSION
+  SCHEMA_VERSION,
 };

@@ -1,5 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache} = require('../utils/redisUtil');
+const { setCache } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 const { assignUserRole, linkAccounts } = require('../utils/auth0Util');
@@ -16,8 +16,8 @@ exports.registerUser = async function (req, body) {
     const { preferences, dataSharingConsent } = body;
 
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
-    
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
     // Check if already registered as a user or store
     const registration = await checkExistingRegistration(userData.sub);
     if (registration.exists) {
@@ -26,7 +26,7 @@ exports.registerUser = async function (req, body) {
         message: `This account is already registered as a ${registration.type}`,
       });
     }
-    
+
     // Check if email already exists in our database
     const existingUserByEmail = await db.collection('users').findOne({
       email: userData.email,
@@ -39,9 +39,13 @@ exports.registerUser = async function (req, body) {
         await linkAccounts(existingUserByEmail.auth0Id, userData.sub);
 
         // Cache the linked user data
-        await setCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`, JSON.stringify(existingUserByEmail), {
-          EX: CACHE_TTL.USER_DATA
-        });
+        await setCache(
+          `${CACHE_KEYS.USER_DATA}${userData.sub}`,
+          JSON.stringify(existingUserByEmail),
+          {
+            EX: CACHE_TTL.USER_DATA,
+          },
+        );
 
         // Return the existing user
         return respondWithCode(200, {
@@ -87,7 +91,7 @@ exports.registerUser = async function (req, body) {
       auth0Id: userData.sub,
       username: userData.nickname,
       email: userData.email,
-      phone: userData.phone_number || null, 
+      phone: userData.phone_number || null,
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,
@@ -105,26 +109,22 @@ exports.registerUser = async function (req, body) {
     await db.collection('users').createIndex({ username: 1 }, { unique: true });
 
     const result = await db.collection('users').insertOne(user);
-    
+
     // Cache the newly created user data
     const userWithId = { ...user, _id: result.insertedId };
     await setCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`, JSON.stringify(userWithId), {
-      EX: CACHE_TTL.USER_DATA
+      EX: CACHE_TTL.USER_DATA,
     });
-    
+
     // Also cache user preferences
-    const cachePreferences = { 
-      userId: result.insertedId.toString(),
-      interests: user.preferences || [],
-      privacySettings: user.privacySettings,
-      demographics: user.demographics || {
-        ageRange: 'unknown',
-        location: 'unknown'
-      }
+    const cachePreferences = {
+      userId: user._id.toString(),
+      preferences: user.preferences || [], // Fixed: consistent naming
+      updatedAt: user.updatedAt || new Date(),
     };
-    
+
     await setCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`, JSON.stringify(cachePreferences), {
-      EX: CACHE_TTL.USER_DATA
+      EX: CACHE_TTL.USER_DATA,
     });
 
     return respondWithCode(201, { ...user, userId: result.insertedId });
@@ -144,7 +144,7 @@ exports.registerStore = async function (req, body) {
     const { name, address, webhooks } = body;
 
     // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Check if already registered
     const registration = await checkExistingRegistration(userData.sub);
@@ -167,9 +167,13 @@ exports.registerStore = async function (req, body) {
         await linkAccounts(existingStoreByEmail.auth0Id, userData.sub);
 
         // Cache the linked store data
-        await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, JSON.stringify(existingStoreByEmail), {
-          EX: CACHE_TTL.STORE_DATA
-        });
+        await setCache(
+          `${CACHE_KEYS.STORE_DATA}${userData.sub}`,
+          JSON.stringify(existingStoreByEmail),
+          {
+            EX: CACHE_TTL.STORE_DATA,
+          },
+        );
 
         // Return the existing store
         return respondWithCode(200, {
@@ -211,17 +215,16 @@ exports.registerStore = async function (req, body) {
     };
 
     const result = await db.collection('stores').insertOne(store);
-    
+
     // Cache the newly created store data
     const storeWithId = { ...store, _id: result.insertedId };
     await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, JSON.stringify(storeWithId), {
-      EX: CACHE_TTL.STORE_DATA
+      EX: CACHE_TTL.STORE_DATA,
     });
-    
+
     return respondWithCode(201, { ...store, storeId: result.insertedId });
   } catch (error) {
     console.error('Store registration failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
-

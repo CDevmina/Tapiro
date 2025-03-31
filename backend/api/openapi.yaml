@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Tapiro API
-  description: API for AI-Driven Personalized Advertising System
+  description: API for AI-Driven Personalized Advertising Health
   version: 1.0.0
   contact: { name: Tapiro Support, email: tapirosupport@gmail.com }
 tags:
@@ -17,6 +17,8 @@ tags:
     description: Operations for managing user preferences and opt-in/out settings
   - name: Data Retrival
     description: Operations for retrieving user preferences and data
+  - name: Health
+    description: Health and uptime monitoring
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -307,7 +309,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UserUpdate"
+              $ref: "#/components/schemas/UserPreferencesUpdate"
         required: true
       responses:
         "200":
@@ -482,8 +484,49 @@ paths:
         - oauth2: [store:read]
       x-swagger-router-controller: StoreManagement
 
+  /health:
+    get:
+      tags: [Health]
+      summary: Health Check
+      description: Comprehensive health check that verifies API and dependencies
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Health status information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "500":
+          description: Internal server error
+      x-swagger-router-controller: Health
+
+  /ping:
+    get:
+      tags: [Health]
+      summary: Simple Uptime Check
+      description: Simple ping endpoint for uptime monitoring
+      operationId: ping
+      responses:
+        "200":
+          description: Simple response indicating the API is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingStatus"
+      x-swagger-router-controller: Health
+
 components:
   schemas:
+    AttributeDistribution:
+      type: object
+      description: Distribution of attribute values (0.0-1.0)
+      additionalProperties:
+        type: number
+        format: float
+        minimum: 0.0
+        maximum: 1.0
+
     User:
       type: object
       required:
@@ -509,9 +552,9 @@ components:
           pattern: ^\+?[\d\s-]+$
         preferences:
           type: array
+          description: User interest preferences with taxonomy categorization
           items:
-            type: string
-          description: User preferences (e.g., electronics/fashion)
+            $ref: "#/components/schemas/PreferenceItem"
         privacySettings:
           type: object
           properties:
@@ -522,6 +565,11 @@ components:
               type: boolean
               default: false
             optInStores:
+              type: array
+              items:
+                type: string
+              description: List of store IDs user has opted into
+            optOutStores:
               type: array
               items:
                 type: string
@@ -599,7 +647,7 @@ components:
         preferences:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/PreferenceItem"
         dataSharingConsent:
           type: boolean
           description: User's consent for data sharing
@@ -634,8 +682,8 @@ components:
         preferences:
           type: array
           items:
-            type: string
-          description: User interest preferences (e.g., electronics, fashion)
+            $ref: "#/components/schemas/PreferenceItem"
+          description: User interest preferences with taxonomy categorization
         privacySettings:
           type: object
           properties:
@@ -644,6 +692,10 @@ components:
             anonymizeData:
               type: boolean
             optInStores:
+              type: array
+              items:
+                type: string
+            optOutStores:
               type: array
               items:
                 type: string
@@ -665,6 +717,9 @@ components:
         prefix:
           type: string
           readOnly: true
+        name:
+          type: string
+          description: Name for the API key
         createdAt:
           type: string
           format: date-time
@@ -691,47 +746,16 @@ components:
           type: array
           description: Array of data entries
           items:
-            type: object
-            properties:
-              timestamp:
-                type: string
-                format: date-time
-                description: When the event occurred
-              items:
-                type: array
-                description: For purchase data - products purchased
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    price:
-                      type: number
-                    quantity:
-                      type: integer
-                    category:
-                      type: string
-              query:
-                type: string
-                description: For search data - search query
-              category:
-                type: string
-                description: For search data - category searched
-              results:
-                type: integer
-                description: For search data - number of results
-              clicked:
-                type: array
-                description: For search data - items clicked
-                items:
-                  type: string
-              totalAmount:
-                type: number
-                description: For purchase data - total purchase amount
+            oneOf:
+              - $ref: "#/components/schemas/PurchaseEntry"
+              - $ref: "#/components/schemas/SearchEntry"
         metadata:
           type: object
           description: Additional information about the collection event
           properties:
+            userId:
+              type: string
+              description: Optional user ID if known
             source:
               type: string
               description: Source of the data (web, mobile, pos, etc)
@@ -763,6 +787,7 @@ components:
       type: object
       required:
         - name
+        - category
       properties:
         sku:
           type: string
@@ -770,10 +795,42 @@ components:
           type: string
         category:
           type: string
+          description: Category ID (e.g., "101") or name (e.g., "smartphones")
         quantity:
           type: integer
+          default: 1
         price:
           type: number
+          format: float
+        attributes:
+          $ref: "#/components/schemas/ItemAttributes"
+
+    ItemAttributes:
+      type: object
+      description: Category-specific attributes
+      properties:
+        price_range:
+          type: string
+          enum: [budget, mid_range, premium, luxury]
+        brand:
+          type: string
+        color:
+          type: string
+        material:
+          type: string
+        style:
+          type: string
+        room:
+          type: string
+        size:
+          type: string
+        feature:
+          type: string
+        season:
+          type: string
+        gender:
+          type: string
+      additionalProperties: false
 
     SearchEntry:
       type: object
@@ -800,17 +857,75 @@ components:
       properties:
         userId:
           type: string
-        interests:
+        preferences:
           type: array
           items:
-            type: string
-        demographics:
+            $ref: "#/components/schemas/PreferenceItem"
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserPreferencesUpdate:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreferenceItem"
+          description: User interest preferences with taxonomy categorization
+
+    PreferenceItem:
+      type: object
+      required:
+        - category
+        - score
+      properties:
+        category:
+          type: string
+          description: Category ID or name (e.g., "101" or "smartphones")
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Preference score (0.0-1.0)
+        attributes:
           type: object
+          description: Category-specific attribute preferences
           properties:
-            ageRange:
-              type: string
-            location:
-              type: string
+            price_range:
+              type: object
+              properties:
+                budget:
+                  type: number
+                  format: float
+                mid_range:
+                  type: number
+                  format: float
+                premium:
+                  type: number
+                  format: float
+                luxury:
+                  type: number
+                  format: float
+            color:
+              $ref: "#/components/schemas/AttributeDistribution"
+            brand:
+              $ref: "#/components/schemas/AttributeDistribution"
+            material:
+              $ref: "#/components/schemas/AttributeDistribution"
+            style:
+              $ref: "#/components/schemas/AttributeDistribution"
+            room:
+              $ref: "#/components/schemas/AttributeDistribution"
+            size:
+              $ref: "#/components/schemas/AttributeDistribution"
+            feature:
+              $ref: "#/components/schemas/AttributeDistribution"
+            season:
+              $ref: "#/components/schemas/AttributeDistribution"
+            gender:
+              $ref: "#/components/schemas/AttributeDistribution"
 
     StoreUpdate:
       type: object
@@ -874,6 +989,43 @@ components:
                 format: date
               count:
                 type: integer
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall health status of the Health
+        timestamp:
+          type: string
+          format: date-time
+          description: Time of health check
+        service:
+          type: string
+          description: Service name
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [connected, disconnected, degraded]
+            cache:
+              type: string
+              enum: [connected, disconnected, degraded]
+            auth:
+              type: string
+              enum: [connected, disconnected, degraded, unknown]
+
+    PingStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
 
   securitySchemes:
     apiKey:

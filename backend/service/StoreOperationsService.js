@@ -3,6 +3,7 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
+const { validateCategoryId, validateAttributes } = require('../utils/taxonomyValidator');
 
 /**
  * Get user preferences for targeted advertising
@@ -71,11 +72,8 @@ exports.getUserPreferences = async function (req, userId) {
     // Prepare user preferences
     const preferences = {
       userId: user._id.toString(),
-      interests: user.preferences || [],
-      demographics: {
-        ageRange: user.demographics?.ageRange || 'unknown',
-        location: user.demographics?.location || 'unknown',
-      },
+      preferences: user.preferences || [],
+      updatedAt: user.updatedAt || new Date(),
     };
 
     // Cache the preferences with standardized TTL
@@ -113,7 +111,7 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
-    // Validate entries based on dataType
+    // Enhanced validation based on taxonomy
     if (dataType === 'purchase') {
       for (const entry of entries) {
         if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
@@ -130,6 +128,27 @@ exports.submitUserData = async function (req, body) {
               message: 'Each purchase item requires a name',
             });
           }
+
+          // Use imported validator functions
+          if (item.category) {
+            const isValid = validateCategoryId(item.category);
+            if (!isValid) {
+              return respondWithCode(400, {
+                code: 400,
+                message: `Invalid category: ${item.category}. Please use valid category ID or name.`,
+              });
+            }
+          }
+
+          if (item.attributes) {
+            const validationResult = validateAttributes(item.category, item.attributes);
+            if (!validationResult.valid) {
+              return respondWithCode(400, {
+                code: 400,
+                message: validationResult.message,
+              });
+            }
+          }
         }
       }
     } else if (dataType === 'search') {
@@ -139,6 +158,17 @@ exports.submitUserData = async function (req, body) {
             code: 400,
             message: 'Search entries require timestamp and query',
           });
+        }
+
+        // Validate category if provided
+        if (entry.category) {
+          const isValid = validateCategoryId(entry.category);
+          if (!isValid) {
+            return respondWithCode(400, {
+              code: 400,
+              message: `Invalid category: ${entry.category}. Please use valid category ID or name.`,
+            });
+          }
         }
       }
     } else {
@@ -188,13 +218,43 @@ exports.submitUserData = async function (req, body) {
       );
     }
 
-    // Store SINGLE COPY of data with audit fields included
+    // Process entries to ensure proper data types
+    const processedEntries = entries.map((entry) => {
+      // Convert entry timestamp to Date object
+      const processedEntry = {
+        ...entry,
+        timestamp: entry.timestamp instanceof Date ? entry.timestamp : new Date(entry.timestamp),
+      };
+
+      // Handle purchase entries
+      if (dataType === 'purchase' && processedEntry.items) {
+        processedEntry.items = processedEntry.items.map((item) => ({
+          ...item,
+          // Ensure quantity is an integer
+          quantity: item.quantity ? parseInt(item.quantity) : 1,
+          // Ensure price is a double/float
+          price: item.price ? parseFloat(item.price) : undefined,
+        }));
+      }
+
+      // Handle search entries
+      if (dataType === 'search') {
+        // Ensure results is an integer if present
+        if (processedEntry.results) {
+          processedEntry.results = parseInt(processedEntry.results);
+        }
+      }
+
+      return processedEntry;
+    });
+
+    // Store data with audit fields included and properly typed data
     const result = await db.collection('userData').insertOne({
-      userId: user._id,
+      userId: user._id, // Already an ObjectId from MongoDB
       storeId: req.storeId,
       email,
       dataType,
-      entries,
+      entries: processedEntries, // Use the processed entries
       metadata,
       processedStatus: 'pending',
       timestamp: new Date(),
