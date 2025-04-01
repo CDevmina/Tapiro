@@ -8,155 +8,16 @@ import logging
 import re
 from app.utils.redis_util import invalidate_cache, CACHE_KEYS
 
+# Import taxonomy utilities
+from app.taxonomy import (
+    normalize_category, 
+    get_price_range,
+    validate_attributes
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-def normalize_category(category: str) -> str:
-    """Normalize category names to match taxonomy standards"""
-    if not category:
-        return "general"
-    
-    # Convert to lowercase for consistency
-    category = category.lower().strip()
-    
-    # Handle numeric category IDs first
-    if category.isdigit():
-        category_num = int(category)
-        # Map category IDs to names based on your taxonomy
-        if 100 <= category_num < 200:
-            main_category = "electronics"
-            # Electronics subcategories
-            if category_num == 101:
-                return "smartphones"
-            elif category_num == 102:
-                return "computers"
-            elif category_num == 103:
-                return "audio"
-            elif category_num == 104:
-                return "tvs_displays"
-            elif category_num == 105:
-                return "cameras"
-            elif category_num == 106:
-                return "wearables"
-            elif category_num == 107:
-                return "gaming"
-            elif category_num == 108:
-                return "smart_home"
-            elif category_num == 109:
-                return "tablets"
-            elif category_num == 110:
-                return "accessories"
-            return main_category
-            
-        elif 200 <= category_num < 300:
-            main_category = "clothing"
-            # Clothing subcategories
-            if category_num == 201:
-                return "mens_clothing"
-            elif category_num == 202:
-                return "womens_clothing"
-            elif category_num == 203:
-                return "childrens_clothing"
-            elif category_num == 204:
-                return "footwear"
-            elif category_num == 205:
-                return "clothing_accessories"
-            elif category_num == 206:
-                return "activewear"
-            elif category_num == 207:
-                return "formal_wear"
-            elif category_num == 208:
-                return "underwear"
-            elif category_num == 209:
-                return "seasonal"
-            elif category_num == 210:
-                return "sustainable_fashion"
-            return main_category
-            
-        elif 300 <= category_num < 400:
-            main_category = "home_garden"
-            # Home & Garden subcategories
-            if category_num == 301:
-                return "furniture"
-            elif category_num == 302:
-                return "kitchen"
-            elif category_num == 303:
-                return "home_decor"
-            elif category_num == 304:
-                return "bedding_bath"
-            elif category_num == 305:
-                return "storage"
-            elif category_num == 306:
-                return "garden"
-            elif category_num == 307:
-                return "lighting"
-            elif category_num == 308:
-                return "appliances"
-            elif category_num == 309:
-                return "home_improvement"
-            elif category_num == 310:
-                return "home_office"
-            return main_category
-            
-        # Add more category ranges for 400-1000
-        elif 400 <= category_num < 500:
-            return "beauty_personal_care"
-        elif 500 <= category_num < 600:
-            return "sports_outdoors"
-        elif 600 <= category_num < 700:
-            return "books_media"
-        elif 700 <= category_num < 800:
-            return "food_grocery"
-        elif 800 <= category_num < 900:
-            return "automotive"
-        elif 900 <= category_num < 1000:
-            return "health_wellness"
-        elif 1000 <= category_num < 1100:
-            return "toys_games"
-            
-        # Fallback for any other numeric category
-        return "general"
-    
-    # Direct category mapping for common categories
-    direct_mapping = {
-        "electronics": "electronics",
-        "clothing": "clothing",
-        "home": "home_garden",
-    }
-    
-    if category in direct_mapping:
-        return direct_mapping[category]
-    
-    # Pattern-based mapping - REMOVE or move the '.*' pattern to the end
-    pattern_mapping = {
-        r'(phone|smartphone|mobile|cell)': 'smartphones',
-        r'(laptop|computer|desktop|pc)': 'computers',
-        r'(tv|television|screen|monitor)': 'tvs_displays',
-        r'(audio|speaker|headphone)': 'audio',
-        r'(camera|photo|video)': 'cameras',
-        
-        # Clothing
-        r'(shirt|tshirt|t-shirt|top|blouse)': 'clothing',
-        r'(pant|trouser|jean|bottom)': 'clothing',
-        r'(shoe|boot|footwear|sneaker)': 'footwear',
-        r'(dress|gown|skirt)': 'clothing',
-        
-        # Home & Garden
-        r'(furniture|sofa|chair|table)': 'furniture',
-        r'(kitchen|cookware|appliance)': 'kitchen',
-        r'(décor|decor|ornament)': 'home_decor',
-        r'(garden|outdoor|plant)': 'garden',
-        # ...other patterns
-    }
-    
-    # Use regex only if no direct match
-    for pattern, normalized in pattern_mapping.items():
-        if re.match(pattern, category):
-            return normalized
-    
-    # Fallback - only if no other match found
-    return "general"
 
 async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     """Process user data and update their preferences"""
@@ -278,18 +139,25 @@ def extract_preference_data(data_type: str, entries: List[dict]) -> Tuple[Counte
     if data_type == "purchase":
         for entry in entries:
             for item in entry.get("items", []):
-                # Extract and normalize category
+                # Extract and normalize category using the taxonomy module
                 raw_category = item.get("category", "general")
                 category = normalize_category(raw_category)
                 
                 counts[category] += 1
                 
-                # Extract attributes
+                # Extract attributes and validate them if needed
                 attributes = item.get("attributes", {})
                 if attributes:
-                    for attr_name, attr_value in attributes.items():
-                        # Record this attribute value occurrence
-                        attribute_distributions[category][attr_name][str(attr_value)] += 1
+                    validation_result = validate_attributes(category, attributes)
+                    if validation_result["valid"]:
+                        for attr_name, attr_value in attributes.items():
+                            attribute_distributions[category][attr_name][str(attr_value)] += 1
+                
+                # Add price range as an attribute if price is available
+                if "price" in item:
+                    price = item["price"]
+                    price_range = get_price_range(price, category)
+                    attribute_distributions[category]["price_range"][price_range] += 1
                 
     elif data_type == "search":
         for entry in entries:
