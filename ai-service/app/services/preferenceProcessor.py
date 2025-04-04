@@ -15,12 +15,16 @@ from app.taxonomy import (
     validate_attributes
 )
 
+# Add these imports
+from app.ai import process_data_with_ai
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Modify your existing process_user_data function
 async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
-    """Process user data and update their preferences"""
+    """Process user data and update their preferences with AI"""
     
     # Extract user info
     user_id = data.metadata.get("userId") if data.metadata else None
@@ -42,9 +46,6 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
             logger.error(f"User not found: {email}")
             raise HTTPException(status_code=404, detail="User not found")
     
-    # Extract new data based on data type
-    new_counts, attribute_distributions = extract_preference_data(data_type, entries)
-    
     # Get current preferences with attributes
     current_preferences = {}
     current_attributes = {}
@@ -58,6 +59,13 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
                 # Get attributes if present
                 if "attributes" in pref and pref["attributes"]:
                     current_attributes[category] = pref["attributes"]
+    
+    # Use AI to process the user data
+    new_counts, attribute_distributions = await process_data_with_ai(
+        data_type, 
+        entries,
+        current_preferences
+    )
     
     # Calculate new preferences
     updated_preference_dict = calculate_preferences(new_counts, current_preferences)
