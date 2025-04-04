@@ -124,22 +124,29 @@ Price ranges vary by category:
 
 ## 5. Data Structure
 
-### 5.1 User Preference Object
+### 5.1 User Schema with Preferences
 
 ```json
 {
-  "user_id": "string",
+  "_id": "60d21b4667d0d8992e610c85",
+  "auth0Id": "auth0|60d21b4667d0d8992e610c85",
+  "email": "user@example.com",
+  "username": "exampleuser",
   "preferences": [
     {
-      "category": "string", // Category ID or name (e.g., "101" or "smartphones")
-      "score": 0.85, // Preference score (0.0-1.0)
+      "category": "101",
+      "score": 0.85,
       "attributes": {
-        // Optional category-specific attributes
         "price_range": {
           "budget": 0.2,
           "mid_range": 0.7,
           "premium": 0.1,
           "luxury": 0.0
+        },
+        "brand": {
+          "apple": 0.1,
+          "samsung": 0.7,
+          "other": 0.2
         },
         "color": {
           "black": 0.6,
@@ -149,7 +156,14 @@ Price ranges vary by category:
       }
     }
   ],
-  "updated_at": "2025-03-27T10:30:00Z"
+  "privacySettings": {
+    "dataSharingConsent": true,
+    "anonymizeData": false,
+    "optInStores": ["store123"],
+    "optOutStores": []
+  },
+  "createdAt": "2025-03-15T12:00:00Z",
+  "updatedAt": "2025-03-27T10:30:00Z"
 }
 ```
 
@@ -157,29 +171,33 @@ Price ranges vary by category:
 
 ```json
 {
+  "userId": "60d21b4667d0d8992e610c85",
+  "storeId": "store123",
   "email": "user@example.com",
-  "data_type": "purchase", // One of: "purchase", "search"
+  "dataType": "purchase",
   "entries": [
     {
-      // For purchase data
       "timestamp": "2025-03-27T09:15:00Z",
       "items": [
         {
           "name": "Smartphone XYZ",
-          "category": "101", // Category ID or "smartphones"
+          "category": "101",
           "price": 699.99,
-          "color": "black",
-          "brand": "samsung"
+          "attributes": {
+            "color": "black",
+            "brand": "samsung"
+          }
         }
       ]
     }
   ],
   "metadata": {
-    "userId": "string", // Optional user ID if known
-    "source": "mobile_app", // Source of the data
-    "deviceType": "ios", // Device used
-    "sessionId": "string" // Session identifier
-  }
+    "source": "mobile_app",
+    "deviceType": "ios",
+    "sessionId": "sess_12345"
+  },
+  "processedStatus": "pending",
+  "timestamp": "2025-03-27T09:15:00Z"
 }
 ```
 
