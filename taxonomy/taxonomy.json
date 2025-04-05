@@ -1,0 +1,189 @@
+{
+  "mainCategories": {
+    "ELECTRONICS": 100,
+    "CLOTHING": 200,
+    "HOME_GARDEN": 300,
+    "BEAUTY_PERSONAL_CARE": 400,
+    "SPORTS_OUTDOORS": 500,
+    "BOOKS_MEDIA": 600,
+    "FOOD_GROCERY": 700,
+    "AUTOMOTIVE": 800,
+    "HEALTH_WELLNESS": 900,
+    "TOYS_GAMES": 1000
+  },
+  "subcategories": {
+    "SMARTPHONES": 101,
+    "COMPUTERS": 102,
+    "AUDIO": 103,
+    "TVS_DISPLAYS": 104,
+    "CAMERAS": 105,
+    "WEARABLES": 106,
+    "GAMING": 107,
+    "SMART_HOME": 108,
+    "TABLETS": 109,
+    "ELECTRONICS_ACCESSORIES": 110,
+    "MENS_CLOTHING": 201,
+    "WOMENS_CLOTHING": 202,
+    "CHILDRENS_CLOTHING": 203,
+    "FOOTWEAR": 204,
+    "CLOTHING_ACCESSORIES": 205,
+    "ACTIVEWEAR": 206,
+    "FORMAL_WEAR": 207,
+    "UNDERWEAR": 208,
+    "SEASONAL": 209,
+    "SUSTAINABLE_FASHION": 210,
+    "FURNITURE": 301,
+    "KITCHEN": 302,
+    "HOME_DECOR": 303,
+    "BEDDING_BATH": 304,
+    "STORAGE": 305,
+    "GARDEN": 306,
+    "LIGHTING": 307,
+    "APPLIANCES": 308,
+    "HOME_IMPROVEMENT": 309,
+    "HOME_OFFICE": 310
+  },
+  "categoryAttributes": {
+    "100": {
+      "price_range": ["budget", "mid_range", "premium", "luxury"],
+      "brand": ["apple", "samsung", "sony", "google", "lg", "other"],
+      "color": ["black", "white", "silver", "gold", "blue", "red", "other"],
+      "feature": ["wireless", "smart", "portable", "gaming", "waterproof"],
+      "rating": [1, 2, 3, 4, 5],
+      "release_year": "numeric"
+    },
+    "200": {
+      "price_range": ["budget", "mid_range", "premium", "luxury"],
+      "color": [
+        "black",
+        "white",
+        "blue",
+        "red",
+        "green",
+        "yellow",
+        "pink",
+        "other"
+      ],
+      "material": ["cotton", "wool", "polyester", "leather", "denim", "other"],
+      "size": ["xs", "s", "m", "l", "xl", "xxl"],
+      "style": ["casual", "formal", "sport", "vintage", "business"],
+      "season": ["summer", "winter", "spring", "fall", "all_season"],
+      "gender": ["men", "women", "unisex", "children"]
+    },
+    "300": {
+      "price_range": ["budget", "mid_range", "premium", "luxury"],
+      "color": ["black", "white", "wood", "metal", "beige", "grey", "other"],
+      "material": ["wood", "metal", "plastic", "glass", "fabric", "other"],
+      "style": ["modern", "traditional", "minimalist", "industrial", "rustic"],
+      "room": ["living", "bedroom", "kitchen", "bathroom", "office", "outdoor"],
+      "size": ["small", "medium", "large"]
+    }
+  },
+  "priceRanges": {
+    "100": {
+      "budget": { "min": 0, "max": 100 },
+      "mid_range": { "min": 100, "max": 500 },
+      "premium": { "min": 500, "max": 1000 },
+      "luxury": { "min": 1000, "max": null }
+    },
+    "200": {
+      "budget": { "min": 0, "max": 30 },
+      "mid_range": { "min": 30, "max": 100 },
+      "premium": { "min": 100, "max": 300 },
+      "luxury": { "min": 300, "max": null }
+    },
+    "300": {
+      "budget": { "min": 0, "max": 50 },
+      "mid_range": { "min": 50, "max": 200 },
+      "premium": { "min": 200, "max": 500 },
+      "luxury": { "min": 500, "max": null }
+    },
+    "400": {
+      "budget": { "min": 0, "max": 15 },
+      "mid_range": { "min": 15, "max": 50 },
+      "premium": { "min": 50, "max": 100 },
+      "luxury": { "min": 100, "max": null }
+    },
+    "500": {
+      "budget": { "min": 0, "max": 25 },
+      "mid_range": { "min": 25, "max": 100 },
+      "premium": { "min": 100, "max": 300 },
+      "luxury": { "min": 300, "max": null }
+    }
+  },
+  "commonCategoryNames": [
+    "smartphones",
+    "computers",
+    "audio",
+    "tvs",
+    "cameras",
+    "wearables",
+    "gaming",
+    "smart home",
+    "tablets",
+    "accessories",
+    "clothing",
+    "fashion",
+    "shirts",
+    "pants",
+    "dresses",
+    "furniture",
+    "kitchen",
+    "decor",
+    "lighting",
+    "garden"
+  ],
+  "categoryPatterns": [
+    {
+      "pattern": "electronics|smartphone|computer|audio|tv|camera|wearable|gaming|tablet",
+      "type": "electronics",
+      "id": 100
+    },
+    {
+      "pattern": "clothing|fashion|apparel|wear|shoe|dress|pant|shirt",
+      "type": "clothing",
+      "id": 200
+    },
+    {
+      "pattern": "home|furniture|kitchen|decor|garden|lighting|appliance",
+      "type": "home_garden",
+      "id": 300
+    },
+    {
+      "pattern": "beauty|cosmetic|makeup|skincare|personal care",
+      "type": "beauty_personal_care",
+      "id": 400
+    },
+    {
+      "pattern": "sports|outdoors|fitness|exercise|recreation",
+      "type": "sports_outdoors",
+      "id": 500
+    },
+    {
+      "pattern": "books|media|reading|e-?book|audio ?book",
+      "type": "books_media",
+      "id": 600
+    },
+    {
+      "pattern": "food|grocery|beverage|drink|snack",
+      "type": "food_grocery",
+      "id": 700
+    },
+    {
+      "pattern": "automotive|car|vehicle|auto",
+      "type": "automotive",
+      "id": 800
+    },
+    {
+      "pattern": "health|wellness|medical|supplement",
+      "type": "health_wellness",
+      "id": 900
+    },
+    {
+      "pattern": "toys|games|entertainment|plaything",
+      "type": "toys_games",
+      "id": 1000
+    }
+  ],
+  "version": "1.0.2"
+}

@@ -1,6 +1,8 @@
 /**
  * Tapiro Product Taxonomy Constants
- * This file defines the standardized product taxonomy used throughout the platform
+ * This file is AUTO-GENERATED from taxonomy.json - DO NOT MODIFY DIRECTLY
+ * Generated on: 2025-04-05T10:02:42.680Z
+ * Version: 1.0.2
  */
 
 // Main Categories
@@ -19,7 +21,8 @@ const MAIN_CATEGORIES = {
 
 // Subcategories
 const SUBCATEGORIES = {
-  // Electronics
+
+  // ELECTRONICS
   SMARTPHONES: 101,
   COMPUTERS: 102,
   AUDIO: 103,
@@ -31,7 +34,7 @@ const SUBCATEGORIES = {
   TABLETS: 109,
   ELECTRONICS_ACCESSORIES: 110,
 
-  // Clothing
+  // CLOTHING
   MENS_CLOTHING: 201,
   WOMENS_CLOTHING: 202,
   CHILDRENS_CLOTHING: 203,
@@ -43,7 +46,7 @@ const SUBCATEGORIES = {
   SEASONAL: 209,
   SUSTAINABLE_FASHION: 210,
 
-  // Home & Garden
+  // HOME_GARDEN
   FURNITURE: 301,
   KITCHEN: 302,
   HOME_DECOR: 303,
@@ -54,13 +57,10 @@ const SUBCATEGORIES = {
   APPLIANCES: 308,
   HOME_IMPROVEMENT: 309,
   HOME_OFFICE: 310,
-
-  // Add more subcategories for other main categories as needed
 };
 
 // Attributes by category
 const CATEGORY_ATTRIBUTES = {
-  // Electronics attributes
   [MAIN_CATEGORIES.ELECTRONICS]: {
     price_range: ['budget', 'mid_range', 'premium', 'luxury'],
     brand: ['apple', 'samsung', 'sony', 'google', 'lg', 'other'],
@@ -69,8 +69,6 @@ const CATEGORY_ATTRIBUTES = {
     rating: [1, 2, 3, 4, 5],
     release_year: 'numeric',
   },
-
-  // Clothing attributes
   [MAIN_CATEGORIES.CLOTHING]: {
     price_range: ['budget', 'mid_range', 'premium', 'luxury'],
     color: ['black', 'white', 'blue', 'red', 'green', 'yellow', 'pink', 'other'],
@@ -80,8 +78,6 @@ const CATEGORY_ATTRIBUTES = {
     season: ['summer', 'winter', 'spring', 'fall', 'all_season'],
     gender: ['men', 'women', 'unisex', 'children'],
   },
-
-  // Home & Garden attributes
   [MAIN_CATEGORIES.HOME_GARDEN]: {
     price_range: ['budget', 'mid_range', 'premium', 'luxury'],
     color: ['black', 'white', 'wood', 'metal', 'beige', 'grey', 'other'],
@@ -90,8 +86,6 @@ const CATEGORY_ATTRIBUTES = {
     room: ['living', 'bedroom', 'kitchen', 'bathroom', 'office', 'outdoor'],
     size: ['small', 'medium', 'large'],
   },
-
-  // Add more category attributes as needed
 };
 
 // Price range definitions by category
@@ -126,7 +120,6 @@ const PRICE_RANGES = {
     premium: { min: 100, max: 300 },
     luxury: { min: 300, max: Infinity },
   },
-  // Add more as needed
 };
 
 // Common names for categories (for text-based detection)
@@ -150,8 +143,7 @@ const COMMON_CATEGORY_NAMES = [
   'kitchen',
   'decor',
   'lighting',
-  'garden',
-  // Additional common terms can be added here
+  'garden'
 ];
 
 // Category identification patterns
@@ -205,7 +197,7 @@ const CATEGORY_PATTERNS = [
     pattern: /toys|games|entertainment|plaything/i,
     type: 'toys_games',
     id: MAIN_CATEGORIES.TOYS_GAMES,
-  },
+  }
 ];
 
 // Pre-computed category name maps (built once at load time)

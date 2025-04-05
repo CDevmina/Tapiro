@@ -1,6 +1,8 @@
 """
 Tapiro Product Taxonomy Constants
-This module mirrors the Node.js taxonomyConstants.js file
+This file is AUTO-GENERATED from taxonomy.json - DO NOT MODIFY DIRECTLY
+Generated on: 2025-04-05T10:02:42.681Z
+Version: 1.0.2
 """
 
 # Main Categories
@@ -19,7 +21,8 @@ MAIN_CATEGORIES = {
 
 # Subcategories
 SUBCATEGORIES = {
-    # Electronics
+
+    # ELECTRONICS
     "SMARTPHONES": 101,
     "COMPUTERS": 102,
     "AUDIO": 103,
@@ -30,8 +33,8 @@ SUBCATEGORIES = {
     "SMART_HOME": 108,
     "TABLETS": 109,
     "ELECTRONICS_ACCESSORIES": 110,
-    
-    # Clothing
+
+    # CLOTHING
     "MENS_CLOTHING": 201,
     "WOMENS_CLOTHING": 202,
     "CHILDRENS_CLOTHING": 203,
@@ -42,8 +45,8 @@ SUBCATEGORIES = {
     "UNDERWEAR": 208,
     "SEASONAL": 209,
     "SUSTAINABLE_FASHION": 210,
-    
-    # Home & Garden
+
+    # HOME_GARDEN
     "FURNITURE": 301,
     "KITCHEN": 302,
     "HOME_DECOR": 303,
@@ -58,7 +61,6 @@ SUBCATEGORIES = {
 
 # Attributes by category
 CATEGORY_ATTRIBUTES = {
-    # Electronics attributes
     MAIN_CATEGORIES["ELECTRONICS"]: {
         "price_range": ["budget", "mid_range", "premium", "luxury"],
         "brand": ["apple", "samsung", "sony", "google", "lg", "other"],
@@ -67,8 +69,6 @@ CATEGORY_ATTRIBUTES = {
         "rating": [1, 2, 3, 4, 5],
         "release_year": "numeric",
     },
-    
-    # Clothing attributes
     MAIN_CATEGORIES["CLOTHING"]: {
         "price_range": ["budget", "mid_range", "premium", "luxury"],
         "color": ["black", "white", "blue", "red", "green", "yellow", "pink", "other"],
@@ -78,8 +78,6 @@ CATEGORY_ATTRIBUTES = {
         "season": ["summer", "winter", "spring", "fall", "all_season"],
         "gender": ["men", "women", "unisex", "children"],
     },
-    
-    # Home & Garden attributes
     MAIN_CATEGORIES["HOME_GARDEN"]: {
         "price_range": ["budget", "mid_range", "premium", "luxury"],
         "color": ["black", "white", "wood", "metal", "beige", "grey", "other"],
@@ -126,9 +124,26 @@ PRICE_RANGES = {
 
 # Common names for categories (for text-based detection)
 COMMON_CATEGORY_NAMES = [
-    "smartphones", "computers", "audio", "tvs", "cameras", "wearables", 
-    "gaming", "smart home", "tablets", "accessories", "clothing", "fashion",
-    "shirts", "pants", "dresses", "furniture", "kitchen", "decor", "lighting", "garden",
+    "smartphones",
+    "computers",
+    "audio",
+    "tvs",
+    "cameras",
+    "wearables",
+    "gaming",
+    "smart home",
+    "tablets",
+    "accessories",
+    "clothing",
+    "fashion",
+    "shirts",
+    "pants",
+    "dresses",
+    "furniture",
+    "kitchen",
+    "decor",
+    "lighting",
+    "garden"
 ]
 
 # Category identification patterns
@@ -148,7 +163,41 @@ CATEGORY_PATTERNS = [
         "type": "home_garden",
         "id": MAIN_CATEGORIES["HOME_GARDEN"],
     },
-    # Additional patterns can be added for other categories
+    {
+        "pattern": r"beauty|cosmetic|makeup|skincare|personal care",
+        "type": "beauty_personal_care",
+        "id": MAIN_CATEGORIES["BEAUTY_PERSONAL_CARE"],
+    },
+    {
+        "pattern": r"sports|outdoors|fitness|exercise|recreation",
+        "type": "sports_outdoors",
+        "id": MAIN_CATEGORIES["SPORTS_OUTDOORS"],
+    },
+    {
+        "pattern": r"books|media|reading|e-?book|audio ?book",
+        "type": "books_media",
+        "id": MAIN_CATEGORIES["BOOKS_MEDIA"],
+    },
+    {
+        "pattern": r"food|grocery|beverage|drink|snack",
+        "type": "food_grocery",
+        "id": MAIN_CATEGORIES["FOOD_GROCERY"],
+    },
+    {
+        "pattern": r"automotive|car|vehicle|auto",
+        "type": "automotive",
+        "id": MAIN_CATEGORIES["AUTOMOTIVE"],
+    },
+    {
+        "pattern": r"health|wellness|medical|supplement",
+        "type": "health_wellness",
+        "id": MAIN_CATEGORIES["HEALTH_WELLNESS"],
+    },
+    {
+        "pattern": r"toys|games|entertainment|plaything",
+        "type": "toys_games",
+        "id": MAIN_CATEGORIES["TOYS_GAMES"],
+    }
 ]
 
 # Pre-compute category name maps
