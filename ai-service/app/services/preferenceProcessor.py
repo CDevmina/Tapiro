@@ -8,52 +8,23 @@ import logging
 import re
 from app.utils.redis_util import invalidate_cache, CACHE_KEYS
 
+# Import taxonomy utilities
+from app.taxonomy import (
+    normalize_category, 
+    get_price_range,
+    validate_attributes
+)
+
+# Add these imports
+from app.ai import process_data_with_ai
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def normalize_category(category: str) -> str:
-    """Normalize category names to match taxonomy standards"""
-    if not category:
-        return "general"
-    
-    # Convert to lowercase for consistency
-    category = category.lower().strip()
-    
-    # Basic normalization mapping (simplified version of taxonomy system)
-    category_mapping = {
-        # Electronics
-        r'(phone|smartphone|mobile|cell)': 'smartphones',
-        r'(laptop|computer|desktop|pc)': 'computers',
-        r'(tv|television|screen|monitor)': 'tvs_displays',
-        r'(audio|speaker|headphone)': 'audio',
-        r'(camera|photo|video)': 'cameras',
-        
-        # Clothing
-        r'(shirt|tshirt|t-shirt|top|blouse)': 'clothing',
-        r'(pant|trouser|jean|bottom)': 'clothing',
-        r'(shoe|boot|footwear|sneaker)': 'footwear',
-        r'(dress|gown|skirt)': 'clothing',
-        
-        # Home & Garden
-        r'(furniture|sofa|chair|table)': 'furniture',
-        r'(kitchen|cookware|appliance)': 'kitchen',
-        r'(décor|decor|ornament)': 'home_decor',
-        r'(garden|outdoor|plant)': 'garden',
-        
-        # Default
-        r'.*': 'general'
-    }
-    
-    # Find the matching category
-    for pattern, normalized in category_mapping.items():
-        if re.match(pattern, category):
-            return normalized
-    
-    return category
-
+# Modify your existing process_user_data function
 async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
-    """Process user data and update their preferences"""
+    """Process user data and update their preferences with AI"""
     
     # Extract user info
     user_id = data.metadata.get("userId") if data.metadata else None
@@ -75,9 +46,6 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
             logger.error(f"User not found: {email}")
             raise HTTPException(status_code=404, detail="User not found")
     
-    # Extract new data based on data type
-    new_counts, attribute_distributions = extract_preference_data(data_type, entries)
-    
     # Get current preferences with attributes
     current_preferences = {}
     current_attributes = {}
@@ -91,6 +59,13 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
                 # Get attributes if present
                 if "attributes" in pref and pref["attributes"]:
                     current_attributes[category] = pref["attributes"]
+    
+    # Use AI to process the user data
+    new_counts, attribute_distributions = await process_data_with_ai(
+        data_type, 
+        entries,
+        current_preferences
+    )
     
     # Calculate new preferences
     updated_preference_dict = calculate_preferences(new_counts, current_preferences)
@@ -172,18 +147,25 @@ def extract_preference_data(data_type: str, entries: List[dict]) -> Tuple[Counte
     if data_type == "purchase":
         for entry in entries:
             for item in entry.get("items", []):
-                # Extract and normalize category
+                # Extract and normalize category using the taxonomy module
                 raw_category = item.get("category", "general")
                 category = normalize_category(raw_category)
                 
                 counts[category] += 1
                 
-                # Extract attributes
+                # Extract attributes and validate them if needed
                 attributes = item.get("attributes", {})
                 if attributes:
-                    for attr_name, attr_value in attributes.items():
-                        # Record this attribute value occurrence
-                        attribute_distributions[category][attr_name][str(attr_value)] += 1
+                    validation_result = validate_attributes(category, attributes)
+                    if validation_result["valid"]:
+                        for attr_name, attr_value in attributes.items():
+                            attribute_distributions[category][attr_name][str(attr_value)] += 1
+                
+                # Add price range as an attribute if price is available
+                if "price" in item:
+                    price = item["price"]
+                    price_range = get_price_range(price, category)
+                    attribute_distributions[category]["price_range"][price_range] += 1
                 
     elif data_type == "search":
         for entry in entries:
