@@ -4,7 +4,7 @@ on:
   push:
     branches: ["Production"]
     paths:
-      - "backend/**"
+      - "api-service/**"
       - "web/**"
       - ".github/workflows/ci-prod.yml"
   pull_request:
@@ -16,8 +16,8 @@ permissions:
   security-events: write
 
 jobs:
-  backend-tests:
-    name: Backend Tests
+  api-service-tests:
+    name: api-service Tests
     runs-on: ubuntu-latest
     environment: Production
     if: github.event_name == 'pull_request'
@@ -29,21 +29,25 @@ jobs:
         with:
           node-version: "18"
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: api-service/package-lock.json
 
       - name: Install dependencies
-        working-directory: api-service        run: npm ci
+        working-directory: api-service
+        run: npm ci
 
       - name: Run unit tests
-        working-directory: api-service        run: npm run test
+        working-directory: api-service
+        run: npm run test
 
       - name: Run integration tests
-        working-directory: api-service        run: npm run test
+        working-directory: api-service
+        run: npm run test
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Run API tests
-        working-directory: api-service        run: npm run test
+        working-directory: api-service
+        run: npm run test
 
   web-tests:
     name: Web Tests
@@ -133,8 +137,9 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "Backend logs:"
-          docker compose logs api-service          echo "Frontend logs:"
+          echo "api-service logs:"
+          docker compose logs api-service
+          echo "Frontend logs:"
           docker compose logs web
           echo "Redis logs:"
           docker compose logs redis
@@ -168,7 +173,7 @@ jobs:
     if: github.event_name == 'pull_request'
     strategy:
       matrix:
-        service: [web, backend]
+        service: [web, api-service]
     steps:
       - uses: actions/checkout@v4
 
@@ -207,7 +212,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [web, backend]
+        service: [web, api-service]
     steps:
       - uses: actions/checkout@v4
 
