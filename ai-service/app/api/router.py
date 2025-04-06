@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.endpoints import health, preferences
+from app.api.endpoints import health, preferences, admin  # Add the admin import
 from app.core.security import get_api_key
 
 # Create the main API router
@@ -13,5 +13,13 @@ api_router.include_router(
     preferences.router, 
     prefix="/users", 
     tags=["Preferences"],
+    dependencies=[Depends(get_api_key)]
+)
+
+# Include admin router with authentication
+api_router.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["Admin"],
     dependencies=[Depends(get_api_key)]
 )
