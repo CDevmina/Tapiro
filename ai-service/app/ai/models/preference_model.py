@@ -31,7 +31,17 @@ def predict_preferences(features: Dict[str, Any], existing_preferences: Dict[str
             current = predictions.get(category, 0)
             predictions[category] = min(current + normalized_score, 1.0)  # Cap at 1.0
     
+    # Apply recency weighting if available
+    if 'recency_weights' in features and features['recency_weights']:
+        avg_recency = sum(features['recency_weights'].values()) / len(features['recency_weights'])
+        # Boost scores based on recency
+        for category in predictions:
+            predictions[category] = min(predictions[category] * (1 + avg_recency * 0.2), 1.0)
+    
     # Sort by score descending
+    predictions = {k: v for k, v in sorted(
+        predictions.items(), key=lambda item: item[1], reverse=True)}
+    
     return predictions
 
 def predict_attribute_preferences(
@@ -77,5 +87,11 @@ def predict_attribute_preferences(
                 importance = count / total * (1 - decay_factor)
                 current = result[category][attr_name].get(value, 0)
                 result[category][attr_name][value] = min(current + importance, 1.0)
+    
+    # Sort each attribute values by preference score
+    for category in result:
+        for attr_name in result[category]:
+            result[category][attr_name] = {k: v for k, v in sorted(
+                result[category][attr_name].items(), key=lambda item: item[1], reverse=True)}
     
     return result

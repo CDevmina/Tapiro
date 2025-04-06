@@ -1,7 +1,7 @@
 import re
 from collections import Counter, defaultdict
 import logging
-from app.ai.models.embedding_model import find_best_match
+from app.ai.models.embedding_model import find_best_match, calculate_similarity
 from app.ai.utils.taxonomy_mapper import get_category_embedding_candidates, build_keyword_category_mapping
 
 logger = logging.getLogger(__name__)
@@ -104,8 +104,7 @@ def map_query_to_categories_embeddings(query):
     # Find best semantic matches with scores
     category_scores = {}
     for candidate, category_id in candidates:
-        # Use embedding model to calculate similarity
-        from app.ai.models.embedding_model import calculate_similarity
+        # Use embedding model to calculate similarity (imported at top level)
         score = calculate_similarity(query, candidate)
         
         if score > 0.4:  # Threshold

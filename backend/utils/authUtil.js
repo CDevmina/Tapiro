@@ -6,8 +6,9 @@ const { CACHE_TTL, CACHE_KEYS } = require('./cacheConfig');
  * Role to permission mappings
  */
 const ROLE_PERMISSIONS = {
-  'user': ['user:read', 'user:write'],
-  'store': ['store:read', 'store:write']
+  user: ['user:read', 'user:write'],
+  store: ['store:read', 'store:write'],
+  admin: ['admin:read', 'admin:write', 'user:read', 'user:write', 'store:read', 'store:write'],
 };
 
 /**
@@ -33,14 +34,13 @@ async function getUserData(token) {
 
   try {
     // Get user data from Auth0
-    const { data: userData } = await axios.get(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`,
-      { headers: { Authorization: `Bearer ${token}` }}
-    );
+    const { data: userData } = await axios.get(`${process.env.AUTH0_ISSUER_BASE_URL}/userinfo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
     // Cache the user data
     await setCache(cacheKey, JSON.stringify(userData), { EX: CACHE_TTL.USER_DATA });
-    
+
     return userData;
   } catch (error) {
     const message = error.response?.data?.message || error.message;
@@ -60,7 +60,7 @@ async function validateUserScopes(token, requiredScopes) {
   }
 
   const scopesKey = `${CACHE_KEYS.SCOPES}${token}`;
-  
+
   // Check cache first
   const cachedScopes = await getCache(scopesKey);
   if (cachedScopes) {
@@ -68,9 +68,11 @@ async function validateUserScopes(token, requiredScopes) {
       const userScopes = JSON.parse(cachedScopes);
       if (Array.isArray(userScopes) && userScopes.length > 0) {
         // Check if user has all required scopes
-        const hasAllScopes = requiredScopes.every(scope => userScopes.includes(scope));
+        const hasAllScopes = requiredScopes.every((scope) => userScopes.includes(scope));
         if (hasAllScopes) return true;
-        throw new Error(`Insufficient scopes. Required: ${requiredScopes.join(', ')}. Available: ${userScopes.join(', ')}`);
+        throw new Error(
+          `Insufficient scopes. Required: ${requiredScopes.join(', ')}. Available: ${userScopes.join(', ')}`,
+        );
       }
     } catch (e) {
       // Invalid cache format, continue to calculation
@@ -80,32 +82,34 @@ async function validateUserScopes(token, requiredScopes) {
   // Get user data to extract roles
   const userData = await getUserData(token);
   const userRoles = userData['https://tapiro.com/roles'] || [];
-  
+
   // Calculate all user scopes
   const userScopes = [
     // Add scopes from roles
-    ...userRoles.flatMap(role => ROLE_PERMISSIONS[role] || []),
+    ...userRoles.flatMap((role) => ROLE_PERMISSIONS[role] || []),
     // Add direct scopes if available
-    ...(userData.scope ? userData.scope.split(' ') : [])
+    ...(userData.scope ? userData.scope.split(' ') : []),
   ];
-  
+
   // Remove duplicates
   const uniqueScopes = [...new Set(userScopes)];
-  
+
   // Cache scopes for future requests
   await setCache(scopesKey, JSON.stringify(uniqueScopes), { EX: CACHE_TTL.TOKEN });
-  
+
   // Check if user has all required scopes
-  const hasAllScopes = requiredScopes.every(scope => uniqueScopes.includes(scope));
+  const hasAllScopes = requiredScopes.every((scope) => uniqueScopes.includes(scope));
   if (!hasAllScopes) {
-    throw new Error(`Insufficient scopes. Required: ${requiredScopes.join(', ')}. Available: ${uniqueScopes.join(', ')}`);
+    throw new Error(
+      `Insufficient scopes. Required: ${requiredScopes.join(', ')}. Available: ${uniqueScopes.join(', ')}`,
+    );
   }
-  
+
   return true;
 }
 
 module.exports = {
   getUserData,
   validateUserScopes,
-  ROLE_PERMISSIONS
+  ROLE_PERMISSIONS,
 };
