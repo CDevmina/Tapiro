@@ -1,11 +1,70 @@
 from collections import Counter, defaultdict
 import logging
+from datetime import datetime
 from app.taxonomy import normalize_category, get_price_range
 from app.taxonomy.constants import MAIN_CATEGORIES, SUBCATEGORIES
 from app.ai.models.embedding_model import find_best_match
 from app.ai.utils.taxonomy_mapper import get_category_embedding_candidates, build_keyword_category_mapping
 
 logger = logging.getLogger(__name__)
+
+def preprocess_purchase_entries(entries):
+    """
+    Preprocess purchase entries to normalize and clean data
+    
+    Args:
+        entries: Raw purchase entries from API
+        
+    Returns:
+        list: Preprocessed entries
+    """
+    preprocessed = []
+    
+    for entry in entries:
+        # Skip empty entries
+        if not entry or "items" not in entry or not entry["items"]:
+            continue
+            
+        # Parse timestamp if needed
+        timestamp = entry.get("timestamp")
+        if isinstance(timestamp, str):
+            try:
+                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                entry["timestamp"] = timestamp
+            except:
+                pass
+                
+        # Clean and validate items
+        valid_items = []
+        for item in entry.get("items", []):
+            if not item:
+                continue
+                
+            # Ensure basic item properties exist
+            if "name" not in item or not item["name"]:
+                continue
+                
+            # Normalize price and quantity
+            if "price" in item and item["price"]:
+                try:
+                    item["price"] = float(item["price"])
+                except:
+                    item["price"] = 0
+            
+            if "quantity" in item and item["quantity"]:
+                try:
+                    item["quantity"] = int(item["quantity"])
+                except:
+                    item["quantity"] = 1
+                    
+            valid_items.append(item)
+            
+        # Update with valid items
+        if valid_items:
+            entry["items"] = valid_items
+            preprocessed.append(entry)
+    
+    return preprocessed
 
 def process_purchase_data(entries):
     """Process purchase data with hybrid AI enhancements"""

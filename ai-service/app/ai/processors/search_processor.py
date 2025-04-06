@@ -1,9 +1,47 @@
 from collections import Counter, defaultdict
 import re
 from app.ai.utils.text_analyzer import analyze_search_query, extract_keywords
+from app.ai.models.embedding_model import find_best_match, calculate_similarity
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+def preprocess_search_entries(entries):
+    """
+    Preprocess search entries to normalize and clean data
+    
+    Args:
+        entries: Raw search entries from API
+        
+    Returns:
+        list: Preprocessed entries
+    """
+    preprocessed = []
+    
+    for entry in entries:
+        # Skip empty entries
+        if not entry or "query" not in entry or not entry["query"]:
+            continue
+            
+        # Clean and normalize query
+        query = entry.get("query", "").strip()
+        if not query:
+            continue
+            
+        # Parse timestamp if it's a string
+        timestamp = entry.get("timestamp")
+        if isinstance(timestamp, str):
+            try:
+                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                entry["timestamp"] = timestamp
+            except:
+                pass
+                
+        # Add to preprocessed entries
+        preprocessed.append(entry)
+    
+    return preprocessed
 
 def process_search_data(entries):
     """Process search data with AI enhancements"""
