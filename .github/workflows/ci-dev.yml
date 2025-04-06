@@ -38,22 +38,18 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        working-directory: backend
-        run: npm ci
+        working-directory: api-service        run: npm ci
 
       - name: Run unit tests
-        working-directory: backend
-        run: npm run test
+        working-directory: api-service        run: npm run test
 
       - name: Run integration tests
-        working-directory: backend
-        run: npm run test
+        working-directory: api-service        run: npm run test
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Run API tests
-        working-directory: backend
-        run: npm run test
+        working-directory: api-service        run: npm run test
 
   web-tests:
     name: Web Tests
@@ -150,8 +146,7 @@ jobs:
         if: failure()
         run: |
           echo "Backend logs:"
-          docker compose logs backend
-          echo "Frontend logs:"
+          docker compose logs api-service          echo "Frontend logs:"
           docker compose logs web
           echo "Redis logs:"
           docker compose logs redis
