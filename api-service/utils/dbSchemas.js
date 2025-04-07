@@ -2,91 +2,163 @@
  * MongoDB schema definitions for data validation
  */
 
-// Import taxonomy constants
-const { CATEGORY_ATTRIBUTES } = require('./taxonomyConstants');
+// Replace direct import with taxonomy service
+const taxonomyService = require('../clients/taxonomyService');
+const { getCache, setCache } = require('../utils/redisUtil');
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
 // Schema version tracking
-const SCHEMA_VERSION = '1.0.6';
+const SCHEMA_VERSION = '1.0.7';
 
 /**
  * Generate schema properties for user preferences attributes (distribution format)
- * @returns {Object} MongoDB schema properties for preference attributes
+ * @returns {Promise<Object>} MongoDB schema properties for preference attributes
  */
-function generatePreferenceAttributeProperties() {
-  const properties = {};
+async function generatePreferenceAttributeProperties() {
+  // Check Redis cache first
+  const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}preference`;
+  const cachedProps = await getCache(cacheKey);
+  if (cachedProps) {
+    return JSON.parse(cachedProps);
+  }
 
-  // Extract all unique attribute names from all categories
+  const properties = {};
   const allAttributeNames = new Set();
 
-  Object.values(CATEGORY_ATTRIBUTES).forEach((categoryAttrs) => {
-    Object.keys(categoryAttrs).forEach((attrName) => {
-      allAttributeNames.add(attrName);
-    });
-  });
+  try {
+    // Get taxonomy tree
+    const taxonomyTree = await taxonomyService.getTaxonomyTree();
 
-  // Create schema definition for each attribute
-  allAttributeNames.forEach((attrName) => {
-    // For price_range, we know the exact values
-    if (attrName === 'price_range') {
-      properties[attrName] = {
-        bsonType: 'object',
-        properties: {
-          budget: { bsonType: 'double' },
-          mid_range: { bsonType: 'double' },
-          premium: { bsonType: 'double' },
-          luxury: { bsonType: 'double' },
-        },
-      };
-    } else {
-      // For other attributes, we define them as generic objects
-      // Each attribute can have any string key with double values
-      properties[attrName] = { bsonType: 'object' };
+    // Extract category IDs from tree
+    const categoryIds = [];
+    const processNode = (node, path = []) => {
+      if (node.id) categoryIds.push(node.id);
+
+      for (const [key, value] of Object.entries(node)) {
+        if (key !== 'id' && typeof value === 'object') {
+          processNode(value, [...path, key]);
+        }
+      }
+    };
+
+    processNode(taxonomyTree.tree);
+
+    // Get attributes for each category
+    for (const categoryId of categoryIds) {
+      const attributes = await taxonomyService.getCategoryAttributes(categoryId);
+      if (!attributes) continue;
+
+      Object.keys(attributes).forEach((attrName) => {
+        allAttributeNames.add(attrName);
+      });
     }
-  });
 
-  return properties;
+    // Create schema definition for each attribute
+    allAttributeNames.forEach((attrName) => {
+      // For price_range, we know the exact values
+      if (attrName === 'price_range') {
+        properties[attrName] = {
+          bsonType: 'object',
+          properties: {
+            budget: { bsonType: 'double' },
+            mid_range: { bsonType: 'double' },
+            premium: { bsonType: 'double' },
+            luxury: { bsonType: 'double' },
+          },
+        };
+      } else {
+        // For other attributes, we define them as generic objects
+        properties[attrName] = { bsonType: 'object' };
+      }
+    });
+
+    // Cache in Redis instead of local cache
+    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA || 3600 });
+
+    return properties;
+  } catch (error) {
+    console.error('Error generating preference attribute properties:', error);
+    // Fallback to empty properties
+    return {};
+  }
 }
 
 /**
  * Generate schema properties for user data attributes (enum format)
- * @returns {Object} MongoDB schema properties for data attributes
+ * @returns {Promise<Object>} MongoDB schema properties for data attributes
  */
-function generateDataAttributeProperties() {
+async function generateDataAttributeProperties() {
+  // Check Redis cache first
+  const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}data`;
+  const cachedProps = await getCache(cacheKey);
+  if (cachedProps) {
+    return JSON.parse(cachedProps);
+  }
+
   const properties = {};
 
-  // Collect all unique attribute names and their possible values
-  Object.values(CATEGORY_ATTRIBUTES).forEach((categoryAttrs) => {
-    Object.entries(categoryAttrs).forEach(([attrName, attrValues]) => {
-      // If we already defined this attribute, skip
-      if (properties[attrName]) return;
+  try {
+    // Get taxonomy tree
+    const taxonomyTree = await taxonomyService.getTaxonomyTree();
 
-      // If attribute has predefined values (array), create an enum
-      if (Array.isArray(attrValues)) {
-        properties[attrName] = {
-          bsonType: 'string',
-          enum: attrValues,
-        };
-      } else if (attrName === 'rating') {
-        // Special case for numeric ratings
-        properties[attrName] = {
-          bsonType: 'int',
-          minimum: Math.min(...attrValues),
-          maximum: Math.max(...attrValues),
-        };
-      } else if (attrValues === 'numeric') {
-        // For numeric fields like release_year
-        properties[attrName] = { bsonType: 'int' };
-      } else {
-        // Default to string for other attributes
-        properties[attrName] = { bsonType: 'string' };
+    // Extract category IDs from tree
+    const categoryIds = [];
+    const processNode = (node, path = []) => {
+      if (node.id) categoryIds.push(node.id);
+
+      for (const [key, value] of Object.entries(node)) {
+        if (key !== 'id' && typeof value === 'object') {
+          processNode(value, [...path, key]);
+        }
       }
-    });
-  });
+    };
 
-  return properties;
+    processNode(taxonomyTree.tree);
+
+    // Get attributes for each category
+    for (const categoryId of categoryIds) {
+      const attributes = await taxonomyService.getCategoryAttributes(categoryId);
+      if (!attributes) continue;
+
+      Object.entries(attributes).forEach(([attrName, attrValues]) => {
+        // If we already defined this attribute, skip
+        if (properties[attrName]) return;
+
+        // If attribute has predefined values (array), create an enum
+        if (Array.isArray(attrValues)) {
+          properties[attrName] = {
+            bsonType: 'string',
+            enum: attrValues,
+          };
+        } else if (attrName === 'rating') {
+          // Special case for numeric ratings
+          properties[attrName] = {
+            bsonType: 'int',
+            minimum: Math.min(...attrValues),
+            maximum: Math.max(...attrValues),
+          };
+        } else if (attrValues === 'numeric') {
+          // For numeric fields like release_year
+          properties[attrName] = { bsonType: 'int' };
+        } else {
+          // Default to string for other attributes
+          properties[attrName] = { bsonType: 'string' };
+        }
+      });
+    }
+
+    // Cache in Redis instead of local cache
+    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA || 3600 });
+
+    return properties;
+  } catch (error) {
+    console.error('Error generating data attribute properties:', error);
+    // Fallback to empty properties
+    return {};
+  }
 }
 
-// User schema
+// Initialize schema with basic structure, we'll fill in the properties during runtime
 const userSchema = {
   validator: {
     $jsonSchema: {
@@ -128,7 +200,7 @@ const userSchema = {
               },
               attributes: {
                 bsonType: 'object',
-                properties: generatePreferenceAttributeProperties(),
+                // We'll fill in properties dynamically when needed
               },
             },
           },
@@ -238,7 +310,7 @@ const apiUsageSchema = {
   validationAction: 'error',
 };
 
-// User Data schema
+// User Data schema - simplified version without dynamic properties
 const userDataSchema = {
   validator: {
     $jsonSchema: {
@@ -274,7 +346,7 @@ const userDataSchema = {
                     attributes: {
                       bsonType: 'object',
                       description: 'Category-specific attributes',
-                      properties: generateDataAttributeProperties(),
+                      // We'll fill in properties dynamically when needed
                     },
                   },
                 },
@@ -314,10 +386,41 @@ const userDataSchema = {
   validationAction: 'error',
 };
 
+// Helper function to dynamically apply attribute properties to schemas
+async function initializeSchemas() {
+  try {
+    const preferenceProps = await generatePreferenceAttributeProperties();
+    const dataProps = await generateDataAttributeProperties();
+
+    // Update user preference schema
+    if (userSchema.validator.$jsonSchema.properties.preferences.items.properties.attributes) {
+      userSchema.validator.$jsonSchema.properties.preferences.items.properties.attributes.properties =
+        preferenceProps;
+    }
+
+    // Update user data schema
+    if (
+      userDataSchema.validator.$jsonSchema.properties.entries.items.properties.items.items
+        .properties.attributes
+    ) {
+      userDataSchema.validator.$jsonSchema.properties.entries.items.properties.items.items.properties.attributes.properties =
+        dataProps;
+    }
+
+    console.log('Schemas initialized with taxonomy data');
+  } catch (error) {
+    console.error('Failed to initialize schemas with taxonomy data:', error);
+  }
+}
+
+// Call this when your server starts
+initializeSchemas().catch(console.error);
+
 module.exports = {
   userSchema,
   storeSchema,
   apiUsageSchema,
   userDataSchema,
   SCHEMA_VERSION,
+  initializeSchemas, // Export to allow explicit initialization
 };

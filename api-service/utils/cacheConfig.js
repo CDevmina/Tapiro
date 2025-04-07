@@ -9,6 +9,9 @@ const CACHE_TTL = {
   API_KEY: 1800, // API keys - 30 minutes
   INVALIDATION: 1, // Short TTL for invalidation
   AI_REQUEST: 60, // AI service requests - 1 minute
+  TAXONOMY: 3600, // 1 hour
+  TAXONOMY_ATTRIBUTES: 3600, // 1 hour
+  TAXONOMY_SEARCH: 300, // 5 minutes (shorter TTL for search results)
 };
 
 /**
@@ -23,6 +26,10 @@ const CACHE_KEYS = {
   PREFERENCES: 'preferences:', // User preferences
   STORE_PREFERENCES: 'prefs:', // Store preferences
   AI_REQUEST: 'ai_request:', // AI service request cache
+  TAXONOMY_TREE: 'taxonomy:tree:',
+  TAXONOMY_ATTRIBUTES: 'taxonomy:attrs:',
+  TAXONOMY_SEARCH: 'taxonomy:search:', // New key for search results
+  PRICE_RANGES: 'taxonomy:prices:',
 };
 
 module.exports = { CACHE_TTL, CACHE_KEYS };

@@ -3,7 +3,7 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
-const { validateCategoryId, validateAttributes } = require('../utils/taxonomyValidator');
+const taxonomyService = require('../clients/taxonomyService');
 
 /**
  * Get user preferences for targeted advertising
@@ -129,25 +129,29 @@ exports.submitUserData = async function (req, body) {
             });
           }
 
-          // Use imported validator functions
-          if (item.category) {
-            const isValid = validateCategoryId(item.category);
-            if (!isValid) {
-              return respondWithCode(400, {
-                code: 400,
-                message: `Invalid category: ${item.category}. Please use valid category ID or name.`,
-              });
-            }
+          // Use taxonomy service for validation
+          const isValidCategory = await taxonomyService
+            .getCategoryAttributes(item.category)
+            .then((attributes) => !!attributes)
+            .catch(() => false);
+
+          if (!isValidCategory) {
+            return respondWithCode(400, {
+              code: 400,
+              message: `Invalid category: ${item.category}`,
+            });
           }
 
-          if (item.attributes) {
-            const validationResult = validateAttributes(item.category, item.attributes);
-            if (!validationResult.valid) {
-              return respondWithCode(400, {
-                code: 400,
-                message: validationResult.message,
-              });
-            }
+          const validationResult = await taxonomyService.validateAttributes(
+            item.category,
+            item.attributes,
+          );
+          if (!validationResult.valid) {
+            return respondWithCode(400, {
+              code: 400,
+              message:
+                validationResult.message || `Invalid attributes for category ${item.category}`,
+            });
           }
         }
       }
@@ -161,14 +165,16 @@ exports.submitUserData = async function (req, body) {
         }
 
         // Validate category if provided
-        if (entry.category) {
-          const isValid = validateCategoryId(entry.category);
-          if (!isValid) {
-            return respondWithCode(400, {
-              code: 400,
-              message: `Invalid category: ${entry.category}. Please use valid category ID or name.`,
-            });
-          }
+        const isValidCategory = await taxonomyService
+          .getCategoryAttributes(entry.category)
+          .then((attributes) => !!attributes)
+          .catch(() => false);
+
+        if (!isValidCategory) {
+          return respondWithCode(400, {
+            code: 400,
+            message: `Invalid category: ${entry.category}`,
+          });
         }
       }
     } else {
