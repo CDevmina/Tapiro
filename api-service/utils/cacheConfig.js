@@ -12,6 +12,9 @@ const CACHE_TTL = {
   TAXONOMY: 3600, // 1 hour
   TAXONOMY_ATTRIBUTES: 3600, // 1 hour
   TAXONOMY_SEARCH: 300, // 5 minutes (shorter TTL for search results)
+  TAXONOMY_EMBEDDINGS: 86400, // 1 day (LONG)
+  PRICE_RANGES: 3600, // 1 hour (MEDIUM)
+  SCHEMA: 3600, // 1 hour
 };
 
 /**
@@ -29,7 +32,9 @@ const CACHE_KEYS = {
   TAXONOMY_TREE: 'taxonomy:tree:',
   TAXONOMY_ATTRIBUTES: 'taxonomy:attrs:',
   TAXONOMY_SEARCH: 'taxonomy:search:', // New key for search results
+  TAXONOMY_EMBEDDINGS: 'taxonomy:embeddings:',
   PRICE_RANGES: 'taxonomy:prices:',
+  SCHEMA_PROPS: 'schema:props:',
 };
 
 module.exports = { CACHE_TTL, CACHE_KEYS };

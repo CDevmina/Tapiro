@@ -88,6 +88,35 @@ def get_taxonomy_tree():
         "version": "google_product_categories_2025"
     }
 
+# Add this helper function to detect category types
+def detect_category_type(path):
+    """
+    Detect category types from path components
+    Returns a list of detected types
+    """
+    types = []
+    path_text = " ".join(path).lower()
+    
+    # Define detection rules
+    if any(term in path_text for term in ["clothing", "apparel", "wear"]):
+        types.append("clothing")
+        
+    if any(term in path_text for term in ["electronics", "devices", "computers", "phones"]):
+        types.append("electronics")
+        
+    if any(term in path_text for term in ["home", "furniture", "decor"]):
+        types.append("home")
+        
+    if any(term in path_text for term in ["beauty", "personal care", "cosmetics"]):
+        types.append("beauty")
+        
+    # Default type if none detected
+    if not types:
+        types.append("general")
+        
+    return types
+
+# Then update the get_category_attributes function
 @lru_cache(maxsize=1000)
 def get_category_attributes(category_id):
     """Get attributes for a specific category"""
@@ -108,14 +137,24 @@ def get_category_attributes(category_id):
         "condition": ["new", "like_new", "used", "refurbished"]
     }
     
-    # Add specific attributes based on path components
-    if any(level.lower().find("clothing") >= 0 for level in path):
+    # Add specific attributes based on detected category types
+    category_types = detect_category_type(path)
+    
+    if "clothing" in category_types:
         attributes["size"] = ["xs", "s", "m", "l", "xl", "xxl"]
         attributes["material"] = ["cotton", "wool", "polyester", "leather"]
         
-    if any(level.lower().find("electronics") >= 0 for level in path):
+    if "electronics" in category_types:
         attributes["brand"] = ["apple", "samsung", "sony", "google", "other"]
         attributes["warranty"] = ["1yr", "2yr", "3yr", "none"]
+        
+    if "home" in category_types:
+        attributes["room"] = ["living", "bedroom", "kitchen", "bathroom", "office"]
+        attributes["style"] = ["modern", "traditional", "rustic", "industrial"]
+        
+    if "beauty" in category_types:
+        attributes["skin_type"] = ["oily", "dry", "combination", "sensitive"]
+        attributes["concern"] = ["anti-aging", "acne", "brightening", "hydration"]
         
     return attributes
 

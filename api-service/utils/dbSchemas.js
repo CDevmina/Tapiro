@@ -22,63 +22,16 @@ async function generatePreferenceAttributeProperties() {
     return JSON.parse(cachedProps);
   }
 
-  const properties = {};
-  const allAttributeNames = new Set();
-
   try {
-    // Get taxonomy tree
-    const taxonomyTree = await taxonomyService.getTaxonomyTree();
+    // Get schemas from taxonomy service - single API call instead of many!
+    const schemas = await taxonomyService.getMongoDBSchemas();
+    const properties = schemas.preference_attributes || {};
 
-    // Extract category IDs from tree
-    const categoryIds = [];
-    const processNode = (node, path = []) => {
-      if (node.id) categoryIds.push(node.id);
-
-      for (const [key, value] of Object.entries(node)) {
-        if (key !== 'id' && typeof value === 'object') {
-          processNode(value, [...path, key]);
-        }
-      }
-    };
-
-    processNode(taxonomyTree.tree);
-
-    // Get attributes for each category
-    for (const categoryId of categoryIds) {
-      const attributes = await taxonomyService.getCategoryAttributes(categoryId);
-      if (!attributes) continue;
-
-      Object.keys(attributes).forEach((attrName) => {
-        allAttributeNames.add(attrName);
-      });
-    }
-
-    // Create schema definition for each attribute
-    allAttributeNames.forEach((attrName) => {
-      // For price_range, we know the exact values
-      if (attrName === 'price_range') {
-        properties[attrName] = {
-          bsonType: 'object',
-          properties: {
-            budget: { bsonType: 'double' },
-            mid_range: { bsonType: 'double' },
-            premium: { bsonType: 'double' },
-            luxury: { bsonType: 'double' },
-          },
-        };
-      } else {
-        // For other attributes, we define them as generic objects
-        properties[attrName] = { bsonType: 'object' };
-      }
-    });
-
-    // Cache in Redis instead of local cache
-    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA || 3600 });
-
+    // Cache the result
+    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA });
     return properties;
   } catch (error) {
     console.error('Error generating preference attribute properties:', error);
-    // Fallback to empty properties
     return {};
   }
 }
@@ -95,65 +48,16 @@ async function generateDataAttributeProperties() {
     return JSON.parse(cachedProps);
   }
 
-  const properties = {};
-
   try {
-    // Get taxonomy tree
-    const taxonomyTree = await taxonomyService.getTaxonomyTree();
+    // Get schemas from taxonomy service - single API call instead of many!
+    const schemas = await taxonomyService.getMongoDBSchemas();
+    const properties = schemas.data_attributes || {};
 
-    // Extract category IDs from tree
-    const categoryIds = [];
-    const processNode = (node, path = []) => {
-      if (node.id) categoryIds.push(node.id);
-
-      for (const [key, value] of Object.entries(node)) {
-        if (key !== 'id' && typeof value === 'object') {
-          processNode(value, [...path, key]);
-        }
-      }
-    };
-
-    processNode(taxonomyTree.tree);
-
-    // Get attributes for each category
-    for (const categoryId of categoryIds) {
-      const attributes = await taxonomyService.getCategoryAttributes(categoryId);
-      if (!attributes) continue;
-
-      Object.entries(attributes).forEach(([attrName, attrValues]) => {
-        // If we already defined this attribute, skip
-        if (properties[attrName]) return;
-
-        // If attribute has predefined values (array), create an enum
-        if (Array.isArray(attrValues)) {
-          properties[attrName] = {
-            bsonType: 'string',
-            enum: attrValues,
-          };
-        } else if (attrName === 'rating') {
-          // Special case for numeric ratings
-          properties[attrName] = {
-            bsonType: 'int',
-            minimum: Math.min(...attrValues),
-            maximum: Math.max(...attrValues),
-          };
-        } else if (attrValues === 'numeric') {
-          // For numeric fields like release_year
-          properties[attrName] = { bsonType: 'int' };
-        } else {
-          // Default to string for other attributes
-          properties[attrName] = { bsonType: 'string' };
-        }
-      });
-    }
-
-    // Cache in Redis instead of local cache
-    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA || 3600 });
-
+    // Cache the result
+    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA });
     return properties;
   } catch (error) {
     console.error('Error generating data attribute properties:', error);
-    // Fallback to empty properties
     return {};
   }
 }

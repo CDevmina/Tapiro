@@ -121,6 +121,7 @@ exports.submitUserData = async function (req, body) {
           });
         }
 
+        // Validate each item has a name
         for (const item of entry.items) {
           if (!item.name) {
             return respondWithCode(400, {
@@ -128,29 +129,24 @@ exports.submitUserData = async function (req, body) {
               message: 'Each purchase item requires a name',
             });
           }
+        }
 
-          // Use taxonomy service for validation
-          const isValidCategory = await taxonomyService
-            .getCategoryAttributes(item.category)
-            .then((attributes) => !!attributes)
-            .catch(() => false);
+        // Batch validate all items at once
+        const itemsToValidate = entry.items.map((item) => ({
+          category: item.category,
+          attributes: item.attributes || {},
+        }));
 
-          if (!isValidCategory) {
+        const validationResults = await taxonomyService.validateBatch(itemsToValidate);
+
+        // Check validation results
+        for (let i = 0; i < entry.items.length; i++) {
+          const result = validationResults[i.toString()];
+          if (!result || !result.valid) {
+            const item = entry.items[i];
             return respondWithCode(400, {
               code: 400,
-              message: `Invalid category: ${item.category}`,
-            });
-          }
-
-          const validationResult = await taxonomyService.validateAttributes(
-            item.category,
-            item.attributes,
-          );
-          if (!validationResult.valid) {
-            return respondWithCode(400, {
-              code: 400,
-              message:
-                validationResult.message || `Invalid attributes for category ${item.category}`,
+              message: result?.message || `Invalid category or attributes for item: ${item.name}`,
             });
           }
         }

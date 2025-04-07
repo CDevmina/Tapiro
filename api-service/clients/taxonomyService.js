@@ -253,3 +253,90 @@ exports.checkHealth = async function () {
     return { status: 'disconnected', details: error.message };
   }
 };
+
+/**
+ * Get MongoDB schema properties for taxonomy attributes
+ * @returns {Promise<Object>} Schema properties for MongoDB
+ */
+exports.getMongoDBSchemas = async function () {
+  try {
+    const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}mongodb`;
+
+    // Try Redis cache
+    const cachedSchemas = await getCache(cacheKey);
+    if (cachedSchemas) {
+      return JSON.parse(cachedSchemas);
+    }
+
+    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/schemas/mongodb`, {
+      headers: {
+        'X-API-Key': ML_SERVICE_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      timeout: 5000,
+    });
+
+    // Cache in Redis
+    await setCache(cacheKey, JSON.stringify(response.data), { EX: CACHE_TTL.SCHEMA });
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch MongoDB schemas:', error?.response?.data || error);
+    throw error;
+  }
+};
+
+/**
+ * Validate multiple products at once
+ * @param {Array<Object>} products - Products to validate with category and attributes
+ * @returns {Promise<Object>} Validation results
+ */
+exports.validateBatch = async function (products) {
+  try {
+    const response = await axiosInstance.post(
+      `${ML_SERVICE_URL}/taxonomy/validate-batch`,
+      products,
+      {
+        headers: {
+          'X-API-Key': ML_SERVICE_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        timeout: 5000,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to validate batch:', error?.response?.data || error);
+    return {}; // Return empty object on error
+  }
+};
+
+/**
+ * Get price range for an amount
+ * @param {number} amount - Price amount
+ * @param {string} categoryId - Optional category ID
+ * @returns {Promise<Object>} Price range info
+ */
+exports.getPriceRangeForAmount = async function (amount, categoryId) {
+  try {
+    const params = { amount };
+    if (categoryId) {
+      params.category_id = categoryId;
+    }
+
+    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/price-range-for-amount`, {
+      params,
+      headers: {
+        'X-API-Key': ML_SERVICE_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      timeout: 3000,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get price range:', error?.response?.data || error);
+    return { range: 'unknown' };
+  }
+};
