@@ -6,8 +6,15 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const axiosInstance = axios.create();
 
 // Get environment variables - use config fallback for backward compatibility
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || require('../config').mlService.baseUrl;
-const ML_SERVICE_API_KEY = process.env.ML_SERVICE_API_KEY || require('../config').mlService.apiKey;
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
+const AI_SERVICE_API_KEY = process.env.AI_SERVICE_API_KEY;
+
+// Add these constants at the top of taxonomyService.js
+const REQUEST_TIMEOUTS = {
+  DEFAULT: 5000, // Standard endpoints
+  SHORT: 2000, // Health checks
+  LONG: 10000, // Complex operations
+};
 
 /**
  * Get the full taxonomy tree
@@ -24,12 +31,12 @@ exports.getTaxonomyTree = async function () {
     }
 
     // Fetch from ML service
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/tree`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/tree`, {
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 5000, // 5 second timeout for taxonomy
+      timeout: REQUEST_TIMEOUTS.DEFAULT, // 5 second timeout for taxonomy
     });
 
     // Cache in Redis
@@ -73,13 +80,13 @@ exports.getCategoryAttributes = async function (categoryId) {
 
     // Fetch from ML service
     const response = await axiosInstance.get(
-      `${ML_SERVICE_URL}/taxonomy/attributes/${categoryId}`,
+      `${AI_SERVICE_URL}/taxonomy/attributes/${categoryId}`,
       {
         headers: {
-          'X-API-Key': ML_SERVICE_API_KEY,
+          'X-API-Key': AI_SERVICE_API_KEY,
           'Content-Type': 'application/json',
         },
-        timeout: 3000,
+        timeout: REQUEST_TIMEOUTS.DEFAULT,
       },
     );
 
@@ -118,17 +125,17 @@ exports.getCategoryAttributes = async function (categoryId) {
 exports.validateAttributes = async function (categoryId, attributes) {
   try {
     const response = await axiosInstance.post(
-      `${ML_SERVICE_URL}/taxonomy/validate`,
+      `${AI_SERVICE_URL}/taxonomy/validate`,
       {
         category: categoryId,
         attributes,
       },
       {
         headers: {
-          'X-API-Key': ML_SERVICE_API_KEY,
+          'X-API-Key': AI_SERVICE_API_KEY,
           'Content-Type': 'application/json',
         },
-        timeout: 3000,
+        timeout: REQUEST_TIMEOUTS.DEFAULT,
       },
     );
 
@@ -169,13 +176,13 @@ exports.findCategoryByText = async function (text, limit = 5) {
       return JSON.parse(cachedResults);
     }
 
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/search`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/search`, {
       params: { query: text, limit },
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 5000,
+      timeout: REQUEST_TIMEOUTS.DEFAULT,
     });
 
     // Cache search results (short TTL as search patterns may change)
@@ -206,12 +213,12 @@ exports.getPriceRanges = async function () {
       return JSON.parse(cachedRanges);
     }
 
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/price-ranges`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/price-ranges`, {
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 3000,
+      timeout: REQUEST_TIMEOUTS.DEFAULT,
     });
 
     // Cache in Redis
@@ -241,11 +248,11 @@ exports.getPriceRanges = async function () {
  */
 exports.checkHealth = async function () {
   try {
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/health`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/health`, {
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
       },
-      timeout: 2000,
+      timeout: REQUEST_TIMEOUTS.SHORT,
     });
     return { status: 'connected', details: response.data };
   } catch (error) {
@@ -268,12 +275,12 @@ exports.getMongoDBSchemas = async function () {
       return JSON.parse(cachedSchemas);
     }
 
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/schemas/mongodb`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/schemas/mongodb`, {
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 5000,
+      timeout: REQUEST_TIMEOUTS.DEFAULT,
     });
 
     // Cache in Redis
@@ -294,14 +301,14 @@ exports.getMongoDBSchemas = async function () {
 exports.validateBatch = async function (products) {
   try {
     const response = await axiosInstance.post(
-      `${ML_SERVICE_URL}/taxonomy/validate-batch`,
+      `${AI_SERVICE_URL}/taxonomy/validate-batch`,
       products,
       {
         headers: {
-          'X-API-Key': ML_SERVICE_API_KEY,
+          'X-API-Key': AI_SERVICE_API_KEY,
           'Content-Type': 'application/json',
         },
-        timeout: 5000,
+        timeout: REQUEST_TIMEOUTS.DEFAULT,
       },
     );
 
@@ -325,13 +332,13 @@ exports.getPriceRangeForAmount = async function (amount, categoryId) {
       params.category_id = categoryId;
     }
 
-    const response = await axiosInstance.get(`${ML_SERVICE_URL}/taxonomy/price-range-for-amount`, {
+    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/price-range-for-amount`, {
       params,
       headers: {
-        'X-API-Key': ML_SERVICE_API_KEY,
+        'X-API-Key': AI_SERVICE_API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 3000,
+      timeout: REQUEST_TIMEOUTS.DEFAULT,
     });
 
     return response.data;

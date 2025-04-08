@@ -2,24 +2,13 @@ import csv
 import requests
 from pathlib import Path
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from functools import lru_cache
+from app.ai.models.embedding_model import get_embedding_model, get_text_embedding
 
 # Constants
 TAXONOMY_URL = "https://www.google.com/basepages/producttype/taxonomy.en-US.txt"
 TAXONOMY_FILE = Path(__file__).parent / "data" / "google_taxonomy.txt"
 EMBEDDINGS_FILE = Path(__file__).parent / "data" / "category_embeddings.npz"
-LOCAL_ATTRIBUTE_MAP = Path(__file__).parent / "data" / "category_attributes.json"
-
-# Cached model
-_model = None
-
-def get_model():
-    """Get or initialize the embedding model"""
-    global _model
-    if _model is None:
-        _model = SentenceTransformer('all-MiniLM-L6-v2')
-    return _model
 
 @lru_cache(maxsize=1)
 def load_taxonomy():
@@ -184,14 +173,18 @@ def validate_category(category_id, attributes):
 def build_category_embeddings():
     """Build embeddings for all categories"""
     taxonomy = load_taxonomy()
-    model = get_model()
+    model = get_embedding_model()  # Use shared model
     
+    if model is None:
+        return {}
+        
     embeddings = {}
     for category_id, info in taxonomy["categories"].items():
         # Generate embedding from full path
         text = " ".join(info["full_path"])
-        embedding = model.encode(text)
-        embeddings[category_id] = embedding.tolist()
+        embedding = get_text_embedding(text)  # Use cached function with error handling
+        if embedding is not None:
+            embeddings[category_id] = embedding.tolist()
     
     # Save embeddings
     EMBEDDINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -212,12 +205,13 @@ def get_category_embeddings():
 def find_category_by_text(text, top_k=5):
     """Find closest categories to the given text"""
     taxonomy = load_taxonomy()
-    model = get_model()
     embeddings = get_category_embeddings()
     
     # Get embedding for query text
-    query_embedding = model.encode(text)
-    
+    query_embedding = get_text_embedding(text)
+    if query_embedding is None:
+        return []
+        
     # Calculate cosine similarity
     similarities = {}
     for category_id, embedding in embeddings.items():

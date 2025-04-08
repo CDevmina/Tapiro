@@ -1,6 +1,6 @@
 from functools import lru_cache
 import logging
-from app.taxonomy.google_taxonomy import load_taxonomy
+from app.taxonomy.google_taxonomy import detect_category_type, load_taxonomy
 
 logger = logging.getLogger(__name__)
 
@@ -37,21 +37,11 @@ def build_keyword_category_mapping():
     taxonomy = load_taxonomy()
     mapping = {}
     
-    # Map common keywords to their categories
-    # This would be expanded with a more comprehensive mapping
-    # based on the Google taxonomy structure
-    
-    # Example mappings (simplified)
-    main_category_keywords = {
-        "Electronics": ["electronics", "devices", "gadgets", "tech"],
-        "Clothing": ["clothing", "apparel", "wear", "fashion"],
-        "Home & Garden": ["home", "garden", "furniture", "decor"],
-        "Beauty & Personal Care": ["beauty", "cosmetics", "skincare"],
-        # etc.
-    }
-    
     # Convert full taxonomy paths to keyword mappings
     for category_id, info in taxonomy["categories"].items():
+        # Use the centralized category detection
+        category_types = detect_category_type(info["full_path"])
+        
         # Extract keywords from the path
         path_text = " ".join(info["full_path"]).lower()
         words = path_text.split()

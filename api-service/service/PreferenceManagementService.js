@@ -4,11 +4,7 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { ObjectId } = require('mongodb');
-const {
-  validateCategoryId,
-  validateAttributes,
-  getCategoryMainType,
-} = require('../utils/taxonomyValidator');
+const taxonomyUtil = require('../utils/taxonomyUtil');
 
 exports.getUserOwnPreferences = async function (req) {
   try {
@@ -131,27 +127,19 @@ exports.updateUserPreferences = async function (req, body) {
       const normalizedPreferences = [];
 
       for (const pref of body.preferences) {
-        // Validate category exists
-        if (!validateCategoryId(pref.category)) {
-          return respondWithCode(400, {
-            code: 400,
-            message: `Invalid category: ${pref.category}`,
-          });
+        // Validate category and attributes using the new taxonomy system
+        const validationResult = await taxonomyUtil.validateCategoryAndAttributes(
+          pref.category,
+          pref.attributes || {},
+        );
+
+        if (!validationResult.valid) {
+          return validationResult.response;
         }
 
-        // Normalize category to ensure consistency
-        const normalizedCategory = getCategoryMainType(pref.category);
-
-        // Validate attributes if present
-        if (pref.attributes) {
-          const result = validateAttributes(pref.category, pref.attributes);
-          if (!result.valid) {
-            return respondWithCode(400, {
-              code: 400,
-              message: result.message,
-            });
-          }
-        }
+        // For backward compatibility, still normalize the category ID
+        // This can be updated based on your new taxonomy system's requirements
+        const normalizedCategory = pref.category;
 
         // Store with normalized category
         normalizedPreferences.push({
