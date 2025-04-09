@@ -3,7 +3,7 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
-const taxonomyService = require('../clients/taxonomyService');
+const taxonomyUtil = require('../utils/taxonomyUtil');
 
 /**
  * Get user preferences for targeted advertising
@@ -113,35 +113,31 @@ exports.submitUserData = async function (req, body) {
 
     // Enhanced validation based on taxonomy
     if (dataType === 'purchase') {
+      // Collect all items to validate
+      const allItemsToValidate = [];
       for (const entry of entries) {
-        if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
-          return respondWithCode(400, {
-            code: 400,
-            message: 'Purchase entries require timestamp and items array',
-          });
+        // Use taxonomyUtil to validate purchase entry
+        const purchaseValidationResult = await taxonomyUtil.validatePurchaseEntry(entry);
+        if (purchaseValidationResult) {
+          return respondWithCode(400, purchaseValidationResult);
         }
 
-        // Validate each item has a name
-        for (const item of entry.items) {
-          if (!item.name) {
-            return respondWithCode(400, {
-              code: 400,
-              message: 'Each purchase item requires a name',
-            });
-          }
-        }
+        allItemsToValidate.push(
+          ...entry.items.map((item) => ({
+            category: item.category,
+            attributes: item.attributes || {},
+          })),
+        );
+      }
 
-        // Batch validate all items at once
-        const itemsToValidate = entry.items.map((item) => ({
-          category: item.category,
-          attributes: item.attributes || {},
-        }));
+      // Validate all items in a single batch
+      const validationResults = await taxonomyUtil.validateBatch(allItemsToValidate);
 
-        const validationResults = await taxonomyService.validateBatch(itemsToValidate);
-
-        // Check validation results
+      // Check validation results
+      let itemIndex = 0;
+      for (const entry of entries) {
         for (let i = 0; i < entry.items.length; i++) {
-          const result = validationResults[i.toString()];
+          const result = validationResults[itemIndex.toString()];
           if (!result || !result.valid) {
             const item = entry.items[i];
             return respondWithCode(400, {
@@ -149,28 +145,23 @@ exports.submitUserData = async function (req, body) {
               message: result?.message || `Invalid category or attributes for item: ${item.name}`,
             });
           }
+          itemIndex++;
         }
       }
     } else if (dataType === 'search') {
       for (const entry of entries) {
-        if (!entry.timestamp || !entry.query) {
-          return respondWithCode(400, {
-            code: 400,
-            message: 'Search entries require timestamp and query',
-          });
+        // Use taxonomyUtil to validate search entry
+        const searchValidationResult = await taxonomyUtil.validateSearchEntry(entry);
+        if (searchValidationResult) {
+          return respondWithCode(400, searchValidationResult);
         }
 
-        // Validate category if provided
-        const isValidCategory = await taxonomyService
-          .getCategoryAttributes(entry.category)
-          .then((attributes) => !!attributes)
-          .catch(() => false);
-
-        if (!isValidCategory) {
-          return respondWithCode(400, {
-            code: 400,
-            message: `Invalid category: ${entry.category}`,
-          });
+        // Validate category using taxonomyUtil
+        if (entry.category) {
+          const categoryValidationResult = await taxonomyUtil.validateSearchCategory(entry.category);
+          if (categoryValidationResult) {
+            return respondWithCode(400, categoryValidationResult);
+          }
         }
       }
     } else {

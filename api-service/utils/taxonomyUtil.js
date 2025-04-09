@@ -56,7 +56,7 @@ exports.validateBatch = async function (items) {
     return await taxonomyService.validateBatch(productsToValidate);
   } catch (error) {
     console.error('Batch validation failed:', error);
-    return {};
+    return Object.fromEntries(items.map((_, index) => [index.toString(), { valid: false, message: 'Batch validation failed' }]));
   }
 };
 
@@ -74,4 +74,67 @@ exports.getPriceRange = async function (amount, categoryId = null) {
     console.error(`Failed to get price range for ${amount}:`, error);
     return 'unknown';
   }
+};
+
+/**
+ * Validate purchase entry
+ * @param {Object} entry - Purchase entry to validate
+ * @returns {Object|null} - Response object if invalid, null if valid
+ */
+exports.validatePurchaseEntry = async function (entry) {
+  if (!entry.timestamp || !entry.items || !Array.isArray(entry.items)) {
+    return {
+      code: 400,
+      message: 'Purchase entries require timestamp and items array',
+    };
+  }
+
+  // Validate each item has a name
+  for (const item of entry.items) {
+    if (!item.name) {
+      return {
+        code: 400,
+        message: 'Each purchase item requires a name',
+      };
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Validate search entry
+ * @param {Object} entry - Search entry to validate
+ * @returns {Object|null} - Response object if invalid, null if valid
+ */
+exports.validateSearchEntry = async function (entry) {
+  if (!entry.timestamp || !entry.query) {
+    return {
+      code: 400,
+      message: 'Search entries require timestamp and query',
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Validate category for search entry
+ * @param {string} categoryId - Category ID to validate
+ * @returns {Promise<Object|null>} - Response object if invalid, null if valid
+ */
+exports.validateSearchCategory = async function (categoryId) {
+  const isValidCategory = await taxonomyService
+    .getCategoryAttributes(categoryId)
+    .then((attributes) => !!attributes)
+    .catch(() => false);
+
+  if (!isValidCategory) {
+    return {
+      code: 400,
+      message: `Invalid category: ${categoryId}`,
+    };
+  }
+
+  return null;
 };
