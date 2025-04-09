@@ -7,7 +7,6 @@ from app.taxonomy.google_taxonomy import (
     get_category_embeddings,
     find_category_by_text,
     get_price_ranges,
-    detect_category_type
 )
 from app.core.cache import cache_response
 from app.core.cache_constants import (

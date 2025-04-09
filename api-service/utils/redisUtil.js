@@ -12,10 +12,11 @@ async function connectRedis() {
     console.log('Connected to Redis');
   } catch (error) {
     console.error('Redis connection error:', error);
-    process.exit(1);
+    console.log('Retrying Redis connection in 5 seconds...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    await connectRedis(); // Recursive retry
   }
 }
-
 async function getCache(key) {
   return client.get(key);
 }

@@ -1,9 +1,4 @@
-import re
-from collections import Counter, defaultdict
-from datetime import datetime
-from app.taxonomy import normalize_category, get_price_range
-from typing import Dict, List, Any
-from app.ai.utils.temporal_utils import calculate_recency_weights
+from collections import Counter
 
 def extract_features(data_type, entries):
     """

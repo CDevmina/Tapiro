@@ -16,26 +16,26 @@ def load_taxonomy():
     # Download if not exists
     if not TAXONOMY_FILE.exists():
         download_taxonomy()
-    
+
     # Parse taxonomy
     taxonomy = {"categories": {}, "tree": {}, "paths": {}}
-    
+
     with open(TAXONOMY_FILE, 'r', encoding='utf-8') as file:
         lines = file.readlines()
-        
+
         # Skip header
         for line in lines[1:]:
             line = line.strip()
             if not line:
                 continue
-                
+
             # Build path and category ID (use hash of full path as ID)
             path = line.split(' > ')
             category_id = str(abs(hash(line)) % (10 ** 10))
-            
+
             # Store full path
             taxonomy["paths"][category_id] = path
-            
+
             # Build tree structure
             current = taxonomy["tree"]
             for i, level in enumerate(path):
@@ -44,14 +44,14 @@ def load_taxonomy():
                 current = current[level]
                 if i == len(path) - 1:
                     current["id"] = category_id
-            
+
             # Store category
             taxonomy["categories"][category_id] = {
                 "name": path[-1],
                 "full_path": path,
                 "path_string": line
             }
-    
+
     return taxonomy
 
 def download_taxonomy():
@@ -77,35 +77,32 @@ def get_taxonomy_tree():
         "version": "google_product_categories_2025"
     }
 
-# Add this helper function to detect category types
-def detect_category_type(path):
-    """
-    Detect category types from path components
-    Returns a list of detected types
-    """
-    types = []
-    path_text = " ".join(path).lower()
-    
-    # Define detection rules
-    if any(term in path_text for term in ["clothing", "apparel", "wear"]):
-        types.append("clothing")
-        
-    if any(term in path_text for term in ["electronics", "devices", "computers", "phones"]):
-        types.append("electronics")
-        
-    if any(term in path_text for term in ["home", "furniture", "decor"]):
-        types.append("home")
-        
-    if any(term in path_text for term in ["beauty", "personal care", "cosmetics"]):
-        types.append("beauty")
-        
-    # Default type if none detected
-    if not types:
-        types.append("general")
-        
-    return types
+def normalize_category(category_id):
+    """Normalize category ID format"""
+    return category_id.strip().lower()
 
-# Then update the get_category_attributes function
+def get_price_range(amount, category_id=None):
+    """Simple wrapper for get_price_range_for_amount"""
+    price_ranges = get_price_ranges()["defaultPriceRanges"]
+    for range_name, range_values in price_ranges.items():
+        if range_values["min"] <= amount < range_values["max"]:
+            return range_name
+    return None
+
+def detect_category_type(path):
+    """Detect category type based on path"""
+    category_types = set()
+    for level in path:
+        if "clothing" in level.lower():
+            category_types.add("clothing")
+        if "electronics" in level.lower():
+            category_types.add("electronics")
+        if "home" in level.lower():
+            category_types.add("home")
+        if "beauty" in level.lower():
+            category_types.add("beauty")
+    return category_types
+
 @lru_cache(maxsize=1000)
 def get_category_attributes(category_id):
     """Get attributes for a specific category"""

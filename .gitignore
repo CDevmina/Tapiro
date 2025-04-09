@@ -105,6 +105,9 @@ dist
 .temp
 .cache
 
+#python virtualenv
+.venv
+
 # Docusaurus cache and generated files
 .docusaurus
 
