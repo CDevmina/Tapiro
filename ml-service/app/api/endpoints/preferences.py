@@ -26,35 +26,16 @@ async def process_user_data_endpoint(
     # Extract user_id for logging
     user_id = data.metadata.get("userId", data.email) if data.metadata else data.email
     email = data.email
+    data_type = data.data_type
+    entries = data.entries
     
-    # Log the request details
     logger.info(f"POST request received for data processing:")
     logger.info(f"  User: {user_id}")
-    logger.info(f"  Data type: {data.data_type}")
+    logger.info(f"  Data type: {data_type}")
     logger.info(f"  Number of entries: {len(data.entries)}")
-    
-    # Log attribute information
-    if data.data_type == "purchase":
-        attributes_count = 0
-        categories = set()
-        for entry in data.entries:
-            for item in entry.get("items", []):
-                if item.get("category"):
-                    categories.add(item["category"])
-                if item.get("attributes"):
-                    attributes_count += 1
-        
-        logger.info(f"  Categories: {', '.join(categories) if categories else 'None'}")
-        logger.info(f"  Items with attributes: {attributes_count}")
     
     try:
         result = await process_user_data(data, db)
-        
-        # Count attribute stats for response
-        attribute_stats = {}
-        for pref in result.preferences:
-            if pref.attributes:
-                attribute_stats[pref.category] = len(pref.attributes)
         
         return {
             "status": "success",
@@ -62,7 +43,7 @@ async def process_user_data_endpoint(
             "user_id": result.user_id,
             "preferences_updated": True,
             "preferences_count": len(result.preferences),
-            "attributes_processed": attribute_stats or "None"
+            "attributes_processed": {}
         }
     except HTTPException as e:
         # For user errors, mark processing as failed
