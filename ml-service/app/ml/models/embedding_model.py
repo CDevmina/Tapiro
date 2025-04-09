@@ -64,7 +64,7 @@ def calculate_similarity(text1, text2):
     return float(cosine_similarity(emb1, emb2)[0][0])
 
 def find_best_match(query, candidates, threshold=0.4):
-    """Find best match from candidates for a query"""
+    """Find best match from candidates for a query using batch processing"""
     if not query or not candidates:
         return None
         
@@ -72,19 +72,26 @@ def find_best_match(query, candidates, threshold=0.4):
     if model is None:
         return None
     
-    # Get query embedding
-    query_embedding = get_text_embedding(query)
-    if query_embedding is None:
-        return None
-        
-    # Get candidate embeddings
-    best_match = None
-    best_score = threshold  # Minimum threshold
-    
-    for candidate, candidate_id in candidates:
-        similarity = calculate_similarity(query, candidate)
-        if similarity > best_score:
-            best_score = similarity
-            best_match = candidate_id
+    try:
+        # Get query embedding
+        query_embedding = get_text_embedding(query)
+        if query_embedding is None:
+            return None
             
-    return best_match
+        # Batch process all candidate texts at once
+        candidate_texts, candidate_ids = zip(*[(text, id) for text, id in candidates])
+        candidate_embeddings = model.encode(candidate_texts, convert_to_numpy=True)
+        
+        # Calculate similarities in one operation
+        query_embedding = query_embedding.reshape(1, -1)
+        similarities = cosine_similarity(query_embedding, candidate_embeddings)[0]
+        
+        # Find best match above threshold
+        best_idx = np.argmax(similarities)
+        if similarities[best_idx] > threshold:
+            return candidate_ids[best_idx]
+        return None
+            
+    except Exception as e:
+        logger.error(f"Error in batch matching: {str(e)}")
+        return None
