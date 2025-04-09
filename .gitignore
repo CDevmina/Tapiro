@@ -108,7 +108,7 @@ dist
 #python virtualenv
 .venv
 .pyc
-.__pycache__/
+__pycache__/
 
 # Docusaurus cache and generated files
 .docusaurus
