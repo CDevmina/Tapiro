@@ -106,47 +106,6 @@ class TaxonomyService:
             logger.error(f"Failed to initialize embeddings: {str(e)}")
             # Continue without embeddings, we'll use rule-based only
             
-    async def get_mongodb_schemas(self):
-        """Generate MongoDB schema definitions from taxonomy"""
-        # Try to get from cache first
-        cache_key = f"{CACHE_KEYS['SCHEMA_PROPS']}mongodb"
-        cached_schemas = await get_cache_json(cache_key)
-        
-        if cached_schemas:
-            logger.info("Loaded MongoDB schemas from Redis cache")
-            return cached_schemas
-            
-        # Generate from taxonomy if not in cache
-        preference_attrs = {}
-        data_attrs = {}
-        
-        for category in self.taxonomy.categories:
-            for attr in category.attributes:
-                # For preference attributes (distribution format)
-                if attr.values:
-                    preference_attrs[attr.name] = {
-                        "bsonType": "object",
-                        "properties": {value: {"bsonType": "double"} for value in attr.values}
-                    }
-                
-                # For data attributes (enum format)
-                if attr.values:
-                    data_attrs[attr.name] = {
-                        "bsonType": "string",
-                        "enum": attr.values
-                    }
-        
-        result = {
-            "preference_attributes": preference_attrs,
-            "data_attributes": data_attrs
-        }
-        
-        # Cache the result in Redis
-        await set_cache_json(cache_key, result, {"EX": CACHE_TTL["SCHEMA"]})
-        logger.info("Generated MongoDB schemas and cached in Redis")
-        
-        return result
-    
     def validate_preferences(self, preferences):
         """Validate preference data against taxonomy"""
         if not self.taxonomy:

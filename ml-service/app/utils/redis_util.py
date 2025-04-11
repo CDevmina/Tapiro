@@ -3,13 +3,20 @@ import os
 import json
 import logging
 from app.core.config import settings
-from app.core.cache_constants import CACHE_DURATIONS
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Environment-specific prefix to isolate cache entries
 ENVIRONMENT_PREFIX = f"{settings.ENVIRONMENT}:" if hasattr(settings, 'ENVIRONMENT') else ""
+
+# Cache durations in seconds (moved from cache_constants.py)
+CACHE_DURATIONS = {
+    "SHORT": 300,           # 5 minutes
+    "MEDIUM": 3600,         # 1 hour
+    "LONG": 86400,          # 1 day
+    "VERY_LONG": 604800     # 1 week
+}
 
 # Create Redis client with connection pooling
 redis_client = redis.Redis(
@@ -27,12 +34,8 @@ CACHE_KEYS = {
     "PREFERENCES": "preferences:",
     "STORE_PREFERENCES": "prefs:",
     "AI_REQUEST": "ai_request:",
-    "TAXONOMY_TREE": "taxonomy:tree:",
-    "TAXONOMY_ATTRIBUTES": "taxonomy:attrs:",
     "TAXONOMY_SEARCH": "taxonomy:search:",
     "TAXONOMY_EMBEDDINGS": "taxonomy:embeddings:",
-    "PRICE_RANGES": "taxonomy:prices:",
-    "SCHEMA_PROPS": "schema:props:",
 }
 
 # Define standard TTL values matching Node.js values
@@ -43,12 +46,8 @@ CACHE_TTL = {
     "API_KEY": 1800,  # API keys - 30 minutes
     "INVALIDATION": 1,  # Short TTL for invalidation
     "AI_REQUEST": 60,  # AI service requests - 1 minute
-    "TAXONOMY": CACHE_DURATIONS["MEDIUM"],
-    "TAXONOMY_ATTRIBUTES": CACHE_DURATIONS["MEDIUM"],
-    "TAXONOMY_SEARCH": CACHE_DURATIONS["SHORT"],
+    "TAXONOMY_SEARCH": CACHE_DURATIONS["SHORT"],  # Now using CACHE_DURATIONS directly
     "TAXONOMY_EMBEDDINGS": CACHE_DURATIONS["LONG"],
-    "PRICE_RANGES": CACHE_DURATIONS["MEDIUM"],
-    "SCHEMA": CACHE_DURATIONS["MEDIUM"],
 }
 
 async def connect_redis():
