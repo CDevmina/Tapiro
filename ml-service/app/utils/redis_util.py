@@ -153,8 +153,24 @@ async def get_cache_json(key: str):
 async def set_cache_json(key: str, value, options: dict = None):
     """Set JSON value in cache with options"""
     try:
-        json_value = json.dumps(value)
+        # Convert numpy values to Python native types
+        json_value = json.dumps(value, default=numpy_to_python)
         return await set_cache(key, json_value, options)
-    except (TypeError, json.JSONEncodeError) as e:
+    except TypeError as e:
         logger.error(f"Error encoding object to JSON for cache {key}: {e}")
         return False
+
+def numpy_to_python(obj):
+    """Convert numpy data types to Python native types for JSON serialization"""
+    import numpy as np
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, (np.generic)):
+        return obj.item()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")

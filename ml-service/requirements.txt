@@ -9,6 +9,7 @@ fastapi==0.115.12
 filelock==3.18.0
 fsspec==2025.3.2
 h11==0.14.0
+hf-xet==1.0.3
 huggingface-hub==0.30.2
 idna==3.10
 Jinja2==3.1.6

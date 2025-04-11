@@ -97,6 +97,7 @@ services:
     volumes:
       - ./ml-service:/app
       - /app/__pycache__
+      - ml-model-cache:/app/model_cache
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - API_BASE_URL=http://api-service:3000
@@ -105,6 +106,8 @@ services:
       - SECRET_KEY=${AI_SERVICE_API_KEY}
       - DEBUG=true
       - REDIS_HOST=redis
+      - HF_HOME=/app/model_cache
+      - XDG_CACHE_HOME=/app/model_cache
     ports:
       - "8000:8000"
     networks:
@@ -124,3 +127,4 @@ networks:
 
 volumes:
   redis-data:
+  ml-model-cache:
