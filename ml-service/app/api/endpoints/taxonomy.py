@@ -1,24 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.services.taxonomyService import get_taxonomy_service
-from app.db.mongodb import get_database
 from typing import Dict, Any
 
 router = APIRouter()
-
-@router.get(
-    "/schemas/mongodb",
-    response_model=Dict[str, Dict[str, Any]],
-    summary="Get MongoDB schemas"
-)
-async def get_mongodb_schemas(
-    taxonomy=Depends(get_taxonomy_service),
-):
-    """Get MongoDB schema definitions for taxonomy attributes"""
-    try:
-        schemas = taxonomy.get_mongodb_schemas()
-        return schemas
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate schemas: {str(e)}")
 
 @router.get(
     "/search",

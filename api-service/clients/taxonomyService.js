@@ -34,35 +34,3 @@ exports.checkHealth = async function () {
     return { status: 'disconnected', details: error.message };
   }
 };
-
-/**
- * Get MongoDB schema properties for taxonomy attributes
- * @returns {Promise<Object>} Schema properties for MongoDB
- */
-exports.getMongoDBSchemas = async function () {
-  try {
-    const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}mongodb`;
-
-    // Try Redis cache
-    const cachedSchemas = await getCache(cacheKey);
-    if (cachedSchemas) {
-      return JSON.parse(cachedSchemas);
-    }
-
-    const response = await axiosInstance.get(`${AI_SERVICE_URL}/taxonomy/schemas/mongodb`, {
-      headers: {
-        'X-API-Key': AI_SERVICE_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      timeout: REQUEST_TIMEOUTS.DEFAULT,
-    });
-
-    // Cache in Redis
-    await setCache(cacheKey, JSON.stringify(response.data), { EX: CACHE_TTL.SCHEMA });
-
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch MongoDB schemas:', error?.response?.data || error);
-    throw error;
-  }
-};

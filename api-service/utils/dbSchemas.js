@@ -2,67 +2,9 @@
  * MongoDB schema definitions for data validation
  */
 
-// Replace direct import with taxonomy service
-const taxonomyService = require('../clients/taxonomyService');
-const { getCache, setCache } = require('../utils/redisUtil');
-const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-
 // Schema version tracking
-const SCHEMA_VERSION = '1.0.7';
+const SCHEMA_VERSION = '2.0.1';
 
-/**
- * Generate schema properties for user preferences attributes (distribution format)
- * @returns {Promise<Object>} MongoDB schema properties for preference attributes
- */
-async function generatePreferenceAttributeProperties() {
-  // Check Redis cache first
-  const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}preference`;
-  const cachedProps = await getCache(cacheKey);
-  if (cachedProps) {
-    return JSON.parse(cachedProps);
-  }
-
-  try {
-    // Get schemas from taxonomy service - single API call instead of many!
-    const schemas = await taxonomyService.getMongoDBSchemas();
-    const properties = schemas.preference_attributes || {};
-
-    // Cache the result
-    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA });
-    return properties;
-  } catch (error) {
-    console.error('Error generating preference attribute properties:', error);
-    return {};
-  }
-}
-
-/**
- * Generate schema properties for user data attributes (enum format)
- * @returns {Promise<Object>} MongoDB schema properties for data attributes
- */
-async function generateDataAttributeProperties() {
-  // Check Redis cache first
-  const cacheKey = `${CACHE_KEYS.SCHEMA_PROPS}data`;
-  const cachedProps = await getCache(cacheKey);
-  if (cachedProps) {
-    return JSON.parse(cachedProps);
-  }
-
-  try {
-    // Get schemas from taxonomy service - single API call instead of many!
-    const schemas = await taxonomyService.getMongoDBSchemas();
-    const properties = schemas.data_attributes || {};
-
-    // Cache the result
-    await setCache(cacheKey, JSON.stringify(properties), { EX: CACHE_TTL.SCHEMA });
-    return properties;
-  } catch (error) {
-    console.error('Error generating data attribute properties:', error);
-    return {};
-  }
-}
-
-// Initialize schema with basic structure, we'll fill in the properties during runtime
 const userSchema = {
   validator: {
     $jsonSchema: {
@@ -104,7 +46,6 @@ const userSchema = {
               },
               attributes: {
                 bsonType: 'object',
-                // We'll fill in properties dynamically when needed
               },
             },
           },
@@ -214,7 +155,7 @@ const apiUsageSchema = {
   validationAction: 'error',
 };
 
-// User Data schema - simplified version without dynamic properties
+// User Data schema with flexible attributes structure
 const userDataSchema = {
   validator: {
     $jsonSchema: {
@@ -249,8 +190,6 @@ const userDataSchema = {
                     quantity: { bsonType: 'int' },
                     attributes: {
                       bsonType: 'object',
-                      description: 'Category-specific attributes',
-                      // We'll fill in properties dynamically when needed
                     },
                   },
                 },
@@ -290,41 +229,10 @@ const userDataSchema = {
   validationAction: 'error',
 };
 
-// Helper function to dynamically apply attribute properties to schemas
-async function initializeSchemas() {
-  try {
-    const preferenceProps = await generatePreferenceAttributeProperties();
-    const dataProps = await generateDataAttributeProperties();
-
-    // Update user preference schema
-    if (userSchema.validator.$jsonSchema.properties.preferences.items.properties.attributes) {
-      userSchema.validator.$jsonSchema.properties.preferences.items.properties.attributes.properties =
-        preferenceProps;
-    }
-
-    // Update user data schema
-    if (
-      userDataSchema.validator.$jsonSchema.properties.entries.items.properties.items.items
-        .properties.attributes
-    ) {
-      userDataSchema.validator.$jsonSchema.properties.entries.items.properties.items.items.properties.attributes.properties =
-        dataProps;
-    }
-
-    console.log('Schemas initialized with taxonomy data');
-  } catch (error) {
-    console.error('Failed to initialize schemas with taxonomy data:', error);
-  }
-}
-
-// Call this when your server starts
-initializeSchemas().catch(console.error);
-
 module.exports = {
   userSchema,
   storeSchema,
   apiUsageSchema,
   userDataSchema,
   SCHEMA_VERSION,
-  initializeSchemas, // Export to allow explicit initialization
 };
