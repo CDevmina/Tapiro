@@ -1,0 +1,594 @@
+version: "1.0.0"
+categories:
+  # Electronics Category Tree
+  - id: "100"
+    name: "Electronics"
+    description: "Electronic devices and accessories"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Apple",
+            "Samsung",
+            "Sony",
+            "LG",
+            "Google",
+            "Microsoft",
+            "Dell",
+            "HP",
+            "Lenovo",
+            "Asus",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "color"
+        values:
+          [
+            "black",
+            "white",
+            "silver",
+            "gold",
+            "blue",
+            "red",
+            "green",
+            "purple",
+            "pink",
+            "orange",
+          ]
+
+  - id: "101"
+    name: "Smartphones"
+    parent_id: "100"
+    description: "Mobile phones and smartphones"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Apple",
+            "Samsung",
+            "Google",
+            "OnePlus",
+            "Xiaomi",
+            "Huawei",
+            "Motorola",
+            "Nokia",
+            "Sony",
+            "Nothing",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "color"
+        values:
+          [
+            "black",
+            "white",
+            "silver",
+            "gold",
+            "blue",
+            "red",
+            "green",
+            "purple",
+            "pink",
+            "yellow",
+          ]
+      - name: "storage"
+        values: ["64GB", "128GB", "256GB", "512GB", "1TB"]
+      - name: "screen_size"
+        values: ["compact", "standard", "large"]
+      - name: "os"
+        values: ["iOS", "Android"]
+
+  - id: "102"
+    name: "Laptops"
+    parent_id: "100"
+    description: "Laptop computers and notebooks"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Apple",
+            "Dell",
+            "HP",
+            "Lenovo",
+            "Asus",
+            "Acer",
+            "Microsoft",
+            "Samsung",
+            "MSI",
+            "Razer",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "usage_type"
+        values: ["everyday", "business", "gaming", "creative", "student"]
+      - name: "screen_size"
+        values: ["13-inch", "14-inch", "15-inch", "16-inch", "17-inch"]
+      - name: "processor"
+        values:
+          [
+            "Intel i3",
+            "Intel i5",
+            "Intel i7",
+            "Intel i9",
+            "AMD Ryzen 3",
+            "AMD Ryzen 5",
+            "AMD Ryzen 7",
+            "AMD Ryzen 9",
+            "Apple M1",
+            "Apple M2",
+            "Apple M3",
+          ]
+      - name: "os"
+        values: ["Windows", "macOS", "Chrome OS", "Linux"]
+
+  - id: "103"
+    name: "Tablets"
+    parent_id: "100"
+    description: "Tablet computers"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Apple",
+            "Samsung",
+            "Microsoft",
+            "Amazon",
+            "Lenovo",
+            "Huawei",
+            "Google",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "screen_size"
+        values: ["small", "medium", "large"]
+      - name: "os"
+        values: ["iOS", "Android", "Windows", "FireOS"]
+      - name: "connectivity"
+        values: ["WiFi", "WiFi+Cellular"]
+
+  - id: "104"
+    name: "Wearables"
+    parent_id: "100"
+    description: "Smartwatches and fitness trackers"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Apple",
+            "Samsung",
+            "Fitbit",
+            "Garmin",
+            "Amazfit",
+            "Huawei",
+            "Fossil",
+            "Withings",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "type"
+        values: ["smartwatch", "fitness_tracker", "hybrid", "sport"]
+      - name: "connectivity"
+        values: ["bluetooth", "bluetooth+cellular", "wifi+bluetooth"]
+
+  - id: "105"
+    name: "Audio"
+    parent_id: "100"
+    description: "Headphones, earbuds, and speakers"
+    attributes:
+      - name: "brand"
+        values:
+          [
+            "Sony",
+            "Bose",
+            "Apple",
+            "Samsung",
+            "Sennheiser",
+            "JBL",
+            "Audio-Technica",
+            "Sonos",
+            "Beats",
+            "Jabra",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "type"
+        values: ["headphones", "earbuds", "speakers", "soundbars"]
+      - name: "connectivity"
+        values: ["wireless", "wired", "bluetooth", "wifi"]
+      - name: "feature"
+        values:
+          [
+            "noise_cancellation",
+            "water_resistant",
+            "smart_assistant",
+            "spatial_audio",
+          ]
+
+  # Fashion Category Tree
+  - id: "200"
+    name: "Fashion"
+    description: "Clothing, shoes, and accessories"
+    attributes:
+      - name: "gender"
+        values: ["women", "men", "unisex", "kids"]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "season"
+        values: ["spring", "summer", "fall", "winter", "all_season"]
+
+  - id: "201"
+    name: "Clothing"
+    parent_id: "200"
+    description: "Shirts, pants, dresses and other apparel"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "shirts",
+            "t-shirts",
+            "pants",
+            "jeans",
+            "dresses",
+            "skirts",
+            "sweaters",
+            "jackets",
+            "coats",
+            "underwear",
+            "socks",
+            "activewear",
+          ]
+      - name: "gender"
+        values: ["women", "men", "unisex", "kids"]
+      - name: "size"
+        values: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]
+      - name: "material"
+        values:
+          [
+            "cotton",
+            "polyester",
+            "wool",
+            "silk",
+            "leather",
+            "denim",
+            "linen",
+            "synthetic",
+          ]
+      - name: "color"
+        values:
+          [
+            "black",
+            "white",
+            "blue",
+            "red",
+            "green",
+            "yellow",
+            "purple",
+            "pink",
+            "gray",
+            "brown",
+            "multicolor",
+          ]
+      - name: "occasion"
+        values: ["casual", "formal", "business", "party", "sports", "lounge"]
+
+  - id: "202"
+    name: "Shoes"
+    parent_id: "200"
+    description: "Footwear of all types"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "sneakers",
+            "boots",
+            "sandals",
+            "flats",
+            "heels",
+            "loafers",
+            "athletic",
+            "dress_shoes",
+            "slippers",
+          ]
+      - name: "gender"
+        values: ["women", "men", "unisex", "kids"]
+      - name: "size"
+        values: ["5", "6", "7", "8", "9", "10", "11", "12", "13", "14"]
+      - name: "material"
+        values: ["leather", "canvas", "synthetic", "suede", "mesh", "rubber"]
+      - name: "color"
+        values: ["black", "white", "brown", "blue", "red", "multicolor"]
+      - name: "occasion"
+        values: ["casual", "formal", "athletic", "outdoor", "special_occasion"]
+
+  # Home & Garden Category Tree
+  - id: "300"
+    name: "Home"
+    description: "Furniture, decor, and home improvement"
+    attributes:
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "room"
+        values:
+          ["living_room", "bedroom", "kitchen", "bathroom", "office", "outdoor"]
+      - name: "style"
+        values:
+          [
+            "modern",
+            "traditional",
+            "minimalist",
+            "rustic",
+            "industrial",
+            "scandinavian",
+            "bohemian",
+            "farmhouse",
+          ]
+
+  - id: "301"
+    name: "Furniture"
+    parent_id: "300"
+    description: "Tables, chairs, sofas, and other furniture"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "sofa",
+            "chair",
+            "table",
+            "bed",
+            "desk",
+            "shelf",
+            "cabinet",
+            "dresser",
+          ]
+      - name: "material"
+        values: ["wood", "metal", "glass", "plastic", "fabric", "leather"]
+      - name: "color"
+        values:
+          [
+            "black",
+            "white",
+            "brown",
+            "gray",
+            "beige",
+            "blue",
+            "green",
+            "multicolor",
+          ]
+      - name: "room"
+        values:
+          ["living_room", "bedroom", "kitchen", "bathroom", "office", "outdoor"]
+      - name: "assembly_required"
+        values: ["yes", "no", "partial"]
+
+  - id: "302"
+    name: "Kitchen"
+    parent_id: "300"
+    description: "Cookware, appliances, and kitchen accessories"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "cookware",
+            "bakeware",
+            "utensils",
+            "small_appliance",
+            "large_appliance",
+            "cutlery",
+            "dinnerware",
+            "storage",
+          ]
+      - name: "material"
+        values:
+          [
+            "stainless_steel",
+            "cast_iron",
+            "ceramic",
+            "glass",
+            "plastic",
+            "silicone",
+            "wood",
+          ]
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "brand"
+        values:
+          [
+            "KitchenAid",
+            "Cuisinart",
+            "All-Clad",
+            "Le Creuset",
+            "Instant Pot",
+            "Ninja",
+            "OXO",
+            "Calphalon",
+            "Breville",
+          ]
+      - name: "dishwasher_safe"
+        values: ["yes", "no"]
+
+  # Beauty & Personal Care
+  - id: "400"
+    name: "Beauty"
+    description: "Makeup, skincare, and personal care products"
+    attributes:
+      - name: "price_range"
+        values: ["budget", "mid_range", "premium", "luxury"]
+      - name: "skin_type"
+        values: ["dry", "oily", "combination", "sensitive", "normal"]
+      - name: "concern"
+        values:
+          ["acne", "aging", "dryness", "dullness", "redness", "sun_protection"]
+      - name: "brand"
+        values:
+          [
+            "MAC",
+            "Fenty",
+            "Glossier",
+            "The Ordinary",
+            "Cetaphil",
+            "Neutrogena",
+            "L'Oreal",
+            "Estée Lauder",
+            "Olay",
+            "CeraVe",
+          ]
+
+  - id: "401"
+    name: "Skincare"
+    parent_id: "400"
+    description: "Products for skin health and appearance"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "cleanser",
+            "moisturizer",
+            "serum",
+            "mask",
+            "exfoliant",
+            "toner",
+            "sunscreen",
+            "eye_cream",
+            "treatment",
+          ]
+      - name: "skin_type"
+        values: ["dry", "oily", "combination", "sensitive", "normal"]
+      - name: "concern"
+        values:
+          [
+            "acne",
+            "aging",
+            "dryness",
+            "dullness",
+            "redness",
+            "sun_protection",
+            "dark_spots",
+          ]
+      - name: "ingredient"
+        values:
+          [
+            "hyaluronic_acid",
+            "retinol",
+            "vitamin_c",
+            "niacinamide",
+            "salicylic_acid",
+            "glycolic_acid",
+            "ceramides",
+            "peptides",
+          ]
+
+  - id: "402"
+    name: "Makeup"
+    parent_id: "400"
+    description: "Cosmetics for face, eyes, and lips"
+    attributes:
+      - name: "type"
+        values:
+          [
+            "foundation",
+            "concealer",
+            "eyeshadow",
+            "mascara",
+            "eyeliner",
+            "lipstick",
+            "blush",
+            "powder",
+            "bronzer",
+            "highlighter",
+          ]
+      - name: "finish"
+        values: ["matte", "dewy", "satin", "natural", "radiant", "shimmer"]
+      - name: "coverage"
+        values: ["sheer", "light", "medium", "full"]
+      - name: "color_family"
+        values:
+          [
+            "nude",
+            "pink",
+            "red",
+            "berry",
+            "coral",
+            "brown",
+            "plum",
+            "orange",
+            "neutral",
+          ]
+      - name: "formulation"
+        values: ["liquid", "cream", "powder", "gel", "pencil", "stick"]
+
+  # Books, Movies & Music
+  - id: "500"
+    name: "Media"
+    description: "Books, movies, music, and digital entertainment"
+    attributes:
+      - name: "format"
+        values: ["physical", "digital", "streaming"]
+      - name: "audience"
+        values: ["children", "young_adult", "adult", "all_ages"]
+
+  - id: "501"
+    name: "Books"
+    parent_id: "500"
+    description: "Printed and digital reading materials"
+    attributes:
+      - name: "format"
+        values: ["hardcover", "paperback", "ebook", "audiobook"]
+      - name: "genre"
+        values:
+          [
+            "fiction",
+            "non_fiction",
+            "science_fiction",
+            "fantasy",
+            "mystery",
+            "romance",
+            "biography",
+            "history",
+            "self_help",
+            "cooking",
+            "business",
+          ]
+      - name: "audience"
+        values: ["children", "young_adult", "adult"]
+      - name: "bestseller"
+        values: ["yes", "no"]
+      - name: "release_timeframe"
+        values: ["new_release", "recent", "classic"]
+
+  - id: "502"
+    name: "Movies"
+    parent_id: "500"
+    description: "Films and video content"
+    attributes:
+      - name: "format"
+        values: ["dvd", "blu_ray", "4k_uhd", "digital", "streaming"]
+      - name: "genre"
+        values:
+          [
+            "action",
+            "comedy",
+            "drama",
+            "horror",
+            "sci_fi",
+            "fantasy",
+            "romance",
+            "thriller",
+            "documentary",
+            "animation",
+          ]
+      - name: "rating"
+        values:
+          [
+            "G",
+            "PG",
+            "PG-13",
+            "R",
+            "NC-17",
+            "TV-Y",
+            "TV-G",
+            "TV-PG",
+            "TV-14",
+            "TV-MA",
+          ]
+      - name: "release_timeframe"
+        values: ["new_release", "recent", "classic"]

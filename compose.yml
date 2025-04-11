@@ -1,12 +1,12 @@
 services:
-  backend:
+  api-service:
     build:
-      context: ./backend
+      context: ./api-service
       dockerfile: dockerfile.dev
       target: development
     container_name: tapiro-API
     volumes:
-      - ./backend:/app
+      - ./api-service:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
@@ -27,12 +27,13 @@ services:
       - FRONTEND_URL=http://web:5173
       - AUTH0_M2M_CLIENT_ID=${AUTH0_M2M_CLIENT_ID}
       - AUTH0_M2M_CLIENT_SECRET=${AUTH0_M2M_CLIENT_SECRET}
-      - AI_SERVICE_URL=http://ai-service:8000/api
+      - AI_SERVICE_URL=http://ml-service:8000/api
       - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
     ports:
       - "3000:3000"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - tapiro-net
     healthcheck:
@@ -53,7 +54,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://backend:3000
+      - VITE_API_URL=http://api-service:3000
       - VITE_AUTH0_CLIENT_ID=${AUTH0_SPA_CLIENT_ID}
       - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
@@ -63,7 +64,7 @@ services:
     networks:
       - tapiro-net
     depends_on:
-      - backend
+      - api-service
     healthcheck:
       test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:5173"]
       interval: 30s
@@ -81,20 +82,26 @@ services:
       - redis-data:/data
     networks:
       - tapiro-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
-  ai-service:
+  ml-service:
     build:
-      context: ./ai-service
+      context: ./ml-service
       dockerfile: Dockerfile
     container_name: tapiro-ai
     volumes:
-      - ./ai-service:/app
+      - ./ml-service:/app
       - /app/__pycache__
     environment:
       - MONGODB_URI=${MONGODB_URI}
-      - API_BASE_URL=http://backend:3000
+      - API_BASE_URL=http://api-service:3000
       - MONGODB_DB_NAME=tapiro
-      - BACKEND_API_URL=http://backend:3000
+      - BACKEND_API_URL=http://api-service:3000
       - SECRET_KEY=${AI_SERVICE_API_KEY}
       - DEBUG=true
       - REDIS_HOST=redis
@@ -103,8 +110,8 @@ services:
     networks:
       - tapiro-net
     depends_on:
-      - backend
-      - redis
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s

@@ -4,13 +4,13 @@ on:
   pull_request:
     branches: ["Development"]
     paths:
-      - "backend/**"
+      - "api-service/**"
       - "web/**"
       - ".github/workflows/ci-dev.yml"
   push:
     branches: ["Development"]
     paths:
-      - "backend/**"
+      - "api-service/**"
       - "web/**"
       - ".github/workflows/ci-dev.yml"
     tags-ignore:
@@ -22,8 +22,8 @@ permissions:
   packages: write
 
 jobs:
-  backend-tests:
-    name: Backend Tests
+  api-service-tests:
+    name: api-service Tests
     runs-on: ubuntu-latest
     environment: Development
     if: github.event_name == 'pull_request'
@@ -35,24 +35,24 @@ jobs:
         with:
           node-version: "18"
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: api-service/package-lock.json
 
       - name: Install dependencies
-        working-directory: backend
+        working-directory: api-service
         run: npm ci
 
       - name: Run unit tests
-        working-directory: backend
+        working-directory: api-service
         run: npm run test
 
       - name: Run integration tests
-        working-directory: backend
+        working-directory: api-service
         run: npm run test
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Run API tests
-        working-directory: backend
+        working-directory: api-service
         run: npm run test
 
   web-tests:
@@ -149,8 +149,8 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "Backend logs:"
-          docker compose logs backend
+          echo "api-service logs:"
+          docker compose logs api-service
           echo "Frontend logs:"
           docker compose logs web
           echo "Redis logs:"
@@ -166,7 +166,7 @@ jobs:
     if: github.event_name == 'pull_request'
     strategy:
       matrix:
-        service: [web, backend]
+        service: [web, api-service]
     steps:
       - uses: actions/checkout@v4
 
@@ -199,7 +199,7 @@ jobs:
   #     packages: write
   #   strategy:
   #     matrix:
-  #       service: [web, backend]
+  #       service: [web, api-service]
   #   steps:
   #     - uses: actions/checkout@v4
 
