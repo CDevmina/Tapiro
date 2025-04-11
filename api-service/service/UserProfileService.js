@@ -4,6 +4,7 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { getManagementToken } = require('../utils/auth0Util');
+const AIService = require('../clients/AIService');
 const taxonomyUtil = require('../utils/taxonomyUtil');
 
 /**
@@ -68,34 +69,20 @@ exports.updateUserProfile = async function (req, body) {
       }
     }
 
-    // Validate preferences against taxonomy if they're being updated
+    // REMOVED: The taxonomy validation code
+    // If preferences are being updated, send to FastAPI for processing
     if (body.preferences) {
-      const normalizedPreferences = [];
-
-      for (const pref of body.preferences) {
-        // Validate category and attributes using the new taxonomy system
-        const validationResult = await taxonomyUtil.validateCategoryAndAttributes(
-          pref.category,
-          pref.attributes || {},
+      try {
+        // Call the AI service to process preferences
+        await AIService.updateUserPreferences(
+          userData.sub,
+          userData.email,
+          body.preferences
         );
-
-        if (!validationResult.valid) {
-          return validationResult.response;
-        }
-
-        // For backward compatibility, still normalize the category ID
-        // This can be updated based on your new taxonomy system's requirements
-        const normalizedCategory = pref.category;
-
-        // Store with normalized category
-        normalizedPreferences.push({
-          ...pref,
-          category: normalizedCategory,
-        });
+      } catch (error) {
+        console.error('Failed to process preferences through AI service:', error);
+        // Continue with the update, we'll use the raw preferences without validation
       }
-
-      // Replace with normalized preferences
-      body.preferences = normalizedPreferences;
     }
 
     // Update user
@@ -106,7 +93,7 @@ exports.updateUserProfile = async function (req, body) {
     // Only add fields that are provided in the request
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.preferences !== undefined) updateData.preferences = body.preferences;
+    if (body.preferences !== undefined) updateData.preferences = body.preferences; // Raw preferences
     if (body.privacySettings !== undefined) updateData.privacySettings = body.privacySettings;
     if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
 

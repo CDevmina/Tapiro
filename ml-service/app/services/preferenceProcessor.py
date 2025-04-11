@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from bson import ObjectId
 import logging
 from app.utils.redis_util import invalidate_cache, CACHE_KEYS
+from typing import List
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -65,5 +66,43 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
                 attributes=item.get("attributes")
             ) for item in user_preferences
         ],
+        updated_at=datetime.now()
+    )
+
+async def update_user_preferences(auth0_id: str, email: str, preferences: List[UserPreference], db) -> UserPreferences:
+    """Update user preferences directly"""
+    
+    logger.info(f"Processing preference update for user {auth0_id}")
+    
+    # Find the user in the database
+    user = await db.users.find_one({"auth0Id": auth0_id})
+    if not user:
+        # Try finding by email as fallback
+        user = await db.users.find_one({"email": email})
+        if not user:
+            logger.error(f"User not found: {email}")
+            raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user preferences
+    update_result = await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "preferences": [pref.dict() for pref in preferences],
+                "updatedAt": datetime.now()
+            }
+        }
+    )
+    
+    if update_result.modified_count == 0:
+        logger.warning(f"No changes made to preferences for user {auth0_id}")
+    
+    # Invalidate cache
+    await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
+    
+    # Return updated preferences
+    return UserPreferences(
+        user_id=str(user["_id"]),
+        preferences=preferences,
         updated_at=datetime.now()
     )

@@ -10,6 +10,48 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 const AI_SERVICE_API_KEY = process.env.AI_SERVICE_API_KEY;
 
 /**
+ * Update user preferences directly through the FastAPI service
+ * @param {string} auth0Id - User Auth0 ID
+ * @param {string} email - User email
+ * @param {Array} preferences - User preferences to update
+ * @returns {Promise<Object>} Updated preferences
+ */
+exports.updateUserPreferences = async function (auth0Id, email, preferences) {
+  try {
+    const response = await axiosInstance.post(
+      `${AI_SERVICE_URL}/preferences/update`,
+      { auth0Id, email, preferences },
+      {
+        headers: {
+          'X-API-Key': AI_SERVICE_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000, // Using longer timeout for preference operations
+      }
+    );
+    
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update preferences through AI service:', error?.response?.data || error);
+    
+    // More specific error handling
+    if (error.response) {
+      if (error.response.status === 401) {
+        throw new Error('AI service authentication failed');
+      } else if (error.response.status === 404) {
+        throw new Error('User not found in AI service');
+      } else if (error.response.status >= 500) {
+        throw new Error('AI service internal error');
+      }
+    } else if (error.request) {
+      throw new Error('AI service connection failed');
+    }
+    
+    throw error;
+  }
+};
+
+/**
  * Process user data by sending it to AI service
  * @param {Object} userData - The user data to process
  * @returns {Promise<Object>} - Processing status

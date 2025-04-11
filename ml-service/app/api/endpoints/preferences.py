@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, Body, BackgroundTasks
-from app.models.preferences import UserDataEntry
+from app.models.preferences import UserDataEntry, UserPreferences, UserPreference
 from app.db.mongodb import get_database
-from app.services.preferenceProcessor import process_user_data
+from app.services.preferenceProcessor import process_user_data, update_user_preferences
 from app.utils.preference_utils import mark_processing_failed
+from app.utils.redis_util import invalidate_cache, CACHE_KEYS
+from typing import List
+from datetime import datetime
 import logging
 
 # Configure logging
@@ -58,4 +61,33 @@ async def process_user_data_endpoint(
         raise HTTPException(
             status_code=500,
             detail=f"Error processing data: {str(e)}"
+        )
+
+@router.post(
+    "/preferences/update",
+    response_model=UserPreferences,
+    description="Update user preferences directly",
+    summary="Update preferences"
+)
+async def update_preferences_endpoint(
+    preferences: List[UserPreference] = Body(...),
+    auth0_id: str = Body(...),
+    email: str = Body(...),
+    db=Depends(get_database)
+):
+    """Update user preferences directly from the API service"""
+    logger.info(f"Updating preferences for user: {auth0_id}")
+    logger.info(f"Number of preference categories: {len(preferences)}")
+    
+    try:
+        # Call the processor function instead of handling processing here
+        result = await update_user_preferences(auth0_id, email, preferences, db)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating preferences: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating preferences: {str(e)}"
         )

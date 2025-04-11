@@ -103,7 +103,7 @@ exports.submitUserData = async function (req, body) {
     const db = getDB();
     const { email, dataType, entries, metadata } = body;
 
-    // Validate entries format based on dataType
+    
     if (!Array.isArray(entries)) {
       return respondWithCode(400, {
         code: 400,
@@ -111,60 +111,8 @@ exports.submitUserData = async function (req, body) {
       });
     }
 
-    // Enhanced validation based on taxonomy
-    if (dataType === 'purchase') {
-      // Collect all items to validate
-      const allItemsToValidate = [];
-      for (const entry of entries) {
-        // Use taxonomyUtil to validate purchase entry
-        const purchaseValidationResult = await taxonomyUtil.validatePurchaseEntry(entry);
-        if (purchaseValidationResult) {
-          return respondWithCode(400, purchaseValidationResult);
-        }
-
-        allItemsToValidate.push(
-          ...entry.items.map((item) => ({
-            category: item.category,
-            attributes: item.attributes || {},
-          })),
-        );
-      }
-
-      // Validate all items in a single batch
-      const validationResults = await taxonomyUtil.validateBatch(allItemsToValidate);
-
-      // Check validation results
-      let itemIndex = 0;
-      for (const entry of entries) {
-        for (let i = 0; i < entry.items.length; i++) {
-          const result = validationResults[itemIndex.toString()];
-          if (!result || !result.valid) {
-            const item = entry.items[i];
-            return respondWithCode(400, {
-              code: 400,
-              message: result?.message || `Invalid category or attributes for item: ${item.name}`,
-            });
-          }
-          itemIndex++;
-        }
-      }
-    } else if (dataType === 'search') {
-      for (const entry of entries) {
-        // Use taxonomyUtil to validate search entry
-        const searchValidationResult = await taxonomyUtil.validateSearchEntry(entry);
-        if (searchValidationResult) {
-          return respondWithCode(400, searchValidationResult);
-        }
-
-        // Validate category using taxonomyUtil
-        if (entry.category) {
-          const categoryValidationResult = await taxonomyUtil.validateSearchCategory(entry.category);
-          if (categoryValidationResult) {
-            return respondWithCode(400, categoryValidationResult);
-          }
-        }
-      }
-    } else {
+    // Only validate dataType
+    if (dataType !== 'purchase' && dataType !== 'search') {
       return respondWithCode(400, {
         code: 400,
         message: 'dataType must be either "purchase" or "search"',

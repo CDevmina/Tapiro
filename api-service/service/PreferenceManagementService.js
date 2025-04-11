@@ -5,6 +5,7 @@ const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { ObjectId } = require('mongodb');
 const taxonomyUtil = require('../utils/taxonomyUtil');
+const AIService = require('../clients/AIService');
 
 exports.getUserOwnPreferences = async function (req) {
   try {
@@ -122,37 +123,23 @@ exports.updateUserPreferences = async function (req, body) {
       });
     }
 
-    // Validate preferences against taxonomy
+    // REMOVED: The taxonomy validation code
+    // If preferences are provided, send to FastAPI for processing
     if (body.preferences) {
-      const normalizedPreferences = [];
-
-      for (const pref of body.preferences) {
-        // Validate category and attributes using the new taxonomy system
-        const validationResult = await taxonomyUtil.validateCategoryAndAttributes(
-          pref.category,
-          pref.attributes || {},
+      try {
+        // Call the AI service to process preferences
+        await AIService.updateUserPreferences(
+          userData.sub,
+          user.email,
+          body.preferences
         );
-
-        if (!validationResult.valid) {
-          return validationResult.response;
-        }
-
-        // For backward compatibility, still normalize the category ID
-        // This can be updated based on your new taxonomy system's requirements
-        const normalizedCategory = pref.category;
-
-        // Store with normalized category
-        normalizedPreferences.push({
-          ...pref,
-          category: normalizedCategory,
-        });
+      } catch (error) {
+        console.error('Failed to process preferences through AI service:', error);
+        // Continue with the update, we'll use the raw preferences without validation
       }
-
-      // Replace with normalized preferences
-      body.preferences = normalizedPreferences;
     }
 
-    // Update preferences with validated data
+    // Update preferences with the data as provided (without validation)
     await db.collection('users').updateOne(
       { _id: user._id },
       {
@@ -162,9 +149,6 @@ exports.updateUserPreferences = async function (req, body) {
         },
       },
     );
-
-    // Get updated user data
-    const updatedUser = await db.collection('users').findOne({ _id: user._id });
 
     // Clear related caches using the invalidation helper
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
