@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.endpoints import health, preferences
+from app.api.endpoints import health, preferences, taxonomy
 from app.core.security import get_api_key
 
 # Create the main API router
@@ -13,5 +13,13 @@ api_router.include_router(
     preferences.router, 
     prefix="/users", 
     tags=["Preferences"],
+    dependencies=[Depends(get_api_key)]
+)
+
+# Include taxonomy router with API key authentication
+api_router.include_router(
+    taxonomy.router,
+    prefix="/taxonomy",
+    tags=["Taxonomy"],
     dependencies=[Depends(get_api_key)]
 )
