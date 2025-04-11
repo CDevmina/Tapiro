@@ -8,6 +8,7 @@ import logging
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from app.models.taxonomy import TaxonomyAttribute, TaxonomyCategory, Taxonomy
+from app.utils.redis_util import get_cache, set_cache, get_cache_json, set_cache_json, CACHE_KEYS, CACHE_TTL
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ class TaxonomyService:
                     upsert=True
                 )
         
-        # Initialize embedding model
-        self._initialize_embeddings()
+        # Initialize embedding model (try Redis cache first)
+        await self._initialize_embeddings()
         
     def _load_from_file(self):
         """Load taxonomy from YAML file"""
@@ -54,8 +55,26 @@ class TaxonomyService:
             logger.error(f"Failed to load taxonomy: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to load taxonomy")
             
-    def _initialize_embeddings(self):
+    async def _initialize_embeddings(self):
         """Initialize embedding model for search processing"""
+        # Try to get embeddings from Redis cache first
+        cache_key = f"{CACHE_KEYS['TAXONOMY_EMBEDDINGS']}all"
+        cached_embeddings = await get_cache_json(cache_key)
+        
+        if cached_embeddings:
+            try:
+                # Convert from list back to numpy arrays
+                self.category_embeddings = {k: np.array(v) for k, v in cached_embeddings.items()}
+                logger.info(f"Loaded embeddings from Redis cache for {len(self.category_embeddings)} categories")
+                
+                # Load the model but skip generating embeddings
+                model_name = "all-MiniLM-L6-v2"
+                self.embedding_model = SentenceTransformer(model_name)
+                return
+            except Exception as e:
+                logger.error(f"Failed to load embeddings from cache: {str(e)}")
+                # Continue to generate embeddings
+                
         try:
             model_name = "all-MiniLM-L6-v2"  # Good balance of speed and performance
             self.embedding_model = SentenceTransformer(model_name)
@@ -76,12 +95,28 @@ class TaxonomyService:
                 self.category_embeddings[category.id] = self.embedding_model.encode(text)
                 
             logger.info(f"Initialized embeddings for {len(self.category_embeddings)} categories")
+            
+            # Cache embeddings in Redis
+            # Convert numpy arrays to lists for JSON serialization
+            cache_data = {k: v.tolist() for k, v in self.category_embeddings.items()}
+            await set_cache_json(cache_key, cache_data, {"EX": CACHE_TTL["TAXONOMY_EMBEDDINGS"]})
+            logger.info("Cached embeddings in Redis")
+            
         except Exception as e:
             logger.error(f"Failed to initialize embeddings: {str(e)}")
             # Continue without embeddings, we'll use rule-based only
             
-    def get_mongodb_schemas(self):
+    async def get_mongodb_schemas(self):
         """Generate MongoDB schema definitions from taxonomy"""
+        # Try to get from cache first
+        cache_key = f"{CACHE_KEYS['SCHEMA_PROPS']}mongodb"
+        cached_schemas = await get_cache_json(cache_key)
+        
+        if cached_schemas:
+            logger.info("Loaded MongoDB schemas from Redis cache")
+            return cached_schemas
+            
+        # Generate from taxonomy if not in cache
         preference_attrs = {}
         data_attrs = {}
         
@@ -101,10 +136,16 @@ class TaxonomyService:
                         "enum": attr.values
                     }
         
-        return {
+        result = {
             "preference_attributes": preference_attrs,
             "data_attributes": data_attrs
         }
+        
+        # Cache the result in Redis
+        await set_cache_json(cache_key, result, {"EX": CACHE_TTL["SCHEMA"]})
+        logger.info("Generated MongoDB schemas and cached in Redis")
+        
+        return result
     
     def validate_preferences(self, preferences):
         """Validate preference data against taxonomy"""
@@ -137,6 +178,14 @@ class TaxonomyService:
         
     async def match_category(self, query_text):
         """Match a search query to most relevant category using embeddings"""
+        # Try to get from cache first
+        cache_key = f"{CACHE_KEYS['TAXONOMY_SEARCH']}{query_text}"
+        cached_result = await get_cache_json(cache_key)
+        
+        if cached_result:
+            logger.debug(f"Category match for '{query_text}' found in cache")
+            return cached_result
+            
         if not self.embedding_model or not self.category_embeddings:
             raise ValueError("Embedding model not initialized")
             
@@ -156,11 +205,16 @@ class TaxonomyService:
                 best_score = similarity
                 best_category = category_id
         
-        return {
+        result = {
             "category": best_category,
             "score": float(best_score),
             "threshold_met": best_score > 0.5  # Configurable threshold
         }
+        
+        # Cache result with short TTL
+        await set_cache_json(cache_key, result, {"EX": CACHE_TTL["TAXONOMY_SEARCH"]})
+        
+        return result
 
 # Singleton instance
 _taxonomy_service = None

@@ -32,7 +32,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - tapiro-net
     healthcheck:
@@ -81,6 +82,12 @@ services:
       - redis-data:/data
     networks:
       - tapiro-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   ml-service:
     build:
@@ -103,8 +110,8 @@ services:
     networks:
       - tapiro-net
     depends_on:
-      - api-service
-      - redis
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s

@@ -8,11 +8,17 @@ from app.core.cache_constants import CACHE_DURATIONS
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create Redis client
+# Environment-specific prefix to isolate cache entries
+ENVIRONMENT_PREFIX = f"{settings.ENVIRONMENT}:" if hasattr(settings, 'ENVIRONMENT') else ""
+
+# Create Redis client with connection pooling
 redis_client = redis.Redis(
     host=settings.REDIS_HOST,
     port=settings.REDIS_PORT,
-    decode_responses=True
+    decode_responses=True,
+    max_connections=10,  # Limit connection pool
+    socket_timeout=2.0,  # Add timeouts
+    socket_connect_timeout=1.0
 )
 
 # Define the same cache prefixes as in Node.js for consistency
@@ -67,21 +73,23 @@ async def get_cache(key: str):
     """
     Get value from cache
     """
+    prefixed_key = ENVIRONMENT_PREFIX + key
     try:
-        value = redis_client.get(key)
+        value = redis_client.get(prefixed_key)
         if value:
-            logger.debug(f"Cache hit: {key}")
+            logger.debug(f"Cache hit: {prefixed_key}")
             return value
-        logger.debug(f"Cache miss: {key}")
+        logger.debug(f"Cache miss: {prefixed_key}")
         return None
     except Exception as e:
-        logger.error(f"Error getting cache {key}: {e}")
+        logger.error(f"Error getting cache {prefixed_key}: {e}")
         return None
 
 async def set_cache(key: str, value: str, options: dict = None):
     """
     Set value in cache with options
     """
+    prefixed_key = ENVIRONMENT_PREFIX + key
     try:
         if not await ensure_connection():
             return False
@@ -93,30 +101,31 @@ async def set_cache(key: str, value: str, options: dict = None):
         ex = options.get("EX", None)
         
         if ex:
-            redis_client.set(key, value, ex=ex)
+            redis_client.set(prefixed_key, value, ex=ex)
         else:
-            redis_client.set(key, value)
+            redis_client.set(prefixed_key, value)
             
-        logger.debug(f"Cache set: {key}")
+        logger.debug(f"Cache set: {prefixed_key}")
         return True
     except Exception as e:
-        logger.error(f"Error setting cache {key}: {e}")
+        logger.error(f"Error setting cache {prefixed_key}: {e}")
         return False
 
 async def invalidate_cache(key: str) -> bool:
     """
     Invalidate a cache entry by setting a short expiration (matches Node.js approach)
     """
+    prefixed_key = ENVIRONMENT_PREFIX + key
     try:
         if not await ensure_connection():
             return False
             
         # Match Node.js approach: set with empty value and short TTL
         await set_cache(key, "", {"EX": CACHE_TTL["INVALIDATION"]})
-        logger.info(f"Invalidated cache: {key}")
+        logger.info(f"Invalidated cache: {prefixed_key}")
         return True
     except Exception as e:
-        logger.error(f"Error invalidating cache {key}: {e}")
+        logger.error(f"Error invalidating cache {prefixed_key}: {e}")
         return False
 
 async def ping_redis() -> bool:
@@ -129,4 +138,24 @@ async def ping_redis() -> bool:
         return response == True
     except Exception as e:
         logger.error(f"Redis ping error: {str(e)}")
+        return False
+
+# New helper methods for JSON handling
+async def get_cache_json(key: str):
+    """Get JSON value from cache"""
+    value = await get_cache(key)
+    if value:
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON from cache {key}: {e}")
+    return None
+
+async def set_cache_json(key: str, value, options: dict = None):
+    """Set JSON value in cache with options"""
+    try:
+        json_value = json.dumps(value)
+        return await set_cache(key, json_value, options)
+    except (TypeError, json.JSONEncodeError) as e:
+        logger.error(f"Error encoding object to JSON for cache {key}: {e}")
         return False
