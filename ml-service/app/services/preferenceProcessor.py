@@ -62,12 +62,15 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     # Convert preference_dict back to list
     updated_preferences = list(preference_dict.values())
     
-    # Update user preferences in database
+    # Add normalization before database update
+    normalized_preferences = await normalize_categories(updated_preferences, taxonomy)
+    
+    # Update user preferences in database with normalized data
     await db.users.update_one(
         {"_id": user["_id"]},
         {
             "$set": {
-                "preferences": updated_preferences,
+                "preferences": normalized_preferences,
                 "updatedAt": datetime.now()
             }
         }
@@ -100,7 +103,7 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
                 category=item["category"], 
                 score=item["score"],
                 attributes=item.get("attributes")
-            ) for item in updated_preferences
+            ) for item in normalized_preferences
         ],
         updated_at=datetime.now()
     )
@@ -258,6 +261,24 @@ async def process_with_embeddings(entries, data_type, preference_dict, taxonomy)
     # For search data, same as regular processing
     elif data_type == "search":
         await process_search_data(entries, preference_dict, taxonomy)
+
+async def normalize_categories(preferences, taxonomy):
+    """Ensure all categories use IDs instead of names"""
+    normalized = []
+    
+    # Build name-to-id mapping
+    name_to_id = {}
+    for cat in taxonomy.taxonomy.categories:
+        name_to_id[cat.name.lower()] = cat.id
+    
+    for pref in preferences:
+        category = pref["category"]
+        # If category is a name rather than ID, convert it
+        if category.lower() in name_to_id:
+            pref["category"] = name_to_id[category.lower()]
+        normalized.append(pref)
+    
+    return normalized
 
 async def update_user_preferences(auth0_id: str, email: str, preferences: List[UserPreference], db) -> UserPreferences:
     """Update user preferences directly"""

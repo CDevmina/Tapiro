@@ -22,7 +22,7 @@ class TaxonomyService:
     async def initialize(self):
         """Initialize taxonomy from file and DB"""
         # Try loading from DB first
-        if self.db:
+        if self.db is not None:  # Changed from 'if self.db:'
             cached = await self.db.taxonomy.find_one({"current": True})
             if cached:
                 self.taxonomy = Taxonomy(**cached["data"])
@@ -33,7 +33,7 @@ class TaxonomyService:
             self._load_from_file()
             
             # Save to DB if available
-            if self.db:
+            if self.db is not None:
                 await self.db.taxonomy.update_one(
                     {"current": True},
                     {"$set": {"data": self.taxonomy.dict(), "updated_at": datetime.now()}},
@@ -77,7 +77,9 @@ class TaxonomyService:
                 
         try:
             model_name = "all-MiniLM-L6-v2"  # Good balance of speed and performance
-            self.embedding_model = SentenceTransformer(model_name)
+            # Specify a writable cache directory inside the container
+            cache_dir = "/app/model_cache"
+            self.embedding_model = SentenceTransformer(model_name, cache_folder=cache_dir)
             
             # Generate embeddings for all categories
             for category in self.taxonomy.categories:
@@ -167,7 +169,7 @@ class TaxonomyService:
         result = {
             "category": best_category,
             "score": float(best_score),
-            "threshold_met": best_score > 0.5  # Configurable threshold
+            "threshold_met":  bool(best_score > 0.2)  # Configurable threshold
         }
         
         # Cache result with short TTL

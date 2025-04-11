@@ -4,7 +4,6 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { ObjectId } = require('mongodb');
-const taxonomyUtil = require('../utils/taxonomyUtil');
 const AIService = require('../clients/AIService');
 
 exports.getUserOwnPreferences = async function (req) {

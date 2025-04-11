@@ -3,7 +3,6 @@ const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
-const taxonomyUtil = require('../utils/taxonomyUtil');
 
 /**
  * Get user preferences for targeted advertising
