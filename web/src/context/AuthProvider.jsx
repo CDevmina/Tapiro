@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { AuthContext } from "./AuthContext";
-import { useAuthApi } from "../api";
+import axios from "axios"; // Add this import
 
 export function AuthProvider({ children }) {
   const {
@@ -21,7 +21,8 @@ export function AuthProvider({ children }) {
     isChecking: false,
   });
 
-  const { getAuthMetadata } = useAuthApi();
+  // Define API URL directly
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   // Check registration status when authenticated
   useEffect(() => {
@@ -30,7 +31,21 @@ export function AuthProvider({ children }) {
 
       try {
         setRegistrationStatus((prev) => ({ ...prev, isChecking: true }));
-        const { metadata } = await getAuthMetadata();
+
+        // Direct API call instead of using useAuthApi hook
+        const accessToken = await getAccessTokenSilently();
+        const response = await axios.post(
+          `${API_URL}/users/metadata/get`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const { metadata } = response.data;
 
         setRegistrationStatus({
           complete: metadata?.registrationComplete || false,
@@ -50,7 +65,7 @@ export function AuthProvider({ children }) {
     if (isAuthenticated && user && !auth0Loading) {
       checkRegistrationStatus();
     }
-  }, [isAuthenticated, user, auth0Loading, getAuthMetadata]);
+  }, [isAuthenticated, user, auth0Loading, getAccessTokenSilently, API_URL]);
 
   // Simplified initialization
   useEffect(() => {

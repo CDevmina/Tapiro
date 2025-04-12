@@ -1,6 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Create a hook for using authenticated API calls
 export function useAuthFetch() {
@@ -14,53 +15,57 @@ export function useAuthFetch() {
     try {
       const accessToken = await getAccessTokenSilently();
 
-      const headers = {
-        ...options.headers,
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+      const config = {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
       };
 
-      // Make the API call
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
+      // Make the API call with axios
+      const response = await axios(`${API_URL}${endpoint}`, config);
 
+      // Axios automatically returns the data and handles JSON parsing
+      return response.data;
+    } catch (error) {
       // Handle HTTP errors, including auth errors
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          // Handle authentication errors
+      if (error.response) {
+        if (error.response.status === 401 || error.response.status === 403) {
           logout();
           throw new Error("Session expired. Please login again.");
         }
 
-        const errorData = await response.json().catch(() => ({
-          message: `API error ${response.status}: ${response.statusText}`,
-        }));
-
-        throw new Error(errorData.message || "API request failed");
+        throw new Error(
+          error.response.data.message || `API error ${error.response.status}`
+        );
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error("API request failed with no response:", error.request);
+        throw new Error(
+          "No response from server. Please check your connection."
+        );
+      } else {
+        // Something happened in setting up the request
+        console.error("API request setup failed:", error.message);
+        throw error;
       }
-
-      // Return JSON response or empty object if no content
-      return response.status === 204 ? {} : await response.json();
-    } catch (error) {
-      console.error("API request failed:", error);
-      throw error;
     }
   };
 
   // Return convenient methods
   return {
-    get: (endpoint) => fetchWithAuth(endpoint),
+    get: (endpoint) => fetchWithAuth(endpoint, { method: "GET" }),
     post: (endpoint, data) =>
       fetchWithAuth(endpoint, {
         method: "POST",
-        body: JSON.stringify(data),
+        data, // Axios uses 'data' instead of 'body'
       }),
     put: (endpoint, data) =>
       fetchWithAuth(endpoint, {
         method: "PUT",
-        body: JSON.stringify(data),
+        data,
       }),
     delete: (endpoint) =>
       fetchWithAuth(endpoint, {

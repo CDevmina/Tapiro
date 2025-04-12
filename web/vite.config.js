@@ -8,11 +8,5 @@ export default defineConfig({
       usePolling: true,
       interval: 100, // Check for changes every 100ms
     },
-    host: true,
-    strictPort: true,
-    port: 5173,
-    hmr: {
-      clientPort: 3001, // This is important for Docker
-    },
   },
 });

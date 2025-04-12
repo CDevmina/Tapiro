@@ -24,7 +24,7 @@ services:
       - AUTH0_MANAGEMENT_API_TOKEN=${AUTH0_MANAGEMENT_API_TOKEN}
       - AUTH0_USER_ROLE_ID=${AUTH0_USER_ROLE_ID}
       - AUTH0_STORE_ROLE_ID=${AUTH0_STORE_ROLE_ID}
-      - FRONTEND_URL=http://web:5173
+      - FRONTEND_URL=http://localhost:5173
       - AUTH0_M2M_CLIENT_ID=${AUTH0_M2M_CLIENT_ID}
       - AUTH0_M2M_CLIENT_SECRET=${AUTH0_M2M_CLIENT_SECRET}
       - AI_SERVICE_URL=http://ml-service:8000/api
@@ -54,13 +54,13 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://api-service:3000
+      - VITE_API_URL=http://localhost:3000
       - VITE_AUTH0_CLIENT_ID=${AUTH0_SPA_CLIENT_ID}
       - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
       - WATCHPACK_POLLING=true
     ports:
-      - "3001:5173"
+      - "5173:5173"
     networks:
       - tapiro-net
     depends_on:

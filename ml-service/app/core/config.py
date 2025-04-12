@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     # CORS Settings
     BACKEND_CORS_ORIGINS: list = [
         "http://localhost:3000",
-        "http://localhost:3001",
         "http://localhost:5173",
         "http://backend:3000",
         "http://web:5173"

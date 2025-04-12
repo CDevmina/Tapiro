@@ -1,5 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Auth0ProviderWithNavigate } from "./components/auth/auth0-provider";
+import { RegistrationFlow } from "./components/auth/RegistrationFlow";
 import MainLayout from "./layouts/MainLayout";
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -21,6 +22,7 @@ function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="login" element={<Login />} />
           <Route path="unauthorized" element={<Unauthorized />} />
+          <Route path="register" element={<RegistrationFlow />} />
 
           {/* User-specific routes */}
           <Route

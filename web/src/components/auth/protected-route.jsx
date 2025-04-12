@@ -3,7 +3,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { Spinner } from "../common";
 
 export function ProtectedRoute({ children, requiredRoles = [] }) {
-  const { isAuthenticated, isLoading, hasAnyRole } = useAuth();
+  const { isAuthenticated, isLoading, hasAnyRole, registration } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -17,6 +17,17 @@ export function ProtectedRoute({ children, requiredRoles = [] }) {
   if (!isAuthenticated) {
     return (
       <Navigate to="/login" state={{ returnTo: location.pathname }} replace />
+    );
+  }
+
+  // Check if registration is complete
+  if (isAuthenticated && !registration.isComplete) {
+    return (
+      <Navigate
+        to="/register"
+        state={{ returnTo: location.pathname }}
+        replace
+      />
     );
   }
 
