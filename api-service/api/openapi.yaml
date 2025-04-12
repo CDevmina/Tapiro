@@ -540,6 +540,56 @@ paths:
                 $ref: "#/components/schemas/PingStatus"
       x-swagger-router-controller: Health
 
+  /users/metadata:
+    put:
+      tags: [Authentication]
+      summary: Update User Metadata
+      description: Update Auth0 metadata for the authenticated user
+      operationId: updateUserMetadata
+      security:
+        - oauth2: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserMetadataUpdate"
+        required: true
+      responses:
+        "200":
+          description: Metadata updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMetadataResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Authentication
+
+  /users/metadata/get:
+    post:
+      tags: [Authentication]
+      summary: Get User Metadata
+      description: Retrieve Auth0 metadata for the authenticated user
+      operationId: getUserMetadata
+      security:
+        - oauth2: []
+      responses:
+        "200":
+          description: Metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMetadataResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Authentication
+
 components:
   schemas:
     AttributeDistribution:
@@ -1067,6 +1117,35 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    UserMetadataUpdate:
+      type: object
+      properties:
+        registrationType:
+          type: string
+          enum: [user, store]
+          description: The type of registration (user or store)
+        registrationComplete:
+          type: boolean
+          description: Whether registration process is complete
+
+    UserMetadataResponse:
+      type: object
+      properties:
+        updated:
+          type: boolean
+          description: Whether metadata was updated successfully
+        metadata:
+          type: object
+          properties:
+            registrationType:
+              type: string
+              enum: [user, store]
+              description: The type of registration
+            registrationComplete:
+              type: boolean
+              description: Whether registration process is complete
+          description: User metadata from Auth0
 
   responses:
     BadRequestError:

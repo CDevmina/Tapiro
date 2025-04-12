@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { AuthContext } from "./AuthContext";
+import { useAuthApi } from "../api";
 
 export function AuthProvider({ children }) {
   const {
@@ -14,6 +15,42 @@ export function AuthProvider({ children }) {
 
   const [authReady, setAuthReady] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [registrationStatus, setRegistrationStatus] = useState({
+    complete: false,
+    type: null,
+    isChecking: false,
+  });
+
+  const { getAuthMetadata } = useAuthApi();
+
+  // Check registration status when authenticated
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (!isAuthenticated || !user) return;
+
+      try {
+        setRegistrationStatus((prev) => ({ ...prev, isChecking: true }));
+        const { metadata } = await getAuthMetadata();
+
+        setRegistrationStatus({
+          complete: metadata?.registrationComplete || false,
+          type: metadata?.registrationType || null,
+          isChecking: false,
+        });
+      } catch (error) {
+        console.error("Failed to check registration status:", error);
+        setRegistrationStatus({
+          complete: false,
+          type: null,
+          isChecking: false,
+        });
+      }
+    };
+
+    if (isAuthenticated && user && !auth0Loading) {
+      checkRegistrationStatus();
+    }
+  }, [isAuthenticated, user, auth0Loading, getAuthMetadata]);
 
   // Simplified initialization
   useEffect(() => {
@@ -67,7 +104,11 @@ export function AuthProvider({ children }) {
   );
 
   // Overall loading state
-  const isLoading = auth0Loading || isInitializing || !authReady;
+  const isLoading =
+    auth0Loading ||
+    isInitializing ||
+    !authReady ||
+    registrationStatus.isChecking;
 
   // Memoize context value
   const value = useMemo(
@@ -81,6 +122,10 @@ export function AuthProvider({ children }) {
       roles: getRoles(),
       hasRole,
       hasAnyRole,
+      registration: {
+        isComplete: registrationStatus.complete,
+        type: registrationStatus.type,
+      },
     }),
     [
       isAuthenticated,
@@ -92,6 +137,7 @@ export function AuthProvider({ children }) {
       getRoles,
       hasRole,
       hasAnyRole,
+      registrationStatus,
     ]
   );
 

@@ -1,10 +1,11 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache } = require('../utils/redisUtil');
+const { setCache, invalidateCache } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 const { assignUserRole, linkAccounts } = require('../utils/auth0Util');
-const { getUserData } = require('../utils/authUtil');
+const { getUserData, getManagementToken } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const axios = require('axios');
 
 /**
  * Register User
@@ -225,6 +226,83 @@ exports.registerStore = async function (req, body) {
     return respondWithCode(201, { ...store, storeId: result.insertedId });
   } catch (error) {
     console.error('Store registration failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Update user metadata
+ * Update Auth0 metadata for the authenticated user
+ */
+exports.updateUserMetadata = async function (req, body) {
+  try {
+    // Get user data from middleware or fetch it
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    const { registrationType, registrationComplete } = body;
+
+    if (!registrationType && registrationComplete === undefined) {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'No metadata updates provided',
+      });
+    }
+    
+    // Get management token to update Auth0
+    const managementToken = await getManagementToken();
+    
+    // Prepare the metadata update
+    const metadataUpdate = { 
+      user_metadata: {}
+    };
+    
+    if (registrationType) {
+      metadataUpdate.user_metadata.registrationType = registrationType;
+    }
+    
+    if (registrationComplete !== undefined) {
+      metadataUpdate.user_metadata.registrationComplete = registrationComplete;
+    }
+
+    // Update user metadata in Auth0
+    await axios.patch(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`,
+      metadataUpdate,
+      {
+        headers: {
+          Authorization: `Bearer ${managementToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // Clear relevant caches
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+
+    return respondWithCode(200, {
+      updated: true,
+      metadata: metadataUpdate.user_metadata
+    });
+  } catch (error) {
+    console.error('Metadata update failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get user metadata
+ * Retrieve Auth0 metadata for the authenticated user
+ */
+exports.getUserMetadata = async function (req) {
+  try {
+    // Get user data from middleware or fetch it
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    
+    // We already have the user metadata in the userData object
+    const metadata = userData.user_metadata || {};
+
+    return respondWithCode(200, { metadata });
+  } catch (error) {
+    console.error('Metadata retrieval failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
