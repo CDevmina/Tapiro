@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const http = require('http');
+const express = require('express'); // Import express
 const oas3Tools = require('oas3-tools');
 const cors = require('cors');
 const { auth, checkJwtAndScope } = require('./middleware/authMiddleware');
@@ -23,7 +24,7 @@ const corsOptions = {
 const options = {
   routing: {
     controllers: path.join(__dirname, './controllers'),
-    middlewares: [cors(corsOptions), auth],
+    middlewares: [auth],
   },
   openApiValidator: {
     validateSecurity: {
@@ -35,13 +36,22 @@ const options = {
   },
 };
 
+// Create a base Express app instance
+const app = express();
+
+// Apply CORS middleware directly to the Express app
+app.use(cors(corsOptions));
+
+// Configure oas3Tools with the OpenAPI spec and options
 const expressAppConfig = oas3Tools.expressAppConfig(
   path.join(__dirname, 'api/openapi.yaml'),
   options,
 );
-const app = expressAppConfig.getApp();
 
-// Initialize connections
+// Apply the oas3Tools middleware (router, validator) to the Express app
+app.use(expressAppConfig.getApp());
+
+// Initialize connections and start the server
 connectDB()
   .then(() => connectRedis())
   .then(() => {
