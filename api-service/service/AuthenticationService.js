@@ -1,11 +1,10 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache, invalidateCache } = require('../utils/redisUtil');
+const { setCache} = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, linkAccounts,  getManagementToken } = require('../utils/auth0Util');
+const { assignUserRole, linkAccounts, updateUserMetadata } = require('../utils/auth0Util');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const axios = require('axios');
 
 /**
  * Register User
@@ -128,6 +127,12 @@ exports.registerUser = async function (req, body) {
       EX: CACHE_TTL.USER_DATA,
     });
 
+    // Update user metadata
+    await updateUserMetadata(userData.sub, {
+      registrationType: 'user',
+      registrationComplete: true
+    });
+
     return respondWithCode(201, { ...user, userId: result.insertedId });
   } catch (error) {
     console.error('User registration failed:', error);
@@ -223,6 +228,12 @@ exports.registerStore = async function (req, body) {
       EX: CACHE_TTL.STORE_DATA,
     });
 
+    // Update store metadata
+    await updateUserMetadata(userData.sub, {
+      registrationType: 'store',
+      registrationComplete: true
+    });
+
     return respondWithCode(201, { ...store, storeId: result.insertedId });
   } catch (error) {
     console.error('Store registration failed:', error);
@@ -247,40 +258,26 @@ exports.updateUserMetadata = async function (req, body) {
       });
     }
     
-    // Get management token to update Auth0
-    const managementToken = await getManagementToken();
-    
-    // Prepare the metadata update
-    const metadataUpdate = { 
-      user_metadata: {}
-    };
-    
+    // Prepare metadata update
+    const metadataToUpdate = {};
     if (registrationType) {
-      metadataUpdate.user_metadata.registrationType = registrationType;
+      metadataToUpdate.registrationType = registrationType;
     }
     
     if (registrationComplete !== undefined) {
-      metadataUpdate.user_metadata.registrationComplete = registrationComplete;
+      metadataToUpdate.registrationComplete = registrationComplete;
     }
 
-    // Update user metadata in Auth0
-    await axios.patch(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`,
-      metadataUpdate,
-      {
-        headers: {
-          Authorization: `Bearer ${managementToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
+    // Update the metadata using our helper
+    const updatedMetadata = await updateUserMetadata(
+      userData.sub, 
+      metadataToUpdate, 
+      true // invalidate cache
     );
-
-    // Clear relevant caches
-    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
 
     return respondWithCode(200, {
       updated: true,
-      metadata: metadataUpdate.user_metadata
+      metadata: updatedMetadata
     });
   } catch (error) {
     console.error('Metadata update failed:', error);

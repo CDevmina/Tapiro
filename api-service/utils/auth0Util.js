@@ -112,4 +112,50 @@ async function linkAccounts(primaryUserId, secondaryUserId) {
   }
 }
 
-module.exports = { getManagementToken, assignUserRole, linkAccounts };
+/**
+ * Update Auth0 user metadata
+ * @param {string} userId - Auth0 user ID
+ * @param {Object} metadata - Metadata to update
+ * @param {boolean} invalidateUserCache - Whether to invalidate the user cache
+ * @returns {Promise<Object>} - Updated metadata
+ */
+async function updateUserMetadata(userId, metadata, invalidateUserCache = false) {
+  try {
+    const token = await getManagementToken();
+    
+    const metadataUpdate = {
+      user_metadata: metadata
+    };
+
+    // Update user metadata in Auth0
+    const response = await axios.patch(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
+      metadataUpdate,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    // Invalidate cache if requested
+    if (invalidateUserCache) {
+      const { invalidateCache } = require('../utils/redisUtil');
+      const { CACHE_KEYS } = require('../utils/cacheConfig');
+      await invalidateCache(`${CACHE_KEYS.USER_DATA}${userId}`);
+    }
+    
+    return response.data.user_metadata || {};
+  } catch (error) {
+    console.error('Failed to update user metadata:', error?.response?.data || error);
+    throw error;
+  }
+}
+
+module.exports = { 
+  getManagementToken, 
+  assignUserRole, 
+  linkAccounts,
+  updateUserMetadata 
+};

@@ -3,7 +3,7 @@ import { useAuthApi } from "../../../api";
 import { Button, Input } from "../../common";
 
 export default function StoreRegistrationForm({ user, setStep, setError }) {
-  const { registerStore, updateAuthMetadata } = useAuthApi();
+  const { registerStore } = useAuthApi();
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -26,12 +26,6 @@ export default function StoreRegistrationForm({ user, setStep, setError }) {
       await registerStore({
         name: formData.name,
         address: formData.address,
-      });
-
-      // Mark registration as complete in Auth0 metadata
-      await updateAuthMetadata({
-        registrationType: "store",
-        registrationComplete: true,
       });
 
       // Move to completion step

@@ -3,7 +3,7 @@ import { useAuthApi } from "../../../api";
 import { Button, Checkbox } from "../../common";
 
 export default function UserRegistrationForm({ user, setStep, setError }) {
-  const { registerUser, updateAuthMetadata } = useAuthApi();
+  const { registerUser } = useAuthApi();
   const [dataSharingConsent, setDataSharingConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -15,12 +15,6 @@ export default function UserRegistrationForm({ user, setStep, setError }) {
       // Register the user with the API
       await registerUser({
         dataSharingConsent,
-      });
-
-      // Mark registration as complete in Auth0 metadata
-      await updateAuthMetadata({
-        registrationType: "user",
-        registrationComplete: true,
       });
 
       // Move to completion step
