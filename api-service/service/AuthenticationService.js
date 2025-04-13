@@ -2,8 +2,8 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache, invalidateCache } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, linkAccounts } = require('../utils/auth0Util');
-const { getUserData, getManagementToken } = require('../utils/authUtil');
+const { assignUserRole, linkAccounts,  getManagementToken } = require('../utils/auth0Util');
+const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const axios = require('axios');
 
