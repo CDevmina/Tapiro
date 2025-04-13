@@ -43,10 +43,43 @@ services:
       retries: 3
       start_period: 15s
 
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: tapiro-ai
+    volumes:
+      - ./ml-service:/app
+      - /app/__pycache__
+      - ml-model-cache:/app/model_cache
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - API_BASE_URL=http://api-service:3000
+      - MONGODB_DB_NAME=tapiro
+      - BACKEND_API_URL=http://api-service:3000
+      - SECRET_KEY=${AI_SERVICE_API_KEY}
+      - DEBUG=true
+      - REDIS_HOST=redis
+      - HF_HOME=/app/model_cache
+      - XDG_CACHE_HOME=/app/model_cache
+    ports:
+      - "8000:8000"
+    networks:
+      - tapiro-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   web:
     build:
       context: ./web
-      dockerfile: dockerfile.dev
+      dockerfile: dockerfile
       target: development
     container_name: tapiro-web
     volumes:
@@ -88,39 +121,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-
-  ml-service:
-    build:
-      context: ./ml-service
-      dockerfile: Dockerfile
-    container_name: tapiro-ai
-    volumes:
-      - ./ml-service:/app
-      - /app/__pycache__
-      - ml-model-cache:/app/model_cache
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - API_BASE_URL=http://api-service:3000
-      - MONGODB_DB_NAME=tapiro
-      - BACKEND_API_URL=http://api-service:3000
-      - SECRET_KEY=${AI_SERVICE_API_KEY}
-      - DEBUG=true
-      - REDIS_HOST=redis
-      - HF_HOME=/app/model_cache
-      - XDG_CACHE_HOME=/app/model_cache
-    ports:
-      - "8000:8000"
-    networks:
-      - tapiro-net
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
 networks:
   tapiro-net:
