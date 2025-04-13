@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { AuthContext } from "./AuthContext";
-import axios from "axios"; // Add this import
+import axios from "axios"; // Add axios back
 
 export function AuthProvider({ children }) {
   const {
@@ -18,77 +18,92 @@ export function AuthProvider({ children }) {
   const [registrationStatus, setRegistrationStatus] = useState({
     complete: false,
     type: null,
-    isChecking: false,
+    isChecking: true,
   });
 
-  // Define API URL directly
+  // Add API_URL back
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-  // Check registration status when authenticated
+  // Define checkRegistrationStatus using useCallback - REVERTED TO AXIOS
+  const checkRegistrationStatus = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      setRegistrationStatus({ complete: false, type: null, isChecking: false });
+      return;
+    }
+
+    try {
+      setRegistrationStatus((prev) => ({ ...prev, isChecking: true }));
+
+      // Use axios directly again
+      const accessToken = await getAccessTokenSilently();
+      const response = await axios.post(
+        `${API_URL}/users/metadata/get`,
+        {}, // Empty body for POST request
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { metadata } = response.data;
+
+      setRegistrationStatus({
+        complete: metadata?.registrationComplete || false,
+        type: metadata?.registrationType || null,
+        isChecking: false,
+      });
+    } catch (error) {
+      console.error("Failed to check registration status:", error);
+      setRegistrationStatus({
+        complete: false,
+        type: null,
+        isChecking: false,
+      });
+    }
+  }, [isAuthenticated, user, getAccessTokenSilently, API_URL]);
+
+  // Check status on auth change
   useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      if (!isAuthenticated || !user) return;
-
-      try {
-        setRegistrationStatus((prev) => ({ ...prev, isChecking: true }));
-
-        // Direct API call instead of using useAuthApi hook
-        const accessToken = await getAccessTokenSilently();
-        const response = await axios.post(
-          `${API_URL}/users/metadata/get`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const { metadata } = response.data;
-
-        setRegistrationStatus({
-          complete: metadata?.registrationComplete || false,
-          type: metadata?.registrationType || null,
-          isChecking: false,
-        });
-      } catch (error) {
-        console.error("Failed to check registration status:", error);
-        setRegistrationStatus({
-          complete: false,
-          type: null,
-          isChecking: false,
-        });
-      }
-    };
-
     if (isAuthenticated && user && !auth0Loading) {
       checkRegistrationStatus();
+    } else if (!isAuthenticated && !auth0Loading) {
+      // If not authenticated, registration is not applicable/complete
+      setRegistrationStatus({ complete: false, type: null, isChecking: false });
     }
-  }, [isAuthenticated, user, auth0Loading, getAccessTokenSilently, API_URL]);
+  }, [isAuthenticated, user, auth0Loading, checkRegistrationStatus]); // Use the callback here
 
   // Simplified initialization
   useEffect(() => {
     const prepareAuth = async () => {
       try {
-        if (isAuthenticated && user) {
+        // Attempt to get a token silently to ensure session is active if needed
+        if (await isAuthenticated) {
+          // Check if potentially authenticated
           await getAccessTokenSilently();
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        // Ignore errors here, likely means user is not logged in
+        console.log("Auth initialization check:", error.message);
       } finally {
         setIsInitializing(false);
         setAuthReady(true);
       }
     };
+    // Only run prepareAuth once on mount or if auth0Loading status changes significantly
+    if (!auth0Loading) {
+      prepareAuth();
+    }
+  }, [auth0Loading, getAccessTokenSilently, isAuthenticated]); // Added isAuthenticated
 
-    prepareAuth();
-  }, [isAuthenticated, user, getAccessTokenSilently]);
-
-  // Auth functions with useCallback
-  const login = useCallback(() => {
-    return loginWithRedirect();
-  }, [loginWithRedirect]);
+  const login = useCallback(
+    (options) => {
+      // Ensure appState is passed correctly if provided
+      return loginWithRedirect(options);
+    },
+    [loginWithRedirect]
+  );
 
   const logout = useCallback(() => {
     return auth0Logout({
@@ -96,12 +111,10 @@ export function AuthProvider({ children }) {
     });
   }, [auth0Logout]);
 
-  // Extract roles directly from user object when needed
   const getRoles = useCallback(() => {
     return user?.["https://tapiro.com/roles"] || [];
   }, [user]);
 
-  // Role checking utilities
   const hasRole = useCallback(
     (requiredRole) => {
       const roles = getRoles();
@@ -118,14 +131,13 @@ export function AuthProvider({ children }) {
     [getRoles]
   );
 
-  // Overall loading state
+  // isLoading now depends on Auth0 loading, initialization, AND registration check
   const isLoading =
     auth0Loading ||
     isInitializing ||
     !authReady ||
     registrationStatus.isChecking;
 
-  // Memoize context value
   const value = useMemo(
     () => ({
       isAuthenticated,
@@ -141,6 +153,8 @@ export function AuthProvider({ children }) {
         isComplete: registrationStatus.complete,
         type: registrationStatus.type,
       },
+      // Expose the refresh function
+      refreshRegistrationStatus: checkRegistrationStatus,
     }),
     [
       isAuthenticated,
@@ -153,6 +167,7 @@ export function AuthProvider({ children }) {
       hasRole,
       hasAnyRole,
       registrationStatus,
+      checkRegistrationStatus, // Add callback to dependencies
     ]
   );
 

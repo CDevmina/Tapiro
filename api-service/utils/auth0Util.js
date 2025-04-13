@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { getCache, setCache } = require('./redisUtil');
+const { getCache, setCache, invalidateCache } = require('./redisUtil'); // Ensure invalidateCache is imported if used
 const { CACHE_TTL, CACHE_KEYS } = require('./cacheConfig');
 
 async function getManagementToken() {
@@ -35,6 +35,30 @@ async function getManagementToken() {
     return token;
   } catch (error) {
     console.error('Failed to get management token:', error?.response?.data || error);
+    throw error;
+  }
+}
+
+/**
+ * Get full user profile from Auth0 Management API
+ * @param {string} userId - Auth0 user ID
+ * @returns {Promise<Object>} - Full user profile from Auth0
+ */
+async function getUser(userId) {
+  try {
+    const token = await getManagementToken();
+    const response = await axios.get(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to get user ${userId}:`, error?.response?.data || error);
+    // Re-throw the error so the caller can handle it (e.g., return 404 or 500)
     throw error;
   }
 }
@@ -139,11 +163,13 @@ async function updateUserMetadata(userId, metadata, invalidateUserCache = false)
       }
     );
     
-    // Invalidate cache if requested
+    // Invalidate cache if requested - Ensure this uses the correct key format if getUserData cache is still relevant elsewhere
     if (invalidateUserCache) {
-      const { invalidateCache } = require('../utils/redisUtil');
-      const { CACHE_KEYS } = require('../utils/cacheConfig');
-      await invalidateCache(`${CACHE_KEYS.USER_DATA}${userId}`);
+       // Assuming the cache key for getUserData used the access token, not user ID.
+       // Invalidating based on userId might require a different strategy or might not be needed
+       // if getUserData cache is no longer the primary source for metadata checks.
+       // Consider if you need to invalidate a cache based on userId here.
+       // Example: await invalidateCache(`${CACHE_KEYS.USER_PROFILE}${userId}`); // If you cache profiles by ID
     }
     
     return response.data.user_metadata || {};
@@ -155,6 +181,7 @@ async function updateUserMetadata(userId, metadata, invalidateUserCache = false)
 
 module.exports = { 
   getManagementToken, 
+  getUser, // Export the new function
   assignUserRole, 
   linkAccounts,
   updateUserMetadata 

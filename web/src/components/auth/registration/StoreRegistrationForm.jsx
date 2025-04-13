@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useAuthApi } from "../../../api";
 import { Button, Input } from "../../common";
+import { useAuth } from "../../../hooks/useAuth"; // Import useAuth
 
-export default function StoreRegistrationForm({ user, setStep, setError }) {
+export default function StoreRegistrationForm({ user, setError }) {
   const { registerStore } = useAuthApi();
+  const { refreshRegistrationStatus } = useAuth(); // Get the refresh function
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -20,6 +22,7 @@ export default function StoreRegistrationForm({ user, setStep, setError }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null); // Clear previous errors
 
     try {
       // Register the store with the API
@@ -28,12 +31,16 @@ export default function StoreRegistrationForm({ user, setStep, setError }) {
         address: formData.address,
       });
 
-      // Move to completion step
-      setStep("complete-store");
+      // Refresh the auth context to get the latest registration status
+      await refreshRegistrationStatus();
     } catch (err) {
       console.error("Store registration failed:", err);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "An unknown error occurred.";
       setError(
-        "Failed to complete store registration. Please try again or contact support."
+        `Failed to complete store registration: ${errorMsg}. Please try again or contact support.`
       );
     } finally {
       setIsSubmitting(false);

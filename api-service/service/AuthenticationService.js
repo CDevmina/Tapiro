@@ -291,15 +291,29 @@ exports.updateUserMetadata = async function (req, body) {
  */
 exports.getUserMetadata = async function (req) {
   try {
-    // Get user data from middleware or fetch it
-    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-    
-    // We already have the user metadata in the userData object
-    const metadata = userData.user_metadata || {};
+    // Still need the user's Auth0 ID (sub)
+    const token = req.headers.authorization?.split(' ')[1];
+    const basicUserData = req.user || (await getUserData(token)); // Use getUserData primarily to get the user ID (sub)
+
+    if (!basicUserData || !basicUserData.sub) {
+       throw new Error("Could not identify user.");
+    }
+
+    // Fetch the full user profile directly from Auth0 Management API
+    // The 'getUser' function in auth0Util needs to be implemented or already exist
+    // Assuming getUser(userId) fetches from /api/v2/users/{userId}
+    const fullUserProfile = await getUser(basicUserData.sub); // Use the helper
+
+    // Extract the user_metadata from the full profile
+    const metadata = fullUserProfile.user_metadata || {};
+    console.log(`getUserMetadata (direct fetch) for user ${basicUserData.sub}:`, metadata); // Add logging
 
     return respondWithCode(200, { metadata });
   } catch (error) {
     console.error('Metadata retrieval failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+    // Check if the error is from Auth0 about user not found, etc.
+    const statusCode = error.response?.status === 404 ? 404 : 500;
+    const message = statusCode === 404 ? 'User not found' : 'Internal server error';
+    return respondWithCode(statusCode, { code: statusCode, message: message });
   }
 };

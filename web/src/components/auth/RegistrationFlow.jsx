@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+// import { Navigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useAuthApi } from "../../api";
 import { Spinner, Button } from "../common";
@@ -10,24 +10,13 @@ import UserRegistrationForm from "./registration/UserRegistrationForm";
 import StoreRegistrationForm from "./registration/StoreRegistrationForm";
 
 export function RegistrationFlow() {
-  const { user, isLoading, registration, hasRole } = useAuth();
+  const { user, isLoading } = useAuth();
   const { updateAuthMetadata } = useAuthApi();
 
   // Registration flow state
   const [step, setStep] = useState("type-selection");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-
-  // If registration is already complete, redirect to appropriate page
-  useEffect(() => {
-    if (registration.isComplete) {
-      if (hasRole("store")) {
-        setStep("complete-store");
-      } else if (hasRole("user")) {
-        setStep("complete-user");
-      }
-    }
-  }, [registration.isComplete, hasRole]);
 
   // Handle user type selection
   const handleUserTypeSelect = async (type) => {
@@ -58,15 +47,6 @@ export function RegistrationFlow() {
         <p className="mt-4 text-gray-600">Loading your profile...</p>
       </div>
     );
-  }
-
-  // Registration completed - redirect to appropriate dashboard
-  if (step === "complete-user") {
-    return <Navigate to="/profile" replace />;
-  }
-
-  if (step === "complete-store") {
-    return <Navigate to="/store-dashboard" replace />;
   }
 
   // Show registration steps
