@@ -12,7 +12,6 @@ import {
   DropdownDivider,
   DropdownHeader,
 } from "flowbite-react";
-import { Link } from "react-router-dom"; // Import Link for routing
 
 export function Header() {
   // Placeholder for authentication status - replace with actual logic later
@@ -25,7 +24,7 @@ export function Header() {
 
   return (
     <Navbar fluid rounded>
-      <NavbarBrand as={Link} href="/">
+      <NavbarBrand href="/">
         {/* You can replace this with your logo SVG or image */}
         <img
           src="/flowbite-react.svg" // Using vite logo as placeholder
@@ -51,19 +50,17 @@ export function Header() {
               </span>
             </DropdownHeader>
             {/* Add Dashboard links based on role later */}
-            <DropdownItem as={Link} to="/dashboard">
-              Dashboard
-            </DropdownItem>
+            <DropdownItem href="/dashboard">Dashboard</DropdownItem>
             <DropdownItem>Settings</DropdownItem>
             <DropdownDivider />
             <DropdownItem>Sign out</DropdownItem>
           </Dropdown>
         ) : (
           <>
-            <Button as={Link} to="/login" size="sm">
+            <Button href="/login" size="sm">
               Login
             </Button>
-            <Button as={Link} to="/register" size="sm" color="gray">
+            <Button href="/register" size="sm" color="gray">
               Register
             </Button>
           </>
@@ -71,23 +68,15 @@ export function Header() {
         <NavbarToggle />
       </div>
       <NavbarCollapse>
-        <NavbarLink as={Link} href="/" active>
+        <NavbarLink href="/" active>
           {" "}
           {/* Use active prop based on current route */}
           Home
         </NavbarLink>
-        <NavbarLink as={Link} href="/about">
-          About
-        </NavbarLink>
-        <NavbarLink as={Link} href="/for-users">
-          For Users
-        </NavbarLink>
-        <NavbarLink as={Link} href="/for-stores">
-          For Stores
-        </NavbarLink>
-        <NavbarLink as={Link} href="/api-docs">
-          API Docs
-        </NavbarLink>
+        <NavbarLink href="/about">About</NavbarLink>
+        <NavbarLink href="/for-users">For Users</NavbarLink>
+        <NavbarLink href="/for-stores">For Stores</NavbarLink>
+        <NavbarLink href="/api-docs">API Docs</NavbarLink>
       </NavbarCollapse>
     </Navbar>
   );
