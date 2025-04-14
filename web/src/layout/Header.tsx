@@ -13,7 +13,7 @@ import {
   DropdownHeader,
   Spinner, // Import Spinner for loading state
 } from "flowbite-react";
-import { useAuth } from "../context/AuthContext"; // Import useAuth hook
+import { useAuth } from "../hooks/useAuth";
 import { useLocation } from "react-router-dom"; // Import Link and useLocation
 
 export function Header() {

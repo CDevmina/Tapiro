@@ -1,35 +1,8 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Auth0Provider, useAuth0, AppState } from "@auth0/auth0-react";
 import { useNavigate } from "react-router-dom";
-import ErrorDisplay from "../components/common/ErrorDisplay"; // Import ErrorDisplay
-
-interface AuthContextProps {
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  user: any;
-  userRoles: string[];
-  getAccessToken: () => Promise<string | undefined>;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-
-// Custom hook to consume the context
-export const useAuth = (): AuthContextProps => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProviderWrapper");
-  }
-  return context;
-};
+import ErrorDisplay from "../components/common/ErrorDisplay";
+import { AuthContext } from "./AuthContextType";
 
 // Internal provider component using useAuth0
 const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
@@ -90,7 +63,6 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Wrapper component that includes the Auth0Provider
 export const AuthProviderWrapper = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 

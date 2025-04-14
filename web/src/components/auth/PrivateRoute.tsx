@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext"; // Adjust path as needed
+import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner"; // Import the spinner
 import ErrorDisplay from "../common/ErrorDisplay"; // Import ErrorDisplay for unauthorized
 
