@@ -3,7 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install build dependencies first - Combined into one RUN command
-RUN apt-get update --fix-missing && \
+RUN rm -rf /var/lib/apt/lists/* && \
+    apt-get update --fix-missing && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
