@@ -20,7 +20,7 @@ export function Footer() {
             {/* You can replace this with your logo */}
             <FooterBrand
               href="/"
-              src="/vite.svg" // Using vite logo as placeholder
+              src="/flowbite-react.svg" // Using vite logo as placeholder
               alt="Tapiro Logo"
               name="Tapiro"
             />

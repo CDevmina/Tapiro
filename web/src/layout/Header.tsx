@@ -28,7 +28,7 @@ export function Header() {
       <NavbarBrand as={Link} href="/">
         {/* You can replace this with your logo SVG or image */}
         <img
-          src="/vite.svg" // Using vite logo as placeholder
+          src="/flowbite-react.svg" // Using vite logo as placeholder
           className="mr-3 h-6 sm:h-9"
           alt="Tapiro Logo"
         />
