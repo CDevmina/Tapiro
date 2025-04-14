@@ -1,44 +1,64 @@
 import { initThemeMode } from "flowbite-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  BrowserRouter,
+} from "react-router-dom"; // Import BrowserRouter
 import "./index.css";
-import { Layout } from "./layout/Layout"; // Updated path to layout folder
-import HomePage from "./pages/static/HomePage"; // Updated path to pages folder
-import AboutPage from "./pages/static/AboutPage"; // Import new page
-import ApiDocsPage from "./pages/static/ApiDocsPage"; // Import new page
-import UserDashboard from "./pages/UserDashboard"; // Import new page
-import StoreDashboard from "./pages/StoreDashboard"; // Import new page
+import { Layout } from "./layout/Layout";
+import HomePage from "./pages/static/HomePage";
+import AboutPage from "./pages/static/AboutPage";
+import ApiDocsPage from "./pages/static/ApiDocsPage";
+import UserDashboard from "./pages/UserDashboard";
+import StoreDashboard from "./pages/StoreDashboard";
+import { AuthProviderWrapper } from "./context/AuthContext"; // Import Auth Provider
+import PrivateRoute from "./components/auth/PrivateRoute"; // Import Private Route
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />, // Layout wraps the routes
+    element: <Layout />,
     children: [
       {
-        index: true, // Default route for "/"
+        index: true,
         element: <HomePage />,
       },
       {
-        path: "about", // Route for About page
+        path: "about",
         element: <AboutPage />,
       },
       {
-        path: "api-docs", // Route for API Docs page
+        path: "api-docs",
         element: <ApiDocsPage />,
       },
-      // --- Protected Routes (Add guards later) ---
+      // --- Protected User Routes ---
       {
-        path: "dashboard/user", // Placeholder route for User Dashboard
-        element: <UserDashboard />,
+        element: <PrivateRoute allowedRoles={["user"]} />, // Protect routes needing 'user' role
+        children: [
+          {
+            path: "dashboard/user",
+            element: <UserDashboard />,
+          },
+          // Add other user-specific routes here
+        ],
       },
+      // --- Protected Store Routes ---
       {
-        path: "dashboard/store", // Placeholder route for Store Dashboard
-        element: <StoreDashboard />,
+        element: <PrivateRoute allowedRoles={["store"]} />, // Protect routes needing 'store' role
+        children: [
+          {
+            path: "dashboard/store",
+            element: <StoreDashboard />,
+          },
+          // Add other store-specific routes here
+        ],
       },
-      // --- Auth Routes (Add later) ---
-      // { path: "login", element: <LoginPage /> },
-      // { path: "register", element: <RegisterPage /> },
+      // --- Auth Routes (Add components later) ---
+      // { path: "login", element: <LoginPage /> }, // You might not need a dedicated login page if using Auth0 universal login
+      // { path: "register", element: <RegisterPage /> }, // Registration is often handled by Auth0 universal login
+      // { path: "unauthorized", element: <UnauthorizedPage /> }, // Add an unauthorized page
 
       // --- Other Static Pages (Optional) ---
       // { path: "for-users", element: <ForUsersPage /> },
@@ -51,7 +71,14 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    {/* Wrap RouterProvider with BrowserRouter for hooks like useNavigate in AuthProviderWrapper */}
+    <BrowserRouter>
+      {/* AuthProviderWrapper provides Auth0 context and handles redirects */}
+      <AuthProviderWrapper>
+        {/* RouterProvider now uses the router configuration */}
+        <RouterProvider router={router} />
+      </AuthProviderWrapper>
+    </BrowserRouter>
   </StrictMode>,
 );
 
