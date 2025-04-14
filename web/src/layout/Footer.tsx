@@ -8,7 +8,6 @@ import {
   FooterLinkGroup,
   FooterTitle,
 } from "flowbite-react";
-import { Link } from "react-router-dom";
 import { BsGithub, BsTwitter, BsDribbble } from "react-icons/bs"; // Example icons
 
 export function Footer() {
@@ -29,23 +28,15 @@ export function Footer() {
             <div>
               <FooterTitle title="About" />
               <FooterLinkGroup col>
-                <FooterLink as={Link} href="/about">
-                  About Tapiro
-                </FooterLink>
-                <FooterLink as={Link} href="/for-users">
-                  For Users
-                </FooterLink>
-                <FooterLink as={Link} href="/for-stores">
-                  For Stores
-                </FooterLink>
+                <FooterLink href="/about">About Tapiro</FooterLink>
+                <FooterLink href="/for-users">For Users</FooterLink>
+                <FooterLink href="/for-stores">For Stores</FooterLink>
               </FooterLinkGroup>
             </div>
             <div>
               <FooterTitle title="Resources" />
               <FooterLinkGroup col>
-                <FooterLink as={Link} href="/api-docs">
-                  API Documentation
-                </FooterLink>
+                <FooterLink href="/api-docs">API Documentation</FooterLink>
                 <FooterLink
                   href="https://github.com/your-repo" // Keep href for external links
                   target="_blank"
@@ -58,12 +49,8 @@ export function Footer() {
             <div>
               <FooterTitle title="Legal" />
               <FooterLinkGroup col>
-                <FooterLink as={Link} href="/privacy">
-                  Privacy Policy
-                </FooterLink>
-                <FooterLink as={Link} href="/terms">
-                  Terms &amp; Conditions
-                </FooterLink>
+                <FooterLink href="/privacy">Privacy Policy</FooterLink>
+                <FooterLink href="/terms">Terms &amp; Conditions</FooterLink>
               </FooterLinkGroup>
             </div>
           </div>

@@ -74,8 +74,8 @@ export function Header() {
           Home
         </NavbarLink>
         <NavbarLink href="/about">About</NavbarLink>
-        <NavbarLink href="/for-users">For Users</NavbarLink>
-        <NavbarLink href="/for-stores">For Stores</NavbarLink>
+        <NavbarLink href="/dashboard/user">For Users</NavbarLink>
+        <NavbarLink href="/dashboard/store">For Stores</NavbarLink>
         <NavbarLink href="/api-docs">API Docs</NavbarLink>
       </NavbarCollapse>
     </Navbar>
