@@ -3,7 +3,7 @@ import {
   BlocksIcon,
   IconsIcon,
   IllustrationsIcon,
-} from "../components/icons/ResourceIcons";
+} from "../../components/icons/ResourceIcons";
 
 export default function HomePage() {
   const CARDS = [

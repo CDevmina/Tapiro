@@ -13,6 +13,7 @@
     "postinstall": "flowbite-react patch"
   },
   "dependencies": {
+    "@auth0/auth0-react": "^2.3.0",
     "flowbite-react": "^0.11.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
