@@ -14,7 +14,7 @@ import {
   Spinner, // Import Spinner for loading state
 } from "flowbite-react";
 import { useAuth } from "../hooks/useAuth";
-import { useLocation } from "react-router-dom"; // Import Link and useLocation
+import { useLocation } from "react-router"; // Import Link and useLocation
 
 export function Header() {
   const { isLoading, isAuthenticated, user, userRoles, login, logout } =

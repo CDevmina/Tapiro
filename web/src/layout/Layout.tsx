@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import { Header } from "./Header"; // Assuming Header is in the same layout folder
 import { Footer } from "./Footer"; // Assuming Footer is in the same layout folder
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner"; // Import the spinner
 import ErrorDisplay from "../common/ErrorDisplay"; // Import ErrorDisplay for unauthorized

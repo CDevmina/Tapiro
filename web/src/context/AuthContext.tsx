@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Auth0Provider, useAuth0, AppState } from "@auth0/auth0-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import ErrorDisplay from "../components/common/ErrorDisplay";
 import { AuthContext } from "./AuthContextType";
 
