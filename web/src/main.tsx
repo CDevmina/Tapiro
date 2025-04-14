@@ -11,6 +11,7 @@ import UserDashboard from "./pages/UserDashboard";
 import StoreDashboard from "./pages/StoreDashboard";
 import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
+import NotFoundPage from "./pages/static/NotFoundPage";
 
 const router = createBrowserRouter([
   {
@@ -52,6 +53,11 @@ const router = createBrowserRouter([
             element: <StoreDashboard />,
           },
         ],
+      },
+      // --- Catch-all 404 Route ---
+      {
+        path: "*", // This matches any path not matched above
+        element: <NotFoundPage />,
       },
     ],
   },
