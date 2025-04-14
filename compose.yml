@@ -24,7 +24,7 @@ services:
       - AUTH0_MANAGEMENT_API_TOKEN=${AUTH0_MANAGEMENT_API_TOKEN}
       - AUTH0_USER_ROLE_ID=${AUTH0_USER_ROLE_ID}
       - AUTH0_STORE_ROLE_ID=${AUTH0_STORE_ROLE_ID}
-      - FRONTEND_URL=http://web:5173
+      - FRONTEND_URL=http://localhost:5173
       - AUTH0_M2M_CLIENT_ID=${AUTH0_M2M_CLIENT_ID}
       - AUTH0_M2M_CLIENT_SECRET=${AUTH0_M2M_CLIENT_SECRET}
       - AI_SERVICE_URL=http://ml-service:8000/api
@@ -42,52 +42,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-
-  web:
-    build:
-      context: ./web
-      dockerfile: dockerfile.dev
-      target: development
-    container_name: tapiro-web
-    volumes:
-      - ./web:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - VITE_API_URL=http://api-service:3000
-      - VITE_AUTH0_CLIENT_ID=${AUTH0_SPA_CLIENT_ID}
-      - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN}
-      - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
-      - WATCHPACK_POLLING=true
-    ports:
-      - "3001:5173"
-    networks:
-      - tapiro-net
-    depends_on:
-      - api-service
-    healthcheck:
-      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:5173"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  redis:
-    image: redis:alpine
-    container_name: tapiro-redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis-data:/data
-    networks:
-      - tapiro-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
 
   ml-service:
     build:
@@ -121,6 +75,51 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: dockerfile
+      target: development
+    container_name: tapiro-web
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+      - VITE_AUTH0_CLIENT_ID=${AUTH0_SPA_CLIENT_ID}
+      - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+    ports:
+      - "5173:5173"
+    networks:
+      - tapiro-net
+    depends_on:
+      - api-service
+    healthcheck:
+      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  redis:
+    image: redis:alpine
+    container_name: tapiro-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - tapiro-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
 networks:
   tapiro-net:

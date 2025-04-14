@@ -2,13 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install build dependencies first
-RUN apt-get update --fix-missing && \
+# Install build dependencies first - Combined into one RUN command
+RUN rm -rf /var/lib/apt/lists/* && \
+    apt-get update --fix-missing && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY ./requirements.txt /app/requirements.txt
