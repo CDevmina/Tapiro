@@ -10,11 +10,16 @@
     "preview": "vite preview",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "postinstall": "flowbite-react patch"
+    "postinstall": "flowbite-react patch",
+    "generate-api-types": "openapi-typescript ../api-service/api/openapi.yaml -o src/api/types.ts"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
+    "@tanstack/react-query": "^5.74.3",
+    "axios": "^1.8.4",
     "flowbite-react": "^0.11.4",
+    "openapi-typescript": "^7.6.1",
+    "openapi-typescript-fetch": "^2.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
