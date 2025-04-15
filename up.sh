@@ -1,5 +1,5 @@
-# In case of fastAPI startup failure
-# docker-compose build --no-cache ml-service
+# In case of Container startup failure
+# docker-compose build --no-cache
 
 # Start the development environment
 docker-compose up --build
