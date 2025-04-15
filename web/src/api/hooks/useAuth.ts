@@ -1,60 +1,97 @@
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "../../hooks/useAuth";
-import { api, setAuthToken } from "../client";
-import { queryClient } from "../utils/cache";
-import { components } from "../types";
+import { useAuth } from "../../hooks/useAuth"; // This is your context hook
+// Import from the swagger-codegen output
+import {
+  AuthenticationApi,
+  Configuration,
+  UserCreate,
+  StoreCreate,
+  // UserMetadataUpdate, // Keep if you implement metadata update hook
+  BaseAPI,
+} from "../client";
+import { queryClient, cacheKeys } from "../utils/cache";
 
-type UserCreate = components["schemas"]["UserCreate"];
-type StoreCreate = components["schemas"]["StoreCreate"];
-type UserMetadataUpdate = components["schemas"]["UserMetadataUpdate"];
+// Note: setAuthToken and the 'api' object from client.ts are no longer needed
+// Note: Type aliases using 'components' from '../types' are no longer needed
 
+// Rename hook to avoid conflict with context hook
 export const useAuthApi = () => {
-  const auth = useAuth();
+  const auth = useAuth(); // Use the context hook
 
-  // Helper to set up auth for each request
-  const setupAuth = async () => {
+  // Helper to create configured API instances (can be shared)
+  const createApiInstance = async <T extends BaseAPI>(
+    ApiClass: new (config: Configuration) => T,
+  ): Promise<T> => {
     const token = await auth.getAccessToken();
-    if (token) {
-      setAuthToken(token);
-    }
-    return token;
+    const config = new Configuration({
+      accessToken: token ? `Bearer ${token}` : undefined,
+      // basePath: import.meta.env.VITE_API_URL,
+    });
+    return new ApiClass(config);
   };
 
   // Register as user
   const useRegisterUser = () => {
     return useMutation({
+      // Use UserCreate type from swagger/api.ts
       mutationFn: async (userData: UserCreate) => {
-        await setupAuth();
-        const response = await api.auth.registerUser({ body: userData });
-        return response.data;
+        const authApi = await createApiInstance(AuthenticationApi);
+        // Pass body directly as first argument
+        const newUser = await authApi.registerUser(userData, {});
+        return newUser; // Assuming it returns the created user
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
         // Invalidate user profile to refresh data
-        queryClient.invalidateQueries({ queryKey: ["users", "profile"] });
+        // Use the specific cache key from cache.ts
+        queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
+        // Optionally update cache directly if needed
+        // queryClient.setQueryData(cacheKeys.users.profile(), data);
       },
+      // Consider adding onError
     });
   };
 
   // Register as store
   const useRegisterStore = () => {
     return useMutation({
+      // Use StoreCreate type from swagger/api.ts
       mutationFn: async (storeData: StoreCreate) => {
-        await setupAuth();
-        const response = await api.auth.registerStore({ body: storeData });
-        return response.data;
+        const authApi = await createApiInstance(AuthenticationApi);
+        // Pass body directly as first argument
+        const newStore = await authApi.registerStore(storeData, {});
+        return newStore; // Assuming it returns the created store
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
         // Invalidate store profile to refresh data
-        queryClient.invalidateQueries({ queryKey: ["stores", "profile"] });
+        // Use the specific cache key from cache.ts
+        queryClient.invalidateQueries({ queryKey: cacheKeys.stores.profile() });
+        // Optionally update cache directly if needed
+        // queryClient.setQueryData(cacheKeys.stores.profile(), data);
       },
+      // Consider adding onError
     });
   };
+
+  // --- Placeholder for Update User Metadata ---
+  // const useUpdateUserMetadata = () => {
+  //   return useMutation({
+  //     mutationFn: async (metadata: UserMetadataUpdate) => {
+  //       const authApi = await createApiInstance(AuthenticationApi);
+  //       const response = await authApi.updateUserMetadata(metadata, {});
+  //       return response; // Adjust based on actual return type
+  //     },
+  //     onSuccess: () => {
+  //       // Invalidate relevant queries if needed
+  //     },
+  //   });
+  // };
 
   // Additional auth hooks...
 
   return {
     useRegisterUser,
     useRegisterStore,
+    // useUpdateUserMetadata, // Uncomment when implemented
     // Include other hooks...
   };
 };

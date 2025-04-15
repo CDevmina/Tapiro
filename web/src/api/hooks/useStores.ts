@@ -1,35 +1,45 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import axios from "axios";
+// Remove unused axios import: import axios from "axios";
 import { useAuth } from "../../hooks/useAuth";
-import { api, setAuthToken } from "../client";
+// Import from the swagger-codegen output
+import {
+  StoreManagementApi,
+  Configuration,
+  Store,
+  ApiKeyList,
+  ApiKeyCreate,
+  ApiKeyUsage, // Keep if you plan to implement usage hook
+  BaseAPI,
+} from "../client";
 import { cacheKeys, cacheSettings, queryClient } from "../utils/cache";
-import { components } from "../types";
 
-type Store = components["schemas"]["Store"];
-type ApiKeyList = components["schemas"]["ApiKeyList"];
-type ApiKeyCreate = components["schemas"]["ApiKeyCreate"];
-type ApiKeyUsage = components["schemas"]["ApiKeyUsage"];
+// Note: setAuthToken and the 'api' object from client.ts are no longer needed
+// Note: Type aliases using 'components' from '../types' are no longer needed
 
 export const useStores = () => {
   const auth = useAuth();
 
-  // Helper to set up auth for each request
-  const setupAuth = async () => {
+  // Helper to create configured API instances (can be shared)
+  const createApiInstance = async <T extends BaseAPI>(
+    ApiClass: new (config: Configuration) => T,
+  ): Promise<T> => {
     const token = await auth.getAccessToken();
-    if (token) {
-      setAuthToken(token);
-    }
-    return token;
+    const config = new Configuration({
+      accessToken: token ? `Bearer ${token}` : undefined,
+      // basePath: import.meta.env.VITE_API_URL,
+    });
+    return new ApiClass(config);
   };
 
   // Get store profile for authenticated store
   const useStoreProfile = () => {
     return useQuery<Store>({
+      // Use Store type from swagger/api.ts
       queryKey: cacheKeys.stores.profile(),
       queryFn: async () => {
-        await setupAuth();
-        const response = await api.stores.getProfile({});
-        return response.data;
+        const storeApi = await createApiInstance(StoreManagementApi);
+        const profile = await storeApi.getStoreProfile({});
+        return profile;
       },
       ...cacheSettings.store,
       enabled: auth.isAuthenticated,
@@ -39,11 +49,12 @@ export const useStores = () => {
   // Get store's API keys
   const useApiKeys = () => {
     return useQuery<ApiKeyList>({
+      // Use ApiKeyList type from swagger/api.ts
       queryKey: cacheKeys.stores.apiKeys(),
       queryFn: async () => {
-        await setupAuth();
-        const response = await api.stores.getApiKeys({});
-        return response.data;
+        const storeApi = await createApiInstance(StoreManagementApi);
+        const keys = await storeApi.getApiKeys({});
+        return keys;
       },
       ...cacheSettings.apiKeys,
       enabled: auth.isAuthenticated,
@@ -53,16 +64,34 @@ export const useStores = () => {
   // Create a new API key
   const useCreateApiKey = () => {
     return useMutation({
+      // Use ApiKeyCreate type from swagger/api.ts
       mutationFn: async (keyData: ApiKeyCreate) => {
-        await setupAuth();
-        const response = await api.stores.createApiKey({ body: keyData });
-        return response.data;
+        const storeApi = await createApiInstance(StoreManagementApi);
+        // Pass body directly as first argument
+        const newKey = await storeApi.createApiKey(keyData, {});
+        return newKey; // Assuming it returns the created key
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: cacheKeys.stores.apiKeys() });
       },
+      // Consider adding onError
     });
   };
+
+  // --- Placeholder for Get API Key Usage ---
+  // const useApiKeyUsage = (keyId: string, dateRange?: KeyIdUsageBody) => {
+  //   return useQuery<ApiKeyUsage>({
+  //     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
+  //     queryFn: async () => {
+  //       const storeApi = await createApiInstance(StoreManagementApi);
+  //       // Note: getApiKeyUsage expects keyId and body as separate args
+  //       const usage = await storeApi.getApiKeyUsage(keyId, dateRange, {});
+  //       return usage;
+  //     },
+  //     enabled: auth.isAuthenticated && !!keyId,
+  //     // Add appropriate cache settings if needed
+  //   });
+  // };
 
   // Additional store hooks...
 
@@ -70,6 +99,7 @@ export const useStores = () => {
     useStoreProfile,
     useApiKeys,
     useCreateApiKey,
+    // useApiKeyUsage, // Uncomment when implemented
     // Include other hooks...
   };
 };
