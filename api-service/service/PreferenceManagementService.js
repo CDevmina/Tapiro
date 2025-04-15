@@ -30,6 +30,12 @@ exports.getUserOwnPreferences = async function (req) {
     const preferences = {
       userId: user._id.toString(),
       preferences: user.preferences || [],
+      privacySettings: user.privacySettings || {
+        dataSharingConsent: false,
+        anonymizeData: false,
+        optInStores: [],
+        optOutStores: []
+      },
       updatedAt: user.updatedAt || new Date(),
     };
 
