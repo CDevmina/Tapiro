@@ -6,7 +6,7 @@ import {
   Configuration,
   UserCreate,
   StoreCreate,
-  // UserMetadataUpdate, // Keep if you implement metadata update hook
+  UserMetadataUpdate, // Uncommented this import
   BaseAPI,
 } from "../client";
 import { queryClient, cacheKeys } from "../utils/cache";
@@ -40,7 +40,7 @@ export const useAuthApi = () => {
         const newUser = await authApi.registerUser(userData, {});
         return newUser; // Assuming it returns the created user
       },
-      onSuccess: (data) => {
+      onSuccess: (_data) => {
         // Invalidate user profile to refresh data
         // Use the specific cache key from cache.ts
         queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
@@ -61,7 +61,7 @@ export const useAuthApi = () => {
         const newStore = await authApi.registerStore(storeData, {});
         return newStore; // Assuming it returns the created store
       },
-      onSuccess: (data) => {
+      onSuccess: (_data) => {
         // Invalidate store profile to refresh data
         // Use the specific cache key from cache.ts
         queryClient.invalidateQueries({ queryKey: cacheKeys.stores.profile() });
@@ -72,26 +72,27 @@ export const useAuthApi = () => {
     });
   };
 
-  // --- Placeholder for Update User Metadata ---
-  // const useUpdateUserMetadata = () => {
-  //   return useMutation({
-  //     mutationFn: async (metadata: UserMetadataUpdate) => {
-  //       const authApi = await createApiInstance(AuthenticationApi);
-  //       const response = await authApi.updateUserMetadata(metadata, {});
-  //       return response; // Adjust based on actual return type
-  //     },
-  //     onSuccess: () => {
-  //       // Invalidate relevant queries if needed
-  //     },
-  //   });
-  // };
-
-  // Additional auth hooks...
+  // Implementation for Update User Metadata
+  const useUpdateUserMetadata = () => {
+    return useMutation({
+      mutationFn: async (metadata: UserMetadataUpdate) => {
+        const authApi = await createApiInstance(AuthenticationApi);
+        const response = await authApi.updateUserMetadata(metadata, {});
+        return response;
+      },
+      onSuccess: () => {
+        // Invalidate relevant queries to refresh data
+        queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
+      },
+      onError: (error) => {
+        console.error("Failed to update user metadata:", error);
+      },
+    });
+  };
 
   return {
     useRegisterUser,
     useRegisterStore,
-    // useUpdateUserMetadata, // Uncomment when implemented
-    // Include other hooks...
+    useUpdateUserMetadata, // Uncommented this
   };
 };

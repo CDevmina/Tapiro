@@ -8,7 +8,8 @@ import {
   Store,
   ApiKeyList,
   ApiKeyCreate,
-  ApiKeyUsage, // Keep if you plan to implement usage hook
+  ApiKeyUsage,
+  KeyIdUsageBody, // Added this import
   BaseAPI,
 } from "../client";
 import { cacheKeys, cacheSettings, queryClient } from "../utils/cache";
@@ -78,20 +79,21 @@ export const useStores = () => {
     });
   };
 
-  // --- Placeholder for Get API Key Usage ---
-  // const useApiKeyUsage = (keyId: string, dateRange?: KeyIdUsageBody) => {
-  //   return useQuery<ApiKeyUsage>({
-  //     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
-  //     queryFn: async () => {
-  //       const storeApi = await createApiInstance(StoreManagementApi);
-  //       // Note: getApiKeyUsage expects keyId and body as separate args
-  //       const usage = await storeApi.getApiKeyUsage(keyId, dateRange, {});
-  //       return usage;
-  //     },
-  //     enabled: auth.isAuthenticated && !!keyId,
-  //     // Add appropriate cache settings if needed
-  //   });
-  // };
+  // Implementation for Get API Key Usage
+  const useApiKeyUsage = (keyId: string, dateRange?: KeyIdUsageBody) => {
+    return useQuery<ApiKeyUsage>({
+      queryKey: cacheKeys.stores.apiKeyUsage(keyId),
+      queryFn: async () => {
+        const storeApi = await createApiInstance(StoreManagementApi);
+        // Note: getApiKeyUsage expects keyId and body as separate args
+        const usage = await storeApi.getApiKeyUsage(keyId, dateRange, {});
+        return usage;
+      },
+      enabled: auth.isAuthenticated && !!keyId,
+      ...cacheSettings.apiKeys, // Use the same cache settings as ApiKeys
+      refetchOnWindowFocus: true, // Auto-update when tab regains focus
+    });
+  };
 
   // Additional store hooks...
 
@@ -99,7 +101,6 @@ export const useStores = () => {
     useStoreProfile,
     useApiKeys,
     useCreateApiKey,
-    // useApiKeyUsage, // Uncomment when implemented
-    // Include other hooks...
+    useApiKeyUsage, // Now exporting this hook
   };
 };
