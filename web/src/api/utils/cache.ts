@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { UserPreferences } from "../types/data-contracts"; // Replace ExtendedUserPreferences
+import { UserPreferences } from "../types/data-contracts";
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {

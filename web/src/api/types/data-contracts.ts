@@ -176,6 +176,16 @@ export interface SearchEntry {
 export interface UserPreferences {
   userId?: string;
   preferences?: PreferenceItem[];
+  privacySettings?: {
+    /** @default false */
+    dataSharingConsent?: boolean;
+    /** @default false */
+    anonymizeData?: boolean;
+    /** List of store IDs user has opted into */
+    optInStores?: string[];
+    /** List of store IDs user has opted out from */
+    optOutStores?: string[];
+  };
   /** @format date-time */
   updatedAt?: string;
 }
