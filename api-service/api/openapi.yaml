@@ -935,6 +935,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PreferenceItem"
+        privacySettings:
+          type: object
+          properties:
+            dataSharingConsent:
+              type: boolean
+              default: false
+            anonymizeData:
+              type: boolean
+              default: false
+            optInStores:
+              type: array
+              items:
+                type: string
+              description: List of store IDs user has opted into
+            optOutStores:
+              type: array
+              items:
+                type: string
+              description: List of store IDs user has opted out from
         updatedAt:
           type: string
           format: date-time

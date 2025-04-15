@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { UserPreferences } from "../types/data-contracts"; // Replace ExtendedUserPreferences
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {
@@ -70,32 +71,69 @@ export const cacheSettings = {
 export const optimisticUpdates = {
   // Add a store to opt-in list and remove from opt-out list
   optInStore: (storeId: string) => {
-    queryClient.setQueryData(cacheKeys.users.preferences(), (oldData: any) => {
-      if (!oldData) return oldData;
+    queryClient.setQueryData(
+      cacheKeys.users.preferences(),
+      (oldData: UserPreferences | undefined) => {
+        // Use standard UserPreferences type
+        if (!oldData) return oldData;
 
-      const privacySettings = oldData.privacySettings || {};
-      const optInStores = [...(privacySettings.optInStores || [])];
-      const optOutStores = [...(privacySettings.optOutStores || [])];
+        const privacySettings = oldData.privacySettings || {};
+        const optInStores = [...(privacySettings.optInStores || [])];
+        const optOutStores = [...(privacySettings.optOutStores || [])];
 
-      if (!optInStores.includes(storeId)) {
-        optInStores.push(storeId);
-      }
+        if (!optInStores.includes(storeId)) {
+          optInStores.push(storeId);
+        }
 
-      const optOutIndex = optOutStores.indexOf(storeId);
-      if (optOutIndex >= 0) {
-        optOutStores.splice(optOutIndex, 1);
-      }
+        const optOutIndex = optOutStores.indexOf(storeId);
+        if (optOutIndex >= 0) {
+          optOutStores.splice(optOutIndex, 1);
+        }
 
-      return {
-        ...oldData,
-        privacySettings: {
-          ...privacySettings,
-          optInStores,
-          optOutStores,
-        },
-      };
-    });
+        return {
+          ...oldData,
+          privacySettings: {
+            ...privacySettings,
+            optInStores,
+            optOutStores,
+          },
+        };
+      },
+    );
   },
 
-  // Similar functions for other optimistic updates...
+  // New optOutStore function with mirrored logic
+  optOutStore: (storeId: string) => {
+    queryClient.setQueryData(
+      cacheKeys.users.preferences(),
+      (oldData: UserPreferences | undefined) => {
+        // Use standard UserPreferences type
+        if (!oldData) return oldData;
+
+        const privacySettings = oldData.privacySettings || {};
+        const optInStores = [...(privacySettings.optInStores || [])];
+        const optOutStores = [...(privacySettings.optOutStores || [])];
+
+        // Remove from opt-in list if present
+        const optInIndex = optInStores.indexOf(storeId);
+        if (optInIndex >= 0) {
+          optInStores.splice(optInIndex, 1);
+        }
+
+        // Add to opt-out list if not already there
+        if (!optOutStores.includes(storeId)) {
+          optOutStores.push(storeId);
+        }
+
+        return {
+          ...oldData,
+          privacySettings: {
+            ...privacySettings,
+            optInStores,
+            optOutStores,
+          },
+        };
+      },
+    );
+  },
 };
