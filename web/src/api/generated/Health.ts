@@ -11,7 +11,7 @@
  */
 
 import { Error, HealthStatus } from "./data-contracts";
-import { HttpClient, RequestParams } from "../http-client";
+import { HttpClient, RequestParams } from "../client";
 
 export class Health<
   SecurityDataType = unknown,

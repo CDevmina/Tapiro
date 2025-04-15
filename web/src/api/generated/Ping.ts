@@ -11,7 +11,7 @@
  */
 
 import { PingStatus } from "./data-contracts";
-import { HttpClient, RequestParams } from "../http-client";
+import { HttpClient, RequestParams } from "../client";
 
 export class Ping<
   SecurityDataType = unknown,

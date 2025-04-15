@@ -21,7 +21,7 @@ import {
   StoreCreate,
   StoreUpdate,
 } from "./data-contracts";
-import { ContentType, HttpClient, RequestParams } from "../http-client";
+import { ContentType, HttpClient, RequestParams } from "../client";
 
 export class Stores<
   SecurityDataType = unknown,

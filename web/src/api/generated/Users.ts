@@ -21,7 +21,7 @@ import {
   UserPreferencesUpdate,
   UserUpdate,
 } from "./data-contracts";
-import { ContentType, HttpClient, RequestParams } from "../http-client";
+import { ContentType, HttpClient, RequestParams } from "../client";
 
 export class Users<
   SecurityDataType = unknown,
