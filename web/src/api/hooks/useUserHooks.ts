@@ -127,4 +127,16 @@ export function useOptOutFromStore() {
   });
 }
 
-// Additional user-related hooks...
+export function useDeleteUserProfile() {
+  const { users } = useApiClients();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => users.deleteUserProfile().then((res) => res.data),
+    onSuccess: () => {
+      // After successful deletion, clear user-related cache
+      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}

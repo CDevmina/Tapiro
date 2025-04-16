@@ -72,4 +72,16 @@ export function useApiKeyUsage(keyId: string) {
   });
 }
 
-// Additional store-related hooks...
+export function useDeleteStoreProfile() {
+  const { stores } = useApiClients();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => stores.deleteStoreProfile().then((res) => res.data),
+    onSuccess: () => {
+      // After successful deletion, clear store-related cache
+      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      queryClient.invalidateQueries({ queryKey: ["stores"] });
+    },
+  });
+}
