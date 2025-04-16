@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
+import { useAuth0 } from "@auth0/auth0-react";
 import {
   UserMetadataUpdate,
   UserCreate,
@@ -8,10 +9,12 @@ import {
 
 export function useUserMetadata() {
   const { users } = useApiClients();
+  const { isAuthenticated, isLoading } = useAuth0();
 
   return useQuery({
     queryKey: ["auth", "metadata"],
     queryFn: () => users.getUserMetadata().then((res) => res.data),
+    enabled: isAuthenticated && !isLoading,
   });
 }
 

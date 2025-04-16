@@ -40,9 +40,14 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
     }
   }, [getAccessTokenSilently]);
 
-  const login = useCallback(async () => {
-    await loginWithRedirect();
-  }, [loginWithRedirect]);
+  const login = useCallback(
+    async (options = {}) => {
+      await loginWithRedirect({
+        ...options,
+      });
+    },
+    [loginWithRedirect],
+  );
 
   const logout = useCallback(async () => {
     await auth0Logout({
@@ -92,7 +97,7 @@ export const AuthProviderWrapper = ({ children }: { children: ReactNode }) => {
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: audience, // Request audience for API access
-        // Add scopes if needed, e.g., scope: "openid profile email read:users"
+        scope: "openid profile email", // Ensure we get profile info
       }}
       onRedirectCallback={onRedirectCallback}
       cacheLocation="localstorage" // Persist auth state across refreshes
