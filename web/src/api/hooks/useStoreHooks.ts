@@ -2,24 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings } from "../utils/cache";
 import { ApiKeyCreate, StoreUpdate } from "../types/data-contracts";
+import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
 
 export function useStoreProfile() {
-  const { stores } = useApiClients();
+  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.profile(),
-    queryFn: () => stores.getStoreProfile().then((res) => res.data),
+    queryFn: () => apiClients.stores.getStoreProfile().then((res) => res.data),
+    // Add auth and token checks to enabled condition
+    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
     ...cacheSettings.store,
   });
 }
 
 export function useUpdateStoreProfile() {
-  const { stores } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeData: StoreUpdate) =>
-      stores.updateStoreProfile(storeData).then((res) => res.data),
+      apiClients.stores.updateStoreProfile(storeData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.stores.profile() });
     },
@@ -27,22 +31,25 @@ export function useUpdateStoreProfile() {
 }
 
 export function useApiKeys() {
-  const { stores } = useApiClients();
+  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeys(),
-    queryFn: () => stores.getApiKeys().then((res) => res.data),
+    queryFn: () => apiClients.stores.getApiKeys().then((res) => res.data),
+    // Add auth and token checks to enabled condition
+    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
     ...cacheSettings.apiKeys,
   });
 }
 
 export function useCreateApiKey() {
-  const { stores } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (keyData?: ApiKeyCreate) =>
-      stores.createApiKey(keyData).then((res) => res.data),
+      apiClients.stores.createApiKey(keyData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.stores.apiKeys() });
     },
@@ -50,12 +57,12 @@ export function useCreateApiKey() {
 }
 
 export function useRevokeApiKey() {
-  const { stores } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (keyId: string) =>
-      stores.revokeApiKey(keyId).then((res) => res.data),
+      apiClients.stores.revokeApiKey(keyId).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.stores.apiKeys() });
     },
@@ -63,21 +70,26 @@ export function useRevokeApiKey() {
 }
 
 export function useApiKeyUsage(keyId: string) {
-  const { stores } = useApiClients();
+  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
-    queryFn: () => stores.getApiKeyUsage(keyId).then((res) => res.data),
+    queryFn: () =>
+      apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
+    // Add auth and token checks to enabled condition, also check keyId exists
+    enabled: !!keyId && isAuthenticated && !isAuthLoading && isTokenSet,
     ...cacheSettings.apiKeys,
   });
 }
 
 export function useDeleteStoreProfile() {
-  const { stores } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => stores.deleteStoreProfile().then((res) => res.data),
+    mutationFn: () =>
+      apiClients.stores.deleteStoreProfile().then((res) => res.data),
     onSuccess: () => {
       // After successful deletion, clear store-related cache
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });

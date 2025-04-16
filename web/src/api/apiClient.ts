@@ -3,7 +3,7 @@ import { Stores } from "./types/Stores";
 import { Health } from "./types/Health";
 import { Ping } from "./types/Ping";
 import { useAuth0 } from "@auth0/auth0-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react"; // Import useState
 import { ApiConfig } from "./types/http-client"; // Import ApiConfig
 
 export function createApiClients() {
@@ -38,28 +38,35 @@ export function createApiClients() {
 // Hook to get API clients with auth token
 export function useApiClients() {
   const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const [isTokenSet, setIsTokenSet] = useState(false); // State to track token readiness
 
   // Memoize the API clients so they aren't recreated on each render
   const apiClients = useMemo(() => createApiClients(), []);
 
   // Set auth token when available
   useEffect(() => {
+    let isMounted = true; // Prevent state update on unmounted component
+
     if (isAuthenticated) {
       const setAuthToken = async () => {
         try {
           const token = await getAccessTokenSilently();
-
-          // Set token for each client
-          Object.values(apiClients).forEach((client) => {
-            // Pass the token string directly
-            client.setSecurityData(token);
-          });
+          if (isMounted) {
+            // Set token for each client
+            Object.values(apiClients).forEach((client) => {
+              client.setSecurityData(token);
+            });
+            setIsTokenSet(true); // Signal that token is ready
+          }
         } catch (error) {
           console.error("Failed to get auth token", error);
-          // Clear security data if token fetch fails
-          Object.values(apiClients).forEach((client) => {
-            client.setSecurityData(null);
-          });
+          if (isMounted) {
+            // Clear security data if token fetch fails
+            Object.values(apiClients).forEach((client) => {
+              client.setSecurityData(null);
+            });
+            setIsTokenSet(false); // Signal token is not ready
+          }
         }
       };
 
@@ -69,8 +76,14 @@ export function useApiClients() {
       Object.values(apiClients).forEach((client) => {
         client.setSecurityData(null);
       });
+      setIsTokenSet(false); // Signal token is not ready
     }
-  }, [isAuthenticated, getAccessTokenSilently, apiClients]);
 
-  return apiClients;
+    return () => {
+      isMounted = false; // Cleanup function
+    };
+  }, [isAuthenticated, getAccessTokenSilently, apiClients]); // Keep dependencies
+
+  // Return clients and the readiness state
+  return { apiClients, isTokenSet };
 }

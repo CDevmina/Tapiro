@@ -8,23 +8,25 @@ import {
 } from "../types/data-contracts";
 
 export function useUserMetadata() {
-  const { users } = useApiClients();
-  const { isAuthenticated, isLoading } = useAuth0();
+  const { apiClients, isTokenSet } = useApiClients(); // Get clients and readiness state
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Use isAuthLoading alias
 
   return useQuery({
     queryKey: ["auth", "metadata"],
-    queryFn: () => users.getUserMetadata().then((res) => res.data),
-    enabled: isAuthenticated && !isLoading,
+    // Ensure apiClients.users exists before calling
+    queryFn: () => apiClients.users.getUserMetadata().then((res) => res.data),
+    // Enable only when authenticated, auth is not loading, AND token is set
+    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
   });
 }
 
 export function useUpdateUserMetadata() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients(); // Only need clients here
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (metadata: UserMetadataUpdate) =>
-      users.updateUserMetadata(metadata).then((res) => res.data),
+      apiClients.users.updateUserMetadata(metadata).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
     },
@@ -32,12 +34,12 @@ export function useUpdateUserMetadata() {
 }
 
 export function useRegisterUser() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients(); // Only need clients here
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (userData: UserCreate) =>
-      users.registerUser(userData).then((res) => res.data),
+      apiClients.users.registerUser(userData).then((res) => res.data),
     onSuccess: () => {
       // After successful registration, refresh metadata
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
@@ -46,12 +48,12 @@ export function useRegisterUser() {
 }
 
 export function useRegisterStore() {
-  const { stores } = useApiClients();
+  const { apiClients } = useApiClients(); // Only need clients here
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeData: StoreCreate) =>
-      stores.registerStore(storeData).then((res) => res.data),
+      apiClients.stores.registerStore(storeData).then((res) => res.data),
     onSuccess: () => {
       // After successful registration, refresh metadata
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });

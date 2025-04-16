@@ -2,24 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
 import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
+import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
 
 export function useUserProfile() {
-  const { users } = useApiClients();
+  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.profile(),
-    queryFn: () => users.getUserProfile().then((res) => res.data),
+    queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
+    // Add auth and token checks to enabled condition
+    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
     ...cacheSettings.user,
   });
 }
 
 export function useUpdateUserProfile() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (userData: UserUpdate) =>
-      users.updateUserProfile(userData).then((res) => res.data),
+      apiClients.users.updateUserProfile(userData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
     },
@@ -27,22 +31,28 @@ export function useUpdateUserProfile() {
 }
 
 export function useUserPreferences() {
-  const { users } = useApiClients();
+  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.preferences(),
-    queryFn: () => users.getUserOwnPreferences().then((res) => res.data),
+    queryFn: () =>
+      apiClients.users.getUserOwnPreferences().then((res) => res.data),
+    // Add auth and token checks to enabled condition
+    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
     ...cacheSettings.preferences,
   });
 }
 
 export function useUpdateUserPreferences() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (preferences: UserPreferencesUpdate) =>
-      users.updateUserPreferences(preferences).then((res) => res.data),
+      apiClients.users
+        .updateUserPreferences(preferences)
+        .then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
@@ -52,12 +62,12 @@ export function useUpdateUserPreferences() {
 }
 
 export function useOptInToStore() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeId: string) =>
-      users.optInToStore(storeId).then((res) => res.data),
+      apiClients.users.optInToStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
       // Optimistic update
       await queryClient.cancelQueries({
@@ -90,12 +100,12 @@ export function useOptInToStore() {
 }
 
 export function useOptOutFromStore() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeId: string) =>
-      users.optOutFromStore(storeId).then((res) => res.data),
+      apiClients.users.optOutFromStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
       // Optimistic update
       await queryClient.cancelQueries({
@@ -128,11 +138,12 @@ export function useOptOutFromStore() {
 }
 
 export function useDeleteUserProfile() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => users.deleteUserProfile().then((res) => res.data),
+    mutationFn: () =>
+      apiClients.users.deleteUserProfile().then((res) => res.data),
     onSuccess: () => {
       // After successful deletion, clear user-related cache
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
