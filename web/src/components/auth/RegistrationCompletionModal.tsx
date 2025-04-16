@@ -14,7 +14,7 @@ import { UserCreate, StoreCreate } from "../../api/types/data-contracts";
 import { HiInformationCircle } from "react-icons/hi";
 
 export function RegistrationCompletionModal() {
-  const { shouldShowRegistration } = useRegistrationStatus();
+  const { shouldShowRegistration, isLoading } = useRegistrationStatus();
   const [step, setStep] = useState(1);
   const [registrationType, setRegistrationType] = useState<
     "user" | "store" | null
@@ -29,13 +29,17 @@ export function RegistrationCompletionModal() {
   const totalSteps = 2; // Type selection + form
 
   useEffect(() => {
-    // Small delay to prevent modal from showing immediately during navigation
-    const timer = setTimeout(() => {
-      setShowModal(shouldShowRegistration);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [shouldShowRegistration]);
+    // Only show modal if we're not loading AND registration is needed
+    if (!isLoading && shouldShowRegistration) {
+      const timer = setTimeout(() => {
+        setShowModal(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (!shouldShowRegistration) {
+      // Ensure modal is closed if registration not needed
+      setShowModal(false);
+    }
+  }, [shouldShowRegistration, isLoading]);
 
   const handleTypeSelected = (type: "user" | "store") => {
     setRegistrationType(type);
