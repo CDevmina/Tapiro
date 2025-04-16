@@ -2,7 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache} = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, linkAccounts, updateUserMetadata } = require('../utils/auth0Util');
+const { assignUserRole, linkAccounts, updateUserMetadata, getUserMetadata } = require('../utils/auth0Util');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
@@ -294,8 +294,8 @@ exports.getUserMetadata = async function (req) {
     // Get user data from middleware or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
     
-    // We already have the user metadata in the userData object
-    const metadata = userData.user_metadata || {};
+    // Get user metadata from Auth0 using Management API
+    const metadata = await getUserMetadata(userData.sub);
 
     return respondWithCode(200, { metadata });
   } catch (error) {
