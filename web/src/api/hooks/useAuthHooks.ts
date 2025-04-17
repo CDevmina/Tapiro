@@ -6,6 +6,7 @@ import {
   UserCreate,
   StoreCreate,
 } from "../types/data-contracts";
+import { cacheSettings } from "../utils/cache"; // Import cacheSettings
 
 export function useUserMetadata() {
   // Get clientsReady state along with apiClients
@@ -17,6 +18,7 @@ export function useUserMetadata() {
     queryFn: () => apiClients.users.getUserMetadata().then((res) => res.data),
     // Update enabled check to include clientsReady
     enabled: isAuthenticated && !authLoading && clientsReady,
+    ...cacheSettings.metadata, // Apply specific cache settings
   });
 }
 
