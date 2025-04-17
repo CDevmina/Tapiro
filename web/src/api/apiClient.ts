@@ -2,8 +2,8 @@ import { Users } from "./types/Users";
 import { Stores } from "./types/Stores";
 import { Health } from "./types/Health";
 import { Ping } from "./types/Ping";
-import { useAuth0 } from "@auth0/auth0-react";
-import { useEffect, useMemo, useState } from "react"; // Import useState
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../hooks/useAuth"; // ← use your context
 import { ApiConfig } from "./types/http-client"; // Import ApiConfig
 
 export function createApiClients() {
@@ -37,53 +37,42 @@ export function createApiClients() {
 
 // Hook to get API clients with auth token
 export function useApiClients() {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
-  const [isTokenSet, setIsTokenSet] = useState(false); // State to track token readiness
+  const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [isTokenSet, setIsTokenSet] = useState(false);
 
   // Memoize the API clients so they aren't recreated on each render
   const apiClients = useMemo(() => createApiClients(), []);
 
-  // Set auth token when available
   useEffect(() => {
-    let isMounted = true; // Prevent state update on unmounted component
+    let isMounted = true;
 
-    if (isAuthenticated) {
-      const setAuthToken = async () => {
+    if (isAuthenticated && !authLoading) {
+      (async () => {
         try {
-          const token = await getAccessTokenSilently();
+          const token = await getAccessToken();
           if (isMounted) {
-            // Set token for each client
-            Object.values(apiClients).forEach((client) => {
-              client.setSecurityData(token);
-            });
-            setIsTokenSet(true); // Signal that token is ready
+            Object.values(apiClients).forEach((c) =>
+              c.setSecurityData(token || null),
+            );
+            setIsTokenSet(!!token);
           }
-        } catch (error) {
-          console.error("Failed to get auth token", error);
+        } catch (e) {
+          console.error("Failed to set auth token", e);
           if (isMounted) {
-            // Clear security data if token fetch fails
-            Object.values(apiClients).forEach((client) => {
-              client.setSecurityData(null);
-            });
-            setIsTokenSet(false); // Signal token is not ready
+            Object.values(apiClients).forEach((c) => c.setSecurityData(null));
+            setIsTokenSet(false);
           }
         }
-      };
-
-      setAuthToken();
+      })();
     } else {
-      // Clear security data if not authenticated
-      Object.values(apiClients).forEach((client) => {
-        client.setSecurityData(null);
-      });
-      setIsTokenSet(false); // Signal token is not ready
+      Object.values(apiClients).forEach((c) => c.setSecurityData(null));
+      setIsTokenSet(false);
     }
 
     return () => {
-      isMounted = false; // Cleanup function
+      isMounted = false;
     };
-  }, [isAuthenticated, getAccessTokenSilently, apiClients]); // Keep dependencies
+  }, [isAuthenticated, authLoading, getAccessToken, apiClients]);
 
-  // Return clients and the readiness state
   return { apiClients, isTokenSet };
 }

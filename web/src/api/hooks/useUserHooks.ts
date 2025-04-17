@@ -2,17 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
 import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
-import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
   const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.profile(),
     queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
     // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: isAuthenticated && !authLoading && isTokenSet,
     ...cacheSettings.user,
   });
 }
@@ -32,14 +32,14 @@ export function useUpdateUserProfile() {
 
 export function useUserPreferences() {
   const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.preferences(),
     queryFn: () =>
       apiClients.users.getUserOwnPreferences().then((res) => res.data),
     // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: isAuthenticated && !authLoading && isTokenSet,
     ...cacheSettings.preferences,
   });
 }

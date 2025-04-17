@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../hooks/useAuth";
 import { useUserMetadata } from "../api/hooks/useAuthHooks";
 
 export function useRegistrationStatus() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: metadata, isLoading: isMetadataLoading } = useUserMetadata();
   const [registrationStatus, setRegistrationStatus] = useState({
     isComplete: false,
@@ -14,7 +14,7 @@ export function useRegistrationStatus() {
 
   useEffect(() => {
     // If either auth or metadata is still loading, mark the overall status as loading
-    if (isAuthLoading || isMetadataLoading) {
+    if (authLoading || isMetadataLoading) {
       setRegistrationStatus((prev) => ({ ...prev, isLoading: true }));
       return;
     }
@@ -26,7 +26,8 @@ export function useRegistrationStatus() {
       | "store"
       | null;
     // Only show registration when authenticated AND registration is confirmed incomplete
-    const shouldShowRegistration = isAuthenticated && !isComplete;
+    const shouldShowRegistration =
+      isAuthenticated && !authLoading && !isComplete;
 
     setRegistrationStatus({
       isComplete,
@@ -34,7 +35,7 @@ export function useRegistrationStatus() {
       shouldShowRegistration,
       isLoading: false, // We're done loading
     });
-  }, [isAuthenticated, isAuthLoading, metadata, isMetadataLoading]);
+  }, [isAuthenticated, authLoading, metadata, isMetadataLoading]);
 
   return registrationStatus;
 }

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../../hooks/useAuth";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   UserMetadataUpdate,
   UserCreate,
@@ -8,15 +8,13 @@ import {
 } from "../types/data-contracts";
 
 export function useUserMetadata() {
-  const { apiClients, isTokenSet } = useApiClients(); // Get clients and readiness state
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Use isAuthLoading alias
+  const { apiClients, isTokenSet } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   return useQuery({
     queryKey: ["auth", "metadata"],
-    // Ensure apiClients.users exists before calling
     queryFn: () => apiClients.users.getUserMetadata().then((res) => res.data),
-    // Enable only when authenticated, auth is not loading, AND token is set
-    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: isAuthenticated && !authLoading && isTokenSet,
   });
 }
 

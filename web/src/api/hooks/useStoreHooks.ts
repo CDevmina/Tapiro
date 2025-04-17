@@ -2,17 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings } from "../utils/cache";
 import { ApiKeyCreate, StoreUpdate } from "../types/data-contracts";
-import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useStoreProfile() {
   const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.profile(),
     queryFn: () => apiClients.stores.getStoreProfile().then((res) => res.data),
     // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: isAuthenticated && !authLoading && isTokenSet,
     ...cacheSettings.store,
   });
 }
@@ -32,13 +32,13 @@ export function useUpdateStoreProfile() {
 
 export function useApiKeys() {
   const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeys(),
     queryFn: () => apiClients.stores.getApiKeys().then((res) => res.data),
     // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: isAuthenticated && !authLoading && isTokenSet,
     ...cacheSettings.apiKeys,
   });
 }
@@ -71,14 +71,14 @@ export function useRevokeApiKey() {
 
 export function useApiKeyUsage(keyId: string) {
   const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth0(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
     queryFn: () =>
       apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
     // Add auth and token checks to enabled condition, also check keyId exists
-    enabled: !!keyId && isAuthenticated && !isAuthLoading && isTokenSet,
+    enabled: !!keyId && isAuthenticated && !authLoading && isTokenSet,
     ...cacheSettings.apiKeys,
   });
 }
