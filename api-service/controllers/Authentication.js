@@ -40,13 +40,3 @@ module.exports.getUserMetadata = function getUserMetadata(req, res, next) {
       utils.writeJson(res, response);
     });
 };
-
-module.exports.getCurrentUserRoles = function getCurrentUserRoles (req, res, next) {
-  Authentication.getCurrentUserRoles(req)
-    .then(function (response) {
-      utils.writeJson(res, response);
-    })
-    .catch(function (response) {
-      utils.writeJson(res, response);
-    });
-};

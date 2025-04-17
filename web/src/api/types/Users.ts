@@ -19,7 +19,6 @@ import {
   UserMetadataUpdate,
   UserPreferences,
   UserPreferencesUpdate,
-  UserRolesResponse,
   UserUpdate,
 } from "./data-contracts";
 import { ContentType, HttpClient, RequestParams } from "./http-client";
@@ -285,27 +284,6 @@ export class Users<
     this.request<UserMetadataResponse, Error>({
       path: `/users/metadata/get`,
       method: "POST",
-      secure: true,
-      format: "json",
-      ...params,
-    });
-  /**
-   * @description Retrieves the currently assigned roles for the authenticated user directly from Auth0.
-   *
-   * @tags Authentication
-   * @name GetCurrentUserRoles
-   * @summary Get Current User Roles
-   * @request GET:/users/me/roles
-   * @secure
-   * @response `200` `UserRolesResponse` An array of role names assigned to the user.
-   * @response `401` `Error`
-   * @response `404` `Error`
-   * @response `500` `Error`
-   */
-  getCurrentUserRoles = (params: RequestParams = {}) =>
-    this.request<UserRolesResponse, Error>({
-      path: `/users/me/roles`,
-      method: "GET",
       secure: true,
       format: "json",
       ...params,
