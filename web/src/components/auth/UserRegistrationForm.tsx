@@ -27,27 +27,34 @@ export function UserRegistrationForm({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      {/* Add dark mode text color */}
       <h3 className="text-center text-xl font-medium text-gray-900 dark:text-white">
         Complete User Registration
       </h3>
 
       <div className="flex items-center gap-2">
+        {/* Flowbite Checkbox handles dark mode */}
         <Checkbox
           id="data-sharing"
           checked={dataSharingConsent}
           onChange={(e) => setDataSharingConsent(e.target.checked)}
           required
         />
-        <Label htmlFor="data-sharing" className="flex">
+        {/* Add dark mode text color */}
+        <Label
+          htmlFor="data-sharing"
+          className="flex text-gray-700 dark:text-gray-300"
+        >
           I consent to sharing my data for personalized recommendations
         </Label>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center pt-2">
         {isLoading ? (
           <LoadingSpinner size="md" className="py-2" />
         ) : (
-          <Button type="submit" disabled={isLoading}>
+          // Flowbite Button handles dark mode
+          <Button type="submit" disabled={isLoading} size="lg">
             Complete Registration
           </Button>
         )}

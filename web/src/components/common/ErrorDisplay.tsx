@@ -31,12 +31,14 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
   return (
     <div className={className}>
+      {/* Flowbite Alert handles its own dark mode styling */}
       <Alert color="failure" icon={HiInformationCircle}>
-        <h3 className="font-medium">{title}</h3>
-        <p>{errorMessage}</p>
-        {/* Optionally show more details in development */}
+        {/* Ensure title and message text have dark mode styles */}
+        <h3 className="font-medium text-red-800 dark:text-red-400">{title}</h3>
+        <p className="text-red-700 dark:text-red-300">{errorMessage}</p>
+        {/* Optional: Stack trace styling */}
         {/* {process.env.NODE_ENV === 'development' && error instanceof Error && (
-          <pre className="mt-2 text-xs whitespace-pre-wrap">
+          <pre className="mt-2 text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">
             {error.stack}
           </pre>
         )} */}

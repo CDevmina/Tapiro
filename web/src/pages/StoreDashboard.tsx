@@ -26,11 +26,16 @@ export default function StoreDashboard() {
   // Render content when data is available
   return (
     <div className="container mx-auto px-4 py-12">
-      <h2 className="mb-4">Store Dashboard - API Management</h2>
+      {/* Add dark mode text color */}
+      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
+        Store Dashboard - API Management
+      </h2>
       <Card>
+        {/* Add dark mode text color */}
         <p className="mb-2 text-gray-700 dark:text-gray-400">
           Welcome, {storeProfile?.name || "Store Owner"}!
         </p>
+        {/* Add dark mode text color */}
         <p className="text-gray-700 dark:text-gray-400">
           Manage your API keys, view usage statistics, and access billing
           information here. (Content coming soon!)

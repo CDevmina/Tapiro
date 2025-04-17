@@ -29,14 +29,22 @@ export function StoreRegistrationForm({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      {/* Add dark mode text color */}
       <h3 className="text-center text-xl font-medium text-gray-900 dark:text-white">
         Complete Store Registration
       </h3>
 
       <div>
         <div className="mb-2 block">
-          <Label htmlFor="store-name">Store Name</Label>
+          {/* Add dark mode text color */}
+          <Label
+            htmlFor="store-name"
+            className="text-gray-700 dark:text-gray-300"
+          >
+            Store Name
+          </Label>
         </div>
+        {/* Flowbite TextInput handles dark mode */}
         <TextInput
           id="store-name"
           value={name}
@@ -48,8 +56,15 @@ export function StoreRegistrationForm({
 
       <div>
         <div className="mb-2 block">
-          <Label htmlFor="store-address">Store Address</Label>
+          {/* Add dark mode text color */}
+          <Label
+            htmlFor="store-address"
+            className="text-gray-700 dark:text-gray-300"
+          >
+            Store Address
+          </Label>
         </div>
+        {/* Flowbite TextInput handles dark mode */}
         <TextInput
           id="store-address"
           value={address}
@@ -59,11 +74,12 @@ export function StoreRegistrationForm({
         />
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center pt-2">
         {isLoading ? (
           <LoadingSpinner size="md" className="py-2" />
         ) : (
-          <Button type="submit" disabled={isLoading}>
+          // Flowbite Button handles dark mode
+          <Button type="submit" disabled={isLoading} size="lg">
             Complete Registration
           </Button>
         )}

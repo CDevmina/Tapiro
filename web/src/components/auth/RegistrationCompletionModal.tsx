@@ -86,17 +86,17 @@ export function RegistrationCompletionModal() {
   };
 
   return (
+    // Flowbite Modal handles dark mode
     <Modal show={showModal} size="md" popup dismissible={false}>
-      <ModalHeader />
+      <ModalHeader /> {/* Optional: Add title here if needed */}
       <ModalBody>
         <RegistrationProgress step={step} totalSteps={totalSteps} />
 
-        {/* Use ErrorDisplay component */}
         {error && (
           <ErrorDisplay
             title="Registration Failed"
-            message={error} // Pass the string message
-            className="mb-4" // Apply margin if needed
+            message={error}
+            className="mb-4"
           />
         )}
 
@@ -108,9 +108,10 @@ export function RegistrationCompletionModal() {
           <>
             <button
               onClick={handleBack}
-              className="mb-4 text-blue-600 hover:underline"
+              // Add dark mode text color and hover
+              className="mb-4 text-sm text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
             >
-              &larr; Back
+              &larr; Back to type selection
             </button>
             <UserRegistrationForm
               onSubmit={handleUserSubmit}
@@ -123,9 +124,10 @@ export function RegistrationCompletionModal() {
           <>
             <button
               onClick={handleBack}
-              className="mb-4 text-blue-600 hover:underline"
+              // Add dark mode text color and hover
+              className="mb-4 text-sm text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
             >
-              &larr; Back
+              &larr; Back to type selection
             </button>
             <StoreRegistrationForm
               onSubmit={handleStoreSubmit}
