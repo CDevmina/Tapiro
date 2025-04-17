@@ -540,37 +540,8 @@ paths:
                 $ref: "#/components/schemas/PingStatus"
       x-swagger-router-controller: Health
 
-  /users/metadata:
-    put:
-      tags: [Authentication]
-      summary: Update User Metadata
-      description: Update Auth0 metadata for the authenticated user
-      operationId: updateUserMetadata
-      security:
-        - oauth2: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UserMetadataUpdate"
-        required: true
-      responses:
-        "200":
-          description: Metadata updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserMetadataResponse"
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-      x-swagger-router-controller: Authentication
-
   /users/metadata/get:
-    post:
+    get:
       tags: [Authentication]
       summary: Get User Metadata
       description: Retrieve Auth0 metadata for the authenticated user

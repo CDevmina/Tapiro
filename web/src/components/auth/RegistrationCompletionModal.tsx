@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { Modal, ModalBody, ModalHeader } from "flowbite-react"; // Removed Alert import
-import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
+import { useState } from "react";
+import { Modal, ModalBody, ModalHeader } from "flowbite-react";
 import { RegistrationTypeSelector } from "./RegistrationTypeSelector";
 import { UserRegistrationForm } from "./UserRegistrationForm";
 import { StoreRegistrationForm } from "./StoreRegistrationForm";
@@ -10,36 +9,19 @@ import {
   useRegisterStore,
 } from "../../api/hooks/useAuthHooks";
 import { UserCreate, StoreCreate } from "../../api/types/data-contracts";
-// Removed HiInformationCircle import if no longer needed elsewhere
-// import { HiInformationCircle } from "react-icons/hi";
-import ErrorDisplay from "../common/ErrorDisplay"; // Import ErrorDisplay
+import ErrorDisplay from "../common/ErrorDisplay";
 
 export function RegistrationCompletionModal() {
-  const { shouldShowRegistration, isLoading } = useRegistrationStatus();
   const [step, setStep] = useState(1);
   const [registrationType, setRegistrationType] = useState<
     "user" | "store" | null
   >(null);
-  const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const registerUserMutation = useRegisterUser();
   const registerStoreMutation = useRegisterStore();
 
   const totalSteps = 2; // Type selection + form
-
-  useEffect(() => {
-    // Only show modal if we're not loading AND registration is needed
-    if (!isLoading && shouldShowRegistration) {
-      const timer = setTimeout(() => {
-        setShowModal(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else if (!shouldShowRegistration) {
-      // Ensure modal is closed if registration not needed
-      setShowModal(false);
-    }
-  }, [shouldShowRegistration, isLoading]);
 
   const handleTypeSelected = (type: "user" | "store") => {
     setRegistrationType(type);
@@ -52,9 +34,7 @@ export function RegistrationCompletionModal() {
     try {
       await registerUserMutation.mutateAsync(userData);
     } catch (err) {
-      // Catch specific error
       console.error("Failed to complete user registration:", err);
-      // Extract message if possible, otherwise use generic message
       const message =
         err instanceof Error
           ? err.message
@@ -68,9 +48,7 @@ export function RegistrationCompletionModal() {
     try {
       await registerStoreMutation.mutateAsync(storeData);
     } catch (err) {
-      // Catch specific error
       console.error("Failed to complete store registration:", err);
-      // Extract message if possible, otherwise use generic message
       const message =
         err instanceof Error
           ? err.message
@@ -86,9 +64,8 @@ export function RegistrationCompletionModal() {
   };
 
   return (
-    // Flowbite Modal handles dark mode
-    <Modal show={showModal} size="md" popup dismissible={false}>
-      <ModalHeader /> {/* Optional: Add title here if needed */}
+    <Modal show={true} size="md" popup dismissible={false}>
+      <ModalHeader />
       <ModalBody>
         <RegistrationProgress step={step} totalSteps={totalSteps} />
 
@@ -108,7 +85,6 @@ export function RegistrationCompletionModal() {
           <>
             <button
               onClick={handleBack}
-              // Add dark mode text color and hover
               className="mb-4 text-sm text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
             >
               &larr; Back to type selection
@@ -124,7 +100,6 @@ export function RegistrationCompletionModal() {
           <>
             <button
               onClick={handleBack}
-              // Add dark mode text color and hover
               className="mb-4 text-sm text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
             >
               &larr; Back to type selection

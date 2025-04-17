@@ -16,7 +16,6 @@ import {
   UserCreate,
   UserData,
   UserMetadataResponse,
-  UserMetadataUpdate,
   UserPreferences,
   UserPreferencesUpdate,
   UserUpdate,
@@ -246,35 +245,12 @@ export class Users<
       ...params,
     });
   /**
-   * @description Update Auth0 metadata for the authenticated user
-   *
-   * @tags Authentication
-   * @name UpdateUserMetadata
-   * @summary Update User Metadata
-   * @request PUT:/users/metadata
-   * @secure
-   * @response `200` `UserMetadataResponse` Metadata updated successfully
-   * @response `400` `Error`
-   * @response `401` `Error`
-   * @response `500` `Error`
-   */
-  updateUserMetadata = (data: UserMetadataUpdate, params: RequestParams = {}) =>
-    this.request<UserMetadataResponse, Error>({
-      path: `/users/metadata`,
-      method: "PUT",
-      body: data,
-      secure: true,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
    * @description Retrieve Auth0 metadata for the authenticated user
    *
    * @tags Authentication
    * @name GetUserMetadata
    * @summary Get User Metadata
-   * @request POST:/users/metadata/get
+   * @request GET:/users/metadata/get
    * @secure
    * @response `200` `UserMetadataResponse` Metadata retrieved successfully
    * @response `401` `Error`
@@ -283,7 +259,7 @@ export class Users<
   getUserMetadata = (params: RequestParams = {}) =>
     this.request<UserMetadataResponse, Error>({
       path: `/users/metadata/get`,
-      method: "POST",
+      method: "GET",
       secure: true,
       format: "json",
       ...params,

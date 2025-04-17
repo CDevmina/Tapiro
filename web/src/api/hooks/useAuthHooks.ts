@@ -1,12 +1,8 @@
 import { useApiClients } from "../apiClient";
 import { useAuth } from "../../hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  UserMetadataUpdate,
-  UserCreate,
-  StoreCreate,
-} from "../types/data-contracts";
-import { cacheSettings } from "../utils/cache"; // Import cacheSettings
+import { UserCreate, StoreCreate } from "../types/data-contracts";
+import { cacheSettings, cacheKeys } from "../utils/cache"; // Import cacheSettings
 
 export function useUserMetadata() {
   // Get clientsReady state along with apiClients
@@ -22,19 +18,6 @@ export function useUserMetadata() {
   });
 }
 
-export function useUpdateUserMetadata() {
-  const { apiClients } = useApiClients(); // Only need clients here
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (metadata: UserMetadataUpdate) =>
-      apiClients.users.updateUserMetadata(metadata).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
-    },
-  });
-}
-
 export function useRegisterUser() {
   const { apiClients } = useApiClients(); // Only need clients here
   const queryClient = useQueryClient();
@@ -45,6 +28,13 @@ export function useRegisterUser() {
     onSuccess: () => {
       // After successful registration, refresh metadata
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      // --- Start Changes ---
+      // Also invalidate user profile/preferences if registration affects them
+      queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.preferences(),
+      });
+      // --- End Changes ---
     },
   });
 }
@@ -59,6 +49,10 @@ export function useRegisterStore() {
     onSuccess: () => {
       // After successful registration, refresh metadata
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      // --- Start Changes ---
+      // Also invalidate store profile if registration affects it
+      queryClient.invalidateQueries({ queryKey: cacheKeys.stores.profile() });
+      // --- End Changes ---
     },
   });
 }

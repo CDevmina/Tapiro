@@ -3,29 +3,40 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner";
 import ErrorDisplay from "../common/ErrorDisplay";
+import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
+import { RegistrationCompletionModal } from "./RegistrationCompletionModal";
 
 interface PrivateRouteProps {
   allowedRoles?: string[];
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
-  const { isAuthenticated, isLoading, userRoles } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, userRoles } = useAuth();
   const location = useLocation();
+  const { isLoading: registrationLoading, shouldShowRegistration } =
+    useRegistrationStatus();
 
-  // Wait for authentication to complete and roles to load
-  if (isLoading) {
-    return <LoadingSpinner message="Checking authentication..." />;
+  // Wait for authentication AND registration status to complete
+  if (authLoading || registrationLoading) {
+    return <LoadingSpinner message="Checking authentication and status..." />;
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Only check roles after loading is complete and we have data from Auth0
+  // If authenticated but registration is not complete, show the modal
+  if (shouldShowRegistration) {
+    // Render the modal directly, blocking access to the Outlet
+    return <RegistrationCompletionModal />;
+  }
+
+  // Only check roles after loading is complete, auth is confirmed, AND registration is complete
   if (allowedRoles && allowedRoles.length > 0) {
     // Add additional check to ensure userRoles array is populated
     if (userRoles.length === 0) {
-      // Still loading roles or user has no roles yet
+      // This might indicate roles haven't loaded from the token yet, though authLoading should cover this.
+      // Keep a spinner here as a fallback.
       return <LoadingSpinner message="Loading user permissions..." />;
     }
 
@@ -46,7 +57,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
     }
   }
 
-  // Authenticated and authorized
+  // Authenticated, registration complete, and authorized
   return <Outlet />;
 };
 

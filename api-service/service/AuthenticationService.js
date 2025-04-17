@@ -242,50 +242,6 @@ exports.registerStore = async function (req, body) {
 };
 
 /**
- * Update user metadata
- * Update Auth0 metadata for the authenticated user
- */
-exports.updateUserMetadata = async function (req, body) {
-  try {
-    // Get user data from middleware or fetch it
-    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-    const { registrationType, registrationComplete } = body;
-
-    if (!registrationType && registrationComplete === undefined) {
-      return respondWithCode(400, {
-        code: 400,
-        message: 'No metadata updates provided',
-      });
-    }
-    
-    // Prepare metadata update
-    const metadataToUpdate = {};
-    if (registrationType) {
-      metadataToUpdate.registrationType = registrationType;
-    }
-    
-    if (registrationComplete !== undefined) {
-      metadataToUpdate.registrationComplete = registrationComplete;
-    }
-
-    // Update the metadata using our helper
-    const updatedMetadata = await updateUserMetadata(
-      userData.sub, 
-      metadataToUpdate, 
-      true // invalidate cache
-    );
-
-    return respondWithCode(200, {
-      updated: true,
-      metadata: updatedMetadata
-    });
-  } catch (error) {
-    console.error('Metadata update failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
-  }
-};
-
-/**
  * Get user metadata
  * Retrieve Auth0 metadata for the authenticated user
  */
