@@ -58,7 +58,8 @@ export function useApiClients() {
             );
             setClientsReady(true); // <-- Set clients as ready AFTER token is set
           }
-        } catch (e) {
+        } catch {
+          // <-- Remove 'e' from here
           // Error fetching token (already logged in getAccessToken)
           if (isMounted) {
             Object.values(apiClients).forEach((c) => c.setSecurityData(null));
