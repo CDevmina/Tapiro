@@ -17,6 +17,7 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
   } = useAuth0();
 
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [tokenError, setTokenError] = useState<Error | null>(null); // <-- Add error state
 
   // Replace your old useEffect with this:
   useEffect(() => {
@@ -34,19 +35,29 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
     loadRoles();
   }, [auth0IsAuthenticated, getIdTokenClaims]);
 
-  const getAccessToken = useCallback(async (): Promise<string | undefined> => {
+  // Update getAccessToken
+  const getAccessToken = useCallback(async (): Promise<string> => {
+    // <-- Update return type
+    setTokenError(null); // <-- Clear previous error on new attempt
     try {
-      // Use the audience defined in your .env
       const token = await getAccessTokenSilently({
         authorizationParams: {
           audience: import.meta.env.VITE_AUTH0_AUDIENCE,
         },
       });
+      // Add check in case token is unexpectedly undefined/empty
+      if (!token) {
+        throw new Error("Received empty token from Auth0.");
+      }
       return token;
     } catch (e) {
       console.error("Error getting access token", e);
-      // Handle error, potentially trigger login
-      return undefined;
+      // Set the error state
+      setTokenError(
+        e instanceof Error ? e : new Error("Failed to get access token"),
+      );
+      // Re-throw the error so callers know it failed
+      throw e; // <-- Re-throw error
     }
   }, [getAccessTokenSilently]);
 
@@ -73,6 +84,7 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
     getAccessToken,
     login,
     logout,
+    tokenError, // <-- Expose error state
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

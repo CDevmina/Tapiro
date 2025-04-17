@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Modal, ModalBody, ModalHeader, Alert } from "flowbite-react";
+import { Modal, ModalBody, ModalHeader } from "flowbite-react"; // Removed Alert import
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
 import { RegistrationTypeSelector } from "./RegistrationTypeSelector";
 import { UserRegistrationForm } from "./UserRegistrationForm";
@@ -8,10 +8,11 @@ import { RegistrationProgress } from "./RegistrationProgress";
 import {
   useRegisterUser,
   useRegisterStore,
-  useUpdateUserMetadata,
 } from "../../api/hooks/useAuthHooks";
 import { UserCreate, StoreCreate } from "../../api/types/data-contracts";
-import { HiInformationCircle } from "react-icons/hi";
+// Removed HiInformationCircle import if no longer needed elsewhere
+// import { HiInformationCircle } from "react-icons/hi";
+import ErrorDisplay from "../common/ErrorDisplay"; // Import ErrorDisplay
 
 export function RegistrationCompletionModal() {
   const { shouldShowRegistration, isLoading } = useRegistrationStatus();
@@ -24,7 +25,6 @@ export function RegistrationCompletionModal() {
 
   const registerUserMutation = useRegisterUser();
   const registerStoreMutation = useRegisterStore();
-  const updateMetadataMutation = useUpdateUserMetadata();
 
   const totalSteps = 2; // Type selection + form
 
@@ -50,34 +50,32 @@ export function RegistrationCompletionModal() {
   const handleUserSubmit = async (userData: UserCreate) => {
     setError(null);
     try {
-      // Register the user
       await registerUserMutation.mutateAsync(userData);
-
-      // Update metadata to mark registration as complete
-      await updateMetadataMutation.mutateAsync({
-        registrationType: "user",
-        registrationComplete: true,
-      });
-    } catch (error) {
-      console.error("Failed to complete user registration:", error);
-      setError("Failed to complete registration. Please try again.");
+    } catch (err) {
+      // Catch specific error
+      console.error("Failed to complete user registration:", err);
+      // Extract message if possible, otherwise use generic message
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to complete registration. Please try again.";
+      setError(message);
     }
   };
 
   const handleStoreSubmit = async (storeData: StoreCreate) => {
     setError(null);
     try {
-      // Register the store
       await registerStoreMutation.mutateAsync(storeData);
-
-      // Update metadata to mark registration as complete
-      await updateMetadataMutation.mutateAsync({
-        registrationType: "store",
-        registrationComplete: true,
-      });
-    } catch (error) {
-      console.error("Failed to complete store registration:", error);
-      setError("Failed to complete registration. Please try again.");
+    } catch (err) {
+      // Catch specific error
+      console.error("Failed to complete store registration:", err);
+      // Extract message if possible, otherwise use generic message
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to complete registration. Please try again.";
+      setError(message);
     }
   };
 
@@ -93,10 +91,13 @@ export function RegistrationCompletionModal() {
       <ModalBody>
         <RegistrationProgress step={step} totalSteps={totalSteps} />
 
+        {/* Use ErrorDisplay component */}
         {error && (
-          <Alert color="failure" icon={HiInformationCircle} className="mb-4">
-            {error}
-          </Alert>
+          <ErrorDisplay
+            title="Registration Failed"
+            message={error} // Pass the string message
+            className="mb-4" // Apply margin if needed
+          />
         )}
 
         {step === 1 && (
@@ -113,10 +114,7 @@ export function RegistrationCompletionModal() {
             </button>
             <UserRegistrationForm
               onSubmit={handleUserSubmit}
-              isLoading={
-                registerUserMutation.isPending ||
-                updateMetadataMutation.isPending
-              }
+              isLoading={registerUserMutation.isPending}
             />
           </>
         )}
@@ -131,10 +129,7 @@ export function RegistrationCompletionModal() {
             </button>
             <StoreRegistrationForm
               onSubmit={handleStoreSubmit}
-              isLoading={
-                registerStoreMutation.isPending ||
-                updateMetadataMutation.isPending
-              }
+              isLoading={registerStoreMutation.isPending}
             />
           </>
         )}

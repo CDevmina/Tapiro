@@ -5,14 +5,14 @@ import { ApiKeyCreate, StoreUpdate } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useStoreProfile() {
-  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.profile(),
     queryFn: () => apiClients.stores.getStoreProfile().then((res) => res.data),
-    // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !authLoading && isTokenSet,
+    // Remove isTokenSet from enabled check
+    enabled: isAuthenticated && !authLoading,
     ...cacheSettings.store,
   });
 }
@@ -31,14 +31,14 @@ export function useUpdateStoreProfile() {
 }
 
 export function useApiKeys() {
-  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeys(),
     queryFn: () => apiClients.stores.getApiKeys().then((res) => res.data),
-    // Add auth and token checks to enabled condition
-    enabled: isAuthenticated && !authLoading && isTokenSet,
+    // Remove isTokenSet from enabled check
+    enabled: isAuthenticated && !authLoading,
     ...cacheSettings.apiKeys,
   });
 }
@@ -70,15 +70,15 @@ export function useRevokeApiKey() {
 }
 
 export function useApiKeyUsage(keyId: string) {
-  const { apiClients, isTokenSet } = useApiClients(); // Get isTokenSet
+  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
     queryFn: () =>
       apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
-    // Add auth and token checks to enabled condition, also check keyId exists
-    enabled: !!keyId && isAuthenticated && !authLoading && isTokenSet,
+    // Remove isTokenSet from enabled check
+    enabled: !!keyId && isAuthenticated && !authLoading,
     ...cacheSettings.apiKeys,
   });
 }

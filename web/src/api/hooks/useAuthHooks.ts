@@ -8,13 +8,15 @@ import {
 } from "../types/data-contracts";
 
 export function useUserMetadata() {
-  const { apiClients, isTokenSet } = useApiClients();
+  // Remove isTokenSet from destructuring
+  const { apiClients } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   return useQuery({
     queryKey: ["auth", "metadata"],
     queryFn: () => apiClients.users.getUserMetadata().then((res) => res.data),
-    enabled: isAuthenticated && !authLoading && isTokenSet,
+    // Remove isTokenSet from enabled check
+    enabled: isAuthenticated && !authLoading,
   });
 }
 
