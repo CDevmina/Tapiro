@@ -5,14 +5,15 @@ import { ApiKeyCreate, StoreUpdate } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useStoreProfile() {
-  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.profile(),
     queryFn: () => apiClients.stores.getStoreProfile().then((res) => res.data),
-    // Remove isTokenSet from enabled check
-    enabled: isAuthenticated && !authLoading,
+    // Update enabled check
+    enabled: isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.store,
   });
 }
@@ -31,14 +32,15 @@ export function useUpdateStoreProfile() {
 }
 
 export function useApiKeys() {
-  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeys(),
     queryFn: () => apiClients.stores.getApiKeys().then((res) => res.data),
-    // Remove isTokenSet from enabled check
-    enabled: isAuthenticated && !authLoading,
+    // Update enabled check
+    enabled: isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.apiKeys,
   });
 }
@@ -70,15 +72,16 @@ export function useRevokeApiKey() {
 }
 
 export function useApiKeyUsage(keyId: string) {
-  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.stores.apiKeyUsage(keyId),
     queryFn: () =>
       apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
-    // Remove isTokenSet from enabled check
-    enabled: !!keyId && isAuthenticated && !authLoading,
+    // Update enabled check, keeping !!keyId
+    enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.apiKeys,
   });
 }

@@ -2,8 +2,8 @@ import { Users } from "./types/Users";
 import { Stores } from "./types/Stores";
 import { Health } from "./types/Health";
 import { Ping } from "./types/Ping";
-// Remove useState import if no longer needed
-import { useEffect, useMemo } from "react";
+// Add useState import
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth"; // ← use your context
 import { ApiConfig } from "./types/http-client"; // Import ApiConfig
 
@@ -39,8 +39,8 @@ export function createApiClients() {
 // Hook to get API clients with auth token
 export function useApiClients() {
   const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
-  // Remove isTokenSet state
-  // const [isTokenSet, setIsTokenSet] = useState(false);
+  // Add state to track if clients are ready with a token
+  const [clientsReady, setClientsReady] = useState(false);
 
   // Memoize the API clients so they aren't recreated on each render
   const apiClients = useMemo(() => createApiClients(), []);
@@ -51,34 +51,34 @@ export function useApiClients() {
     if (isAuthenticated && !authLoading) {
       (async () => {
         try {
-          const token = await getAccessToken();
+          const token = await getAccessToken(); // This now throws on error
           if (isMounted) {
-            Object.values(apiClients).forEach((c) =>
-              c.setSecurityData(token || null),
+            Object.values(apiClients).forEach(
+              (c) => c.setSecurityData(token || null), // Should always have token here if no error
             );
-            // Remove setIsTokenSet call
-            // setIsTokenSet(!!token);
+            setClientsReady(true); // <-- Set clients as ready AFTER token is set
           }
         } catch (e) {
-          console.error("Failed to set auth token", e);
+          // Error fetching token (already logged in getAccessToken)
           if (isMounted) {
             Object.values(apiClients).forEach((c) => c.setSecurityData(null));
-            // Remove setIsTokenSet call
-            // setIsTokenSet(false);
+            setClientsReady(false); // <-- Clients are not ready
           }
         }
       })();
     } else {
+      // If not authenticated or still loading, ensure clients are not ready and have no token
       Object.values(apiClients).forEach((c) => c.setSecurityData(null));
-      // Remove setIsTokenSet call
-      // setIsTokenSet(false);
+      setClientsReady(false); // <-- Clients are not ready
     }
 
     return () => {
       isMounted = false;
     };
+    // Add clientsReady to dependency array? No, causes infinite loop.
+    // The effect should run based on auth state changes.
   }, [isAuthenticated, authLoading, getAccessToken, apiClients]);
 
-  // Remove isTokenSet from return object
-  return { apiClients };
+  // Return clients and the readiness state
+  return { apiClients, clientsReady };
 }

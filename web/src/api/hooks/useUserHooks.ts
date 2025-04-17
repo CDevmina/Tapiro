@@ -5,14 +5,15 @@ import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
-  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.profile(),
     queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
-    // Remove isTokenSet from enabled check
-    enabled: isAuthenticated && !authLoading,
+    // Update enabled check
+    enabled: isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.user,
   });
 }
@@ -31,15 +32,16 @@ export function useUpdateUserProfile() {
 }
 
 export function useUserPreferences() {
-  const { apiClients } = useApiClients(); // Remove isTokenSet from destructuring
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.preferences(),
     queryFn: () =>
       apiClients.users.getUserOwnPreferences().then((res) => res.data),
-    // Remove isTokenSet from enabled check
-    enabled: isAuthenticated && !authLoading,
+    // Update enabled check
+    enabled: isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.preferences,
   });
 }
