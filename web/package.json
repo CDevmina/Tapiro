@@ -11,7 +11,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "postinstall": "flowbite-react patch",
-    "generate-api": "swagger-typescript-api generate -p ../api-service/api/openapi.yaml -o ./src/api/types -n apiClient.ts --axios --modular --extract-request-params --extract-request-body --responses"
+    "generate-api": "swagger-typescript-api generate -p ../api-service/api/openapi.yaml -o ./src/api/generated -n apiClient.ts --axios --modular --extract-request-params --extract-request-body --responses"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
