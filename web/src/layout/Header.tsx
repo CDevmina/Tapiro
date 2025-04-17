@@ -11,10 +11,10 @@ import {
   DropdownItem,
   DropdownDivider,
   DropdownHeader,
-  Spinner, // Import Spinner for loading state
 } from "flowbite-react";
 import { useAuth } from "../hooks/useAuth";
-import { useLocation } from "react-router"; // Import Link and useLocation
+import { useLocation } from "react-router";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export function Header() {
   const { isLoading, isAuthenticated, user, userRoles, login, logout } =
@@ -29,13 +29,11 @@ export function Header() {
     if (userRoles.includes("user")) {
       return "/dashboard/user";
     }
-    return "/"; // Fallback if no specific role dashboard
+    return "/";
   };
 
   const handleLogin = () => login();
   const handleLogout = () => logout();
-  // Registration is typically handled by Auth0's Universal Login page
-  // const handleRegister = () => login({ authorizationParams: { screen_hint: 'signup' } });
 
   return (
     <Navbar fluid rounded>
@@ -54,7 +52,11 @@ export function Header() {
       <div className="flex items-center gap-3 md:order-2">
         <DarkThemeToggle />
         {isLoading ? (
-          <Spinner size="sm" /> // Show spinner while loading
+          <LoadingSpinner
+            size="sm"
+            message=""
+            className="flex h-auto w-auto items-center p-0"
+          />
         ) : isAuthenticated ? (
           <Dropdown
             arrowIcon={false}
@@ -70,9 +72,6 @@ export function Header() {
                 {user?.email}
               </span>
             </DropdownHeader>
-            <DropdownItem href={getDashboardLink()}>Dashboard</DropdownItem>{" "}
-            {/* Use Link */}
-            {/* <DropdownItem>Settings</DropdownItem> */}
             <DropdownDivider />
             <DropdownItem onClick={handleLogout}>Sign out</DropdownItem>
           </Dropdown>
@@ -82,9 +81,6 @@ export function Header() {
             <Button onClick={handleLogin} size="sm">
               Login
             </Button>
-            {/* <Button onClick={handleRegister} size="sm" color="gray">
-              Register
-            </Button> */}
           </>
         )}
         <NavbarToggle />
@@ -114,9 +110,6 @@ export function Header() {
         <NavbarLink href="/api-docs" active={location.pathname === "/api-docs"}>
           API Docs
         </NavbarLink>
-        {/* Example links - adjust as needed */}
-        {/* <NavbarLink href="/dashboard/user" active={location.pathname === '/dashboard/user'}>For Users</NavbarLink> */}
-        {/* <NavbarLink href="/dashboard/store" active={location.pathname === '/dashboard/store'}>For Stores</NavbarLink> */}
       </NavbarCollapse>
     </Navbar>
   );

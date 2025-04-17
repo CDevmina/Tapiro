@@ -13,16 +13,26 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
     getAccessTokenSilently,
     loginWithRedirect,
     logout: auth0Logout,
+    getIdTokenClaims,
   } = useAuth0();
 
   const [userRoles, setUserRoles] = useState<string[]>([]);
 
+  // Replace your old useEffect with this:
   useEffect(() => {
-    // Extract roles from the custom claim in the user object
-    // Adjust the claim name if it's different in your Auth0 setup
-    const roles = auth0User?.["https://tapiro.com/roles"] || [];
-    setUserRoles(roles);
-  }, [auth0User]);
+    const loadRoles = async () => {
+      if (auth0IsAuthenticated) {
+        try {
+          const claims = await getIdTokenClaims();
+          const roles = claims?.["https://tapiro.com/roles"] || [];
+          setUserRoles(roles);
+        } catch (e) {
+          console.error("Error loading ID token claims", e);
+        }
+      }
+    };
+    loadRoles();
+  }, [auth0IsAuthenticated, getIdTokenClaims]);
 
   const getAccessToken = useCallback(async (): Promise<string | undefined> => {
     try {
