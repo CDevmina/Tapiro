@@ -323,6 +323,12 @@ export interface UserMetadataResponse {
   };
 }
 
+/**
+ * An array of role names assigned to the user.
+ * @example ["user","admin"]
+ */
+export type UserRolesResponse = string[];
+
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data

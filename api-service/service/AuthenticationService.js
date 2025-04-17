@@ -1,5 +1,5 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache} = require('../utils/redisUtil');
+const { setCache } = require('../utils/redisUtil'); // Added invalidateCache
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
 const { assignUserRole, linkAccounts, updateUserMetadata, getUserMetadata } = require('../utils/auth0Util');
@@ -301,5 +301,38 @@ exports.getUserMetadata = async function (req) {
   } catch (error) {
     console.error('Metadata retrieval failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get Current User's Roles
+ * Fetches the currently assigned roles for the authenticated user, typically from token claims.
+ */
+exports.getCurrentUserRoles = async function (req) {
+  try {
+    // Get user data (which should include custom claims like roles)
+    // Use req.user if available (populated by middleware) or fetch fresh data
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    if (!userData || !userData.sub) {
+      // If getUserData didn't throw but returned nothing useful, treat as unauthorized
+      console.warn('getCurrentUserRoles: No user data found for token.');
+      return respondWithCode(401, { message: 'Unauthorized: Invalid token or user data missing' });
+    }
+
+    // Extract roles from the custom claim populated by Auth0 Action/Rule
+    const roleNames = userData['https://tapiro.com/roles'] || [];
+
+    console.log(`Fetched roles for user ${userData.sub} from token/userinfo:`, roleNames);
+    return respondWithCode(200, roleNames); // Return array of role names
+
+  } catch (error) {
+    console.error('Get current user roles failed:', error);
+    // Handle potential errors from getUserData (like token validation failure)
+    if (error.message.includes('Token validation failed')) {
+       return respondWithCode(401, { code: 401, message: `Unauthorized: ${error.message}` });
+    }
+    // Generic internal server error for other unexpected issues
+    return respondWithCode(500, { code: 500, message: 'Internal server error fetching roles' });
   }
 };

@@ -590,6 +590,30 @@ paths:
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Authentication
 
+  /users/roles:
+    get:
+      tags:
+        - Authentication # Or User Profile, depending on your organization
+      summary: Get Current User Roles
+      description: Retrieves the currently assigned roles for the authenticated user directly from Auth0.
+      operationId: getCurrentUserRoles
+      security:
+        - oauth2: []
+      responses:
+        "200":
+          description: An array of role names assigned to the user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRolesResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Authentication
+
 components:
   schemas:
     AttributeDistribution:
@@ -1165,6 +1189,13 @@ components:
               type: boolean
               description: Whether registration process is complete
           description: User metadata from Auth0
+
+    UserRolesResponse:
+      type: array
+      description: An array of role names assigned to the user.
+      items:
+        type: string
+      example: ["user", "admin"]
 
   responses:
     BadRequestError:
