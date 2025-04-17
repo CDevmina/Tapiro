@@ -2,7 +2,7 @@ services:
   api-service:
     build:
       context: ./api-service
-      dockerfile: dockerfile.dev
+      dockerfile: dockerfile
       target: development
     container_name: tapiro-API
     volumes:
