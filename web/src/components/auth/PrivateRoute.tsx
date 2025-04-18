@@ -3,41 +3,49 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner";
 import ErrorDisplay from "../common/ErrorDisplay";
-import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
-import { RegistrationCompletionModal } from "./RegistrationCompletionModal";
 
 interface PrivateRouteProps {
   allowedRoles?: string[];
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
-  const { isAuthenticated, isLoading: authLoading, userRoles } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    userRoles,
+    tokenError,
+  } = useAuth();
   const location = useLocation();
-  const { isLoading: registrationLoading, shouldShowRegistration } =
-    useRegistrationStatus();
 
-  // Wait for authentication AND registration status to complete
-  if (authLoading || registrationLoading) {
-    return <LoadingSpinner message="Checking authentication and status..." />;
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <LoadingSpinner message="Checking authentication..." />
+      </div>
+    );
+  }
+
+  if (tokenError) {
+    return (
+      <ErrorDisplay
+        title="Authentication Error"
+        message={`Failed to verify authentication status: ${tokenError.message}. Please try logging out and back in.`}
+        error={tokenError}
+      />
+    );
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // If authenticated but registration is not complete, show the modal
-  if (shouldShowRegistration) {
-    // Render the modal directly, blocking access to the Outlet
-    return <RegistrationCompletionModal />;
-  }
-
-  // Only check roles after loading is complete, auth is confirmed, AND registration is complete
   if (allowedRoles && allowedRoles.length > 0) {
-    // Add additional check to ensure userRoles array is populated
-    if (userRoles.length === 0) {
-      // This might indicate roles haven't loaded from the token yet, though authLoading should cover this.
-      // Keep a spinner here as a fallback.
-      return <LoadingSpinner message="Loading user permissions..." />;
+    if (userRoles.length === 0 && !authLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <LoadingSpinner message="Loading user permissions..." />
+        </div>
+      );
     }
 
     const hasRequiredRole = allowedRoles.some((role) =>
@@ -57,7 +65,6 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
     }
   }
 
-  // Authenticated, registration complete, and authorized
   return <Outlet />;
 };
 
