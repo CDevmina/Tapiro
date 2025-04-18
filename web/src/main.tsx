@@ -14,6 +14,8 @@ import StoreDashboard from "./pages/StoreDashboard";
 import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
+import RegistrationPage from "./pages/RegistrationPage"; // <-- Import new page
+import CompleteRegistrationPage from "./pages/CompleteRegistrationPage"; // <-- Import new page
 
 const router = createBrowserRouter([
   {
@@ -24,6 +26,7 @@ const router = createBrowserRouter([
       </AuthProviderWrapper>
     ),
     children: [
+      // --- Public Routes ---
       {
         index: true,
         element: <HomePage />,
@@ -36,7 +39,22 @@ const router = createBrowserRouter([
         path: "api-docs",
         element: <ApiDocsPage />,
       },
-      // --- Protected User Routes ---
+      {
+        path: "register", // <-- New public registration route
+        element: <RegistrationPage />,
+      },
+      // --- Protected Routes ---
+      {
+        // Use PrivateRoute to ensure auth state is loaded before accessing completion page
+        // No specific role needed, just authenticated
+        element: <PrivateRoute />,
+        children: [
+          {
+            path: "complete-registration", // <-- New private completion route
+            element: <CompleteRegistrationPage />,
+          },
+        ],
+      },
       {
         element: <PrivateRoute allowedRoles={["user"]} />,
         children: [
@@ -46,7 +64,6 @@ const router = createBrowserRouter([
           },
         ],
       },
-      // --- Protected Store Routes ---
       {
         element: <PrivateRoute allowedRoles={["store"]} />,
         children: [

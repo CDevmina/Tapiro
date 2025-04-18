@@ -17,8 +17,7 @@ import { useLocation } from "react-router";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export function Header() {
-  const { isLoading, isAuthenticated, user, userRoles, login, logout } =
-    useAuth(); // Use the auth context
+  const { isLoading, isAuthenticated, user, userRoles, logout } = useAuth(); // Use the auth context
   const location = useLocation(); // Get current location for active links
 
   // Determine dashboard link based on role
@@ -32,7 +31,6 @@ export function Header() {
     return "/";
   };
 
-  const handleLogin = () => login();
   const handleLogout = () => logout();
 
   return (
@@ -77,10 +75,13 @@ export function Header() {
           </Dropdown>
         ) : (
           <>
-            {/* Use onClick for Auth0 actions */}
-            <Button onClick={handleLogin} size="sm">
-              Login
+            {/* --- Replace Login with Register Button --- */}
+            <Button href="/register" size="sm">
+              {" "}
+              {/* Link href /register */}
+              Register / Login
             </Button>
+            {/* --- End of change --- */}
           </>
         )}
         <NavbarToggle />

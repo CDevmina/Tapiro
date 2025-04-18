@@ -93,9 +93,27 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
 export const AuthProviderWrapper = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
+  // --- Update onRedirectCallback ---
   const onRedirectCallback = (appState?: AppState) => {
-    navigate(appState?.returnTo || window.location.pathname);
+    console.log("onRedirectCallback triggered. AppState:", appState); // Add logging
+
+    // Check if we are in the registration flow using the appState flag
+    if (appState?.isRegistering) {
+      console.log(
+        "Registration flow detected, navigating to /complete-registration",
+      );
+      // Redirect to the completion page, ignoring any other returnTo
+      navigate("/complete-registration");
+    } else {
+      console.log(
+        "Normal login flow detected, navigating to:",
+        appState?.returnTo || window.location.pathname,
+      );
+      // Default behavior: redirect to intended route or current path
+      navigate(appState?.returnTo || window.location.pathname);
+    }
   };
+  // --- End of update ---
 
   // Ensure environment variables are loaded
   const domain = import.meta.env.VITE_AUTH0_DOMAIN;
