@@ -2,7 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache} = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, linkAccounts, updateUserMetadata, getUserMetadata } = require('../utils/auth0Util');
+const { assignUserRole, linkAccounts } = require('../utils/auth0Util');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
@@ -127,12 +127,6 @@ exports.registerUser = async function (req, body) {
       EX: CACHE_TTL.USER_DATA,
     });
 
-    // Update user metadata
-    await updateUserMetadata(userData.sub, {
-      registrationType: 'user',
-      registrationComplete: true
-    });
-
     return respondWithCode(201, { ...user, userId: result.insertedId });
   } catch (error) {
     console.error('User registration failed:', error);
@@ -228,34 +222,9 @@ exports.registerStore = async function (req, body) {
       EX: CACHE_TTL.STORE_DATA,
     });
 
-    // Update store metadata
-    await updateUserMetadata(userData.sub, {
-      registrationType: 'store',
-      registrationComplete: true
-    });
-
     return respondWithCode(201, { ...store, storeId: result.insertedId });
   } catch (error) {
     console.error('Store registration failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
-  }
-};
-
-/**
- * Get user metadata
- * Retrieve Auth0 metadata for the authenticated user
- */
-exports.getUserMetadata = async function (req) {
-  try {
-    // Get user data from middleware or fetch it
-    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-    
-    // Get user metadata from Auth0 using Management API
-    const metadata = await getUserMetadata(userData.sub);
-
-    return respondWithCode(200, { metadata });
-  } catch (error) {
-    console.error('Metadata retrieval failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

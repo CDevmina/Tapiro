@@ -1,5 +1,6 @@
 const utils = require('../utils/writer.js');
 const Authentication = require('../service/AuthenticationService');
+const { handleServiceError } = require("../utils/errorUtil");
 
 module.exports.registerUser = function registerUser(req, res, next, body) {
   Authentication.registerUser(req, body)
@@ -21,12 +22,7 @@ module.exports.registerStore = function registerStore(req, res, next, body) {
     });
 };
 
-module.exports.getUserMetadata = function getUserMetadata(req, res, next) {
-  Authentication.getUserMetadata(req)
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
+module.exports = {
+  registerUser,
+  registerStore,
 };

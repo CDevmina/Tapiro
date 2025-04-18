@@ -15,7 +15,6 @@ import {
   User,
   UserCreate,
   UserData,
-  UserMetadataResponse,
   UserPreferences,
   UserPreferencesUpdate,
   UserUpdate,
@@ -242,26 +241,6 @@ export class Users<
       path: `/users/preferences/opt-out/${storeId}`,
       method: "POST",
       secure: true,
-      ...params,
-    });
-  /**
-   * @description Retrieve Auth0 metadata for the authenticated user
-   *
-   * @tags Authentication
-   * @name GetUserMetadata
-   * @summary Get User Metadata
-   * @request GET:/users/metadata/get
-   * @secure
-   * @response `200` `UserMetadataResponse` Metadata retrieved successfully
-   * @response `401` `Error`
-   * @response `500` `Error`
-   */
-  getUserMetadata = (params: RequestParams = {}) =>
-    this.request<UserMetadataResponse, Error>({
-      path: `/users/metadata/get`,
-      method: "GET",
-      secure: true,
-      format: "json",
       ...params,
     });
 }

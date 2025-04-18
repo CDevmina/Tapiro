@@ -304,25 +304,6 @@ export interface PingStatus {
   timestamp?: string;
 }
 
-export interface UserMetadataUpdate {
-  /** The type of registration (user or store) */
-  registrationType?: "user" | "store";
-  /** Whether registration process is complete */
-  registrationComplete?: boolean;
-}
-
-export interface UserMetadataResponse {
-  /** Whether metadata was updated successfully */
-  updated?: boolean;
-  /** User metadata from Auth0 */
-  metadata?: {
-    /** The type of registration */
-    registrationType?: "user" | "store";
-    /** Whether registration process is complete */
-    registrationComplete?: boolean;
-  };
-}
-
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data
