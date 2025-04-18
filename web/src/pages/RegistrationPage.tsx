@@ -35,10 +35,14 @@ export default function RegistrationPage() {
       );
       console.log("Registration data stored in sessionStorage");
 
-      // Initiate Auth0 login/signup, passing state to redirect to completion page
+      // Initiate Auth0 login/signup, passing state and screen_hint correctly
       login({
         appState: { isRegistering: true, returnTo: "/complete-registration" },
-        screen_hint: "signup", // Suggest the signup screen in Auth0
+        // --- Move screen_hint inside authorizationParams ---
+        authorizationParams: {
+          screen_hint: "signup", // Suggest the signup screen in Auth0
+        },
+        // --- End of change ---
       });
     } catch (error) {
       console.error("Failed to save registration data or redirect:", error);

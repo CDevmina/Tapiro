@@ -5,6 +5,7 @@ import { UserCreate, StoreCreate } from "../api/types/data-contracts";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorDisplay from "../components/common/ErrorDisplay";
 import { useAuth } from "../hooks/useAuth"; // Import useAuth
+import axios from "axios"; // <-- Import axios
 
 type RegistrationData = {
   type: "user" | "store";
@@ -89,15 +90,19 @@ export default function CompleteRegistrationPage() {
           console.log("Store registration successful.");
           navigate("/dashboard/store"); // Redirect to store dashboard on success
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        // <-- Type err as unknown
         // Catch specific error type if possible
         console.error("Registration API call failed:", err);
         // Try to get a meaningful error message
-        const message =
-          err?.response?.data?.message || // Check for API error structure
-          (err instanceof Error
-            ? err.message
-            : "An unexpected error occurred.");
+        let message = "An unexpected error occurred.";
+        // Use axios type guard to safely access response data
+        if (axios.isAxiosError(err) && err.response?.data?.message) {
+          message = err.response.data.message;
+        } else if (err instanceof Error) {
+          // Check if standard Error
+          message = err.message;
+        }
         setError(`Registration failed: ${message}`);
         setIsProcessing(false); // Stop processing indicator on error
       }

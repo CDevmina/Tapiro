@@ -1,5 +1,10 @@
 import { ReactNode, useState, useEffect, useCallback } from "react";
-import { Auth0Provider, useAuth0, AppState } from "@auth0/auth0-react";
+import {
+  Auth0Provider,
+  useAuth0,
+  AppState,
+  RedirectLoginOptions,
+} from "@auth0/auth0-react";
 import { useNavigate } from "react-router";
 import ErrorDisplay from "../components/common/ErrorDisplay";
 import { AuthContext } from "./AuthContextType";
@@ -62,7 +67,8 @@ const AuthProviderInternal = ({ children }: { children: ReactNode }) => {
   }, [getAccessTokenSilently]);
 
   const login = useCallback(
-    async (options = {}) => {
+    // Use RedirectLoginOptions here
+    async (options?: RedirectLoginOptions) => {
       await loginWithRedirect({
         ...options,
       });
