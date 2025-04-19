@@ -50,10 +50,14 @@ export const cacheKeys = {
     all: ["stores"],
     profile: () => [...cacheKeys.stores.all, "profile"],
     apiKeys: () => [...cacheKeys.stores.all, "apiKeys"],
-    apiKeyUsage: (keyId: string) => [
+    apiKeyUsage: (keyId: string, startDate?: string, endDate?: string) => [
+      // <-- Add optional dates
       ...cacheKeys.stores.apiKeys(),
       keyId,
       "usage",
+      // Add dates to key, using 'all' if undefined for consistency
+      startDate ?? "allStart",
+      endDate ?? "allEnd",
     ],
   },
   system: {

@@ -178,8 +178,10 @@ export default function UserDashboard() {
                       key={store.storeId}
                       className="border-b border-gray-200 py-1 dark:border-gray-700"
                     >
-                      <span className="font-medium">{store.storeName}</span>:{" "}
-                      {store.dataSubmissions ?? 0} submissions,{" "}
+                      <span className="font-medium">
+                        {store.storeName || "Unknown Store"}
+                      </span>
+                      : {store.dataSubmissions ?? 0} submissions,{" "}
                       {store.preferenceRequests ?? 0} requests
                     </ListItem>
                   ))}
@@ -304,7 +306,7 @@ export default function UserDashboard() {
                   className="flex items-center justify-between border-b border-gray-200 py-2 dark:border-gray-700"
                 >
                   <span className="text-gray-800 dark:text-gray-300">
-                    {store.name}
+                    {store.name || "Unknown Store"}
                   </span>
                   <Button
                     size="xs"

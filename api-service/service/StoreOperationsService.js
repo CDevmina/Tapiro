@@ -9,7 +9,7 @@ const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
  * Get user preferences for targeted advertising
  * Used by stores via API key authentication
  */
-exports.getUserPreferences = async function (req, userId) {
+exports.getUserPreferences = async function (req, userId) { // userId here is the email
   try {
     // Validate storeId is set by the API key middleware
     if (!req.storeId) {
@@ -20,13 +20,6 @@ exports.getUserPreferences = async function (req, userId) {
     }
 
     const db = getDB();
-
-    // Try cache first using preference-specific cache key with constants
-    const cacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userId}:${req.storeId}`; // Note: userId here is likely email, should use user._id from DB
-    const cachedPrefs = await getCache(cacheKey);
-    if (cachedPrefs) {
-      return respondWithCode(200, JSON.parse(cachedPrefs));
-    }
 
     // Find user in database by email only
     const user = await db.collection('users').findOne({ email: userId }); // userId parameter is email
@@ -42,13 +35,32 @@ exports.getUserPreferences = async function (req, userId) {
     const userMongoId = user._id;
     const userMongoIdString = userMongoId.toString();
 
-    // Update cache key to use MongoDB ID
+    // Update cache key to use MongoDB ID - THIS IS NOW THE FIRST CACHE CHECK
     const correctCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userMongoIdString}:${req.storeId}`;
     const correctCachedPrefs = await getCache(correctCacheKey);
      if (correctCachedPrefs) {
+       // --- ADDED: Log successful access from cache (fire-and-forget) ---
+       try {
+           let storeObjectId;
+           try { storeObjectId = new ObjectId(req.storeId); } catch { /* ignore conversion error */ }
+
+           db.collection('apiUsage').insertOne({
+               storeId: storeObjectId || req.storeId,
+               apiKeyId: req.apiKeyId,
+               apiKeyPrefix: req.apiKeyPrefix,
+               endpoint: `/users/${userId}/preferences`, // Log email identifier
+               method: 'GET',
+               accessedUserId: userMongoId, // Log ObjectId
+               timestamp: new Date(),
+               userAgent: req.headers['user-agent'] || 'unknown',
+               source: 'cache' // Indicate data came from cache
+           }).catch(err => console.error("Failed to log preference access (cache hit):", err));
+       } catch (logError) {
+           console.error("Error preparing preference access log (cache hit):", logError);
+       }
+       // --- END ADDED ---
        return respondWithCode(200, JSON.parse(correctCachedPrefs));
      }
-
 
     // Check for consent
     if (!user.privacySettings?.dataSharingConsent) {
@@ -91,7 +103,7 @@ exports.getUserPreferences = async function (req, userId) {
       updatedAt: user.updatedAt || new Date(),
     };
 
-    // --- ADDED: Log successful access (fire-and-forget) ---
+    // --- ADDED: Log successful access (DB hit) ---
     try {
         let storeObjectId;
         try { storeObjectId = new ObjectId(req.storeId); } catch { /* ignore conversion error */ }
@@ -104,13 +116,13 @@ exports.getUserPreferences = async function (req, userId) {
             method: 'GET',
             accessedUserId: userMongoId, // Log the MongoDB ObjectId of the user whose data was accessed
             timestamp: new Date(),
-            userAgent: req.headers['user-agent'] || 'unknown'
-        }).catch(err => console.error("Failed to log preference access:", err));
+            userAgent: req.headers['user-agent'] || 'unknown',
+            source: 'database' // Indicate data came from database
+        }).catch(err => console.error("Failed to log preference access (DB hit):", err));
     } catch (logError) {
-        console.error("Error preparing preference access log:", logError);
+        console.error("Error preparing preference access log (DB hit):", logError);
     }
     // --- END ADDED ---
-
 
     // Cache the preferences with standardized TTL using correct key
     await setCache(correctCacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });

@@ -16,7 +16,7 @@ import {
   ApiKeyList,
   ApiKeyUsage,
   Error,
-  GetApiKeyUsagePayload,
+  GetApiKeyUsageParams,
   Store,
   StoreCreate,
   StoreUpdate,
@@ -179,29 +179,28 @@ export class Stores<
       ...params,
     });
   /**
-   * @description Returns usage data for a specific API key
+   * @description Returns usage data for a specific API key within a date range.
    *
    * @tags Store Management
    * @name GetApiKeyUsage
    * @summary Get API key usage statistics
-   * @request POST:/stores/api-keys/{keyId}/usage
+   * @request GET:/stores/api-keys/{keyId}/usage
    * @secure
-   * @response `200` `ApiKeyUsage` API key usage statistics
+   * @response `200` `ApiKeyUsage` API key usage statistics retrieved successfully.
    * @response `401` `Error`
+   * @response `403` `Error`
    * @response `404` `Error`
    * @response `500` `Error`
    */
   getApiKeyUsage = (
-    keyId: string,
-    data?: GetApiKeyUsagePayload,
+    { keyId, ...query }: GetApiKeyUsageParams,
     params: RequestParams = {},
   ) =>
     this.request<ApiKeyUsage, Error>({
       path: `/stores/api-keys/${keyId}/usage`,
-      method: "POST",
-      body: data,
+      method: "GET",
+      query: query,
       secure: true,
-      type: ContentType.Json,
       format: "json",
       ...params,
     });

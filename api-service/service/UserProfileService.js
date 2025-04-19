@@ -75,22 +75,7 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // REMOVED: The taxonomy validation code
-    // If preferences are being updated, send to FastAPI for processing
-    if (body.preferences) {
-      try {
-        // Call the AI service to process preferences
-        await AIService.updateUserPreferences(
-          userData.sub,
-          userData.email,
-          body.preferences
-        );
-      } catch (error) {
-        console.error('Failed to process preferences through AI service:', error);
-        // Continue with the update, we'll use the raw preferences without validation
-      }
-    }
 
-    // Update user
     const updateData = {
       updatedAt: new Date(),
     };
@@ -98,7 +83,6 @@ exports.updateUserProfile = async function (req, body) {
     // Only add fields that are provided in the request
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.preferences !== undefined) updateData.preferences = body.preferences; // Raw preferences
     if (body.privacySettings !== undefined) updateData.privacySettings = body.privacySettings;
     if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
 
@@ -107,7 +91,7 @@ exports.updateUserProfile = async function (req, body) {
       .findOneAndUpdate(
         { auth0Id: userData.sub },
         { $set: updateData },
-        { returnDocument: 'after' },
+        { returnDocument: 'after', projection: { preferences: 0 } } // Ensure preferences are not returned
       );
 
     if (!result) {
@@ -120,17 +104,7 @@ exports.updateUserProfile = async function (req, body) {
     // Invalidate user data cache
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
 
-    // Also invalidate preferences cache
-    await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-
-    // If preferences change might affect store data, invalidate those too:
-    if (result.privacySettings?.optInStores) {
-      for (const storeId of result.privacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${result._id}:${storeId}`);
-      }
-    }
-
-    // Update cache with standardized key and TTL
+    // Update cache with the result (which excludes preferences due to projection)
     const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
     await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
     return respondWithCode(200, result);

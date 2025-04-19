@@ -218,18 +218,31 @@ exports.getApiKeyUsage = async function (req, keyId) {
       });
     }
 
-    // Get date parameters from request body instead of query parameters
-    const { startDate, endDate } = req.body || {};
-    
+    // Get date parameters from request query instead of body
+    const { startDate, endDate } = req.query || {};
+
     // Prepare date filter
     const dateFilter = {};
     if (startDate) {
-      dateFilter.$gte = new Date(startDate);
+      // Basic validation, more robust parsing might be needed
+      const start = new Date(startDate);
+      if (!isNaN(start)) {
+          dateFilter.$gte = start;
+      } else {
+          console.warn(`Invalid startDate format received: ${startDate}`);
+      }
     }
     if (endDate) {
-      dateFilter.$lte = new Date(endDate);
+      const end = new Date(endDate);
+       if (!isNaN(end)) {
+          // Optional: Adjust end date to include the whole day if only date is provided
+          // end.setHours(23, 59, 59, 999);
+          dateFilter.$lte = end;
+       } else {
+           console.warn(`Invalid endDate format received: ${endDate}`);
+       }
     }
-    
+
     // Build the query
     const query = { 
       apiKeyId: keyId,

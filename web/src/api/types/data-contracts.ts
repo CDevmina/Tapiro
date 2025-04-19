@@ -370,17 +370,19 @@ export interface ConsentingStore {
   optInDate?: string;
 }
 
-export interface GetApiKeyUsagePayload {
+export interface GetApiKeyUsageParams {
   /**
-   * Optional start date for filtering usage data
-   * @format date
+   * Start date for usage data (ISO 8601 format).
+   * @format date-time
    */
   startDate?: string;
   /**
-   * Optional end date for filtering usage data
-   * @format date
+   * End date for usage data (ISO 8601 format).
+   * @format date-time
    */
   endDate?: string;
+  /** The ID of the API key. */
+  keyId: string;
 }
 
 export interface GetRecentDataParams {

@@ -71,16 +71,29 @@ export function useRevokeApiKey() {
   });
 }
 
-export function useApiKeyUsage(keyId: string) {
-  // Get clientsReady state
+// Define an interface for the query parameters
+interface ApiKeyUsageParams {
+  startDate?: string; // ISO string format
+  endDate?: string; // ISO string format
+}
+
+export function useApiKeyUsage(keyId: string, params?: ApiKeyUsageParams) {
+  // <-- Add params argument
   const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   return useQuery({
-    queryKey: cacheKeys.stores.apiKeyUsage(keyId),
+    // Include params in the query key so it refetches when dates change
+    queryKey: cacheKeys.stores.apiKeyUsage(
+      keyId,
+      params?.startDate,
+      params?.endDate,
+    ),
     queryFn: () =>
-      apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
-    // Update enabled check, keeping !!keyId
+      // Combine keyId and date params into a single object matching GetApiKeyUsageParams
+      apiClients.stores
+        .getApiKeyUsage({ keyId, ...(params || {}) }) // <-- FIX: Pass a single object
+        .then((res) => res.data),
     enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.apiKeys,
   });

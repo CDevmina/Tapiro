@@ -19,8 +19,6 @@ tags:
     description: Operations for retrieving user preferences and data
   - name: Health
     description: Health and uptime monitoring
-  - name: Admin
-    description: Administrative operations for managing taxonomy and keyword mappings
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -465,10 +463,10 @@ paths:
       x-swagger-router-controller: StoreManagement
 
   /stores/api-keys/{keyId}/usage:
-    post:
+    get:
       tags: [Store Management]
       summary: Get API key usage statistics
-      description: Returns usage data for a specific API key
+      description: Returns usage data for a specific API key within a date range.
       operationId: getApiKeyUsage
       parameters:
         - name: keyId
@@ -476,30 +474,32 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startDate:
-                  type: string
-                  format: date
-                  description: Optional start date for filtering usage data
-                endDate:
-                  type: string
-                  format: date
-                  description: Optional end date for filtering usage data
-        required: false
+          description: The ID of the API key.
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start date for usage data (ISO 8601 format).
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End date for usage data (ISO 8601 format).
       responses:
         "200":
-          description: API key usage statistics
+          description: API key usage statistics retrieved successfully.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiKeyUsage"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
         "404":
           $ref: "#/components/responses/NotFoundError"
         "500":
@@ -1181,17 +1181,6 @@ components:
         timestamp:
           type: string
           format: date-time
-
-    UserMetadataUpdate:
-      type: object
-      properties:
-        registrationType:
-          type: string
-          enum: [user, store]
-          description: The type of registration (user or store)
-        registrationComplete:
-          type: boolean
-          description: Whether registration process is complete
 
     UserMetadataResponse:
       type: object

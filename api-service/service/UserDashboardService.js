@@ -2,44 +2,69 @@ const { getDB } = require('../utils/mongoUtil'); // #attachment:api-service/util
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { ObjectId } = require('mongodb');
+const { setCache, getCache } = require('../utils/redisUtil'); // <-- Add redis utils
+const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig'); // <-- Add cache config
 
 // --- Helper Functions ---
 
-// Load Taxonomy from MongoDB (Cached)
-let taxonomy = null;
-async function getTaxonomy() { // <-- Made async
-  if (!taxonomy) {
-    try {
-      const db = getDB();
-      // Assuming the taxonomy is stored in a single document in the 'taxonomy' collection.
-      // Adjust the query if needed (e.g., findOne({ current: true }))
-      console.log("Attempting to load taxonomy from database...");
-      // You might want to specifically query for the document, e.g., findOne({ current: true })
-      const taxonomyDoc = await db.collection('taxonomy').findOne(); // Or findOne({ current: true })
-
-      if (!taxonomyDoc || !taxonomyDoc.data) { // Check if doc and data field exist
-        console.error('Taxonomy document or its "data" field not found in the database collection "taxonomy".');
-        throw new Error('Taxonomy data not found or invalid structure in database.');
-      }
-
-      // Assign the nested 'data' field which contains 'categories' and 'version'
-      taxonomy = taxonomyDoc.data; // <-- FIX: Access the nested data field
-
-      // Basic validation (should now work)
-      if (!taxonomy || !Array.isArray(taxonomy.categories)) {
-         console.error('Invalid taxonomy structure loaded from database (data field):', taxonomy);
-         throw new Error('Invalid taxonomy structure in database (data field).');
-      }
-
-      console.log(`Taxonomy version ${taxonomy.version || 'N/A'} loaded successfully from database.`);
-    } catch (e) {
-      console.error('Failed to load taxonomy from database:', e);
-      // Return a default structure or re-throw to prevent downstream issues
-      // Returning empty avoids breaking everything if DB is temp unavailable, but logs clearly.
-       return { categories: [] }; // Return default structure on error
-    }
+// Load Taxonomy from MongoDB (Cached in Redis and Memory)
+let taxonomy = null; // Memory cache (fallback/quick access)
+async function getTaxonomy() {
+  // 1. Check memory cache first
+  if (taxonomy) {
+    return taxonomy;
   }
-  return taxonomy;
+
+  // 2. Check Redis cache
+  const cacheKey = CACHE_KEYS.TAXONOMY; // Define a key for taxonomy
+  try {
+      const cachedTaxonomy = await getCache(cacheKey);
+      if (cachedTaxonomy) {
+          console.log("Taxonomy loaded successfully from Redis cache.");
+          taxonomy = JSON.parse(cachedTaxonomy); // Update memory cache
+          return taxonomy;
+      }
+  } catch (redisError) {
+      console.error("Redis cache lookup failed for taxonomy:", redisError);
+      // Proceed to DB lookup
+  }
+
+
+  // 3. Fetch from Database if not in caches
+  try {
+    const db = getDB();
+    console.log("Attempting to load taxonomy from database...");
+    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true }); // Example: Query for the active one
+
+    if (!taxonomyDoc || !taxonomyDoc.data) {
+      console.error('Taxonomy document or its "data" field not found in the database.');
+      throw new Error('Taxonomy data not found or invalid structure in database.');
+    }
+
+    const dbTaxonomy = taxonomyDoc.data; // Access the nested data field
+
+    if (!dbTaxonomy || !Array.isArray(dbTaxonomy.categories)) {
+       console.error('Invalid taxonomy structure loaded from database (data field):', dbTaxonomy);
+       throw new Error('Invalid taxonomy structure in database (data field).');
+    }
+
+    console.log(`Taxonomy version ${dbTaxonomy.version || 'N/A'} loaded successfully from database.`);
+
+    // Update memory cache
+    taxonomy = dbTaxonomy;
+
+    // Update Redis cache (fire-and-forget, don't block response)
+    setCache(cacheKey, JSON.stringify(taxonomy), { EX: CACHE_TTL.TAXONOMY }) // Define TAXONOMY TTL in cacheConfig
+        .then(() => console.log("Taxonomy updated in Redis cache."))
+        .catch(err => console.error("Failed to update taxonomy in Redis cache:", err));
+
+    return taxonomy;
+
+  } catch (e) {
+    console.error('Failed to load taxonomy from database:', e);
+    // Return empty structure or re-throw, depending on desired behavior on failure
+     return { categories: [] };
+  }
 }
 
 // Find top-level category (simple parent lookup)
