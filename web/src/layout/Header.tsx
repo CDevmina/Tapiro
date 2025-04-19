@@ -13,7 +13,7 @@ import {
   DropdownHeader,
 } from "flowbite-react";
 import { useAuth } from "../hooks/useAuth";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export function Header() {
@@ -37,7 +37,7 @@ export function Header() {
 
   return (
     <Navbar fluid rounded>
-      <NavbarBrand href="/">
+      <NavbarBrand as={Link} to="/">
         {" "}
         {/* Use Link for internal navigation */}
         <img
@@ -87,16 +87,21 @@ export function Header() {
       </div>
       <NavbarCollapse>
         {/* Use ` and check `location.pathname` for active state */}
-        <NavbarLink href="/" active={location.pathname === "/"}>
+        <NavbarLink as={Link} to="/" active={location.pathname === "/"}>
           Home
         </NavbarLink>
-        <NavbarLink href="/about" active={location.pathname === "/about"}>
+        <NavbarLink
+          as={Link}
+          to="/about"
+          active={location.pathname === "/about"}
+        >
           About
         </NavbarLink>
         {/* Conditionally show dashboard links or generic links */}
         {isAuthenticated ? (
           <NavbarLink
-            href={getDashboardLink()}
+            as={Link}
+            to={getDashboardLink()}
             active={location.pathname.startsWith("/dashboard")}
           >
             Dashboard
@@ -104,10 +109,14 @@ export function Header() {
         ) : (
           <>
             {/* You might want different links for non-logged-in users */}
-            {/* <NavbarLink href="/features">Features</NavbarLink> */}
+            {/* <NavbarLink as={Link} to="/features">Features</NavbarLink> */}
           </>
         )}
-        <NavbarLink href="/api-docs" active={location.pathname === "/api-docs"}>
+        <NavbarLink
+          as={Link}
+          to="/api-docs"
+          active={location.pathname === "/api-docs"}
+        >
           API Docs
         </NavbarLink>
       </NavbarCollapse>
