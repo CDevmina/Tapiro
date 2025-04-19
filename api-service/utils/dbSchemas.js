@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.1';
+const SCHEMA_VERSION = '2.0.3';
 
 const userSchema = {
   validator: {

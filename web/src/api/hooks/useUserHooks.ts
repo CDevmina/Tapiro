@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
-import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
+import {
+  UserPreferencesUpdate,
+  UserUpdate,
+  User,
+} from "../types/data-contracts"; // Import User type
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
@@ -67,31 +71,31 @@ export function useOptInToStore() {
     mutationFn: (storeId: string) =>
       apiClients.users.optInToStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
-      const previousData = queryClient.getQueryData(
-        cacheKeys.users.preferences(),
-      );
+      const profileQueryKey = cacheKeys.users.profile(); // Use profile key
+      await queryClient.cancelQueries({ queryKey: profileQueryKey });
+      const previousData = queryClient.getQueryData<User>(profileQueryKey); // Expect User type
 
-      // Apply optimistic update from cache.ts
       optimisticUpdates.optInStore(storeId);
 
       return { previousData };
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(
-          cacheKeys.users.preferences(),
+          cacheKeys.users.profile(), // Rollback profile cache
           context.previousData,
         );
       }
     },
     onSettled: () => {
+      // Invalidate both profile and preferences as backend updates both
+      queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
       queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
+      });
+      // Also invalidate consenting stores list as it depends on profile data
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.dashboard.consentingStores(),
       });
     },
   });
@@ -105,31 +109,31 @@ export function useOptOutFromStore() {
     mutationFn: (storeId: string) =>
       apiClients.users.optOutFromStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
-      const previousData = queryClient.getQueryData(
-        cacheKeys.users.preferences(),
-      );
+      const profileQueryKey = cacheKeys.users.profile(); // Use profile key
+      await queryClient.cancelQueries({ queryKey: profileQueryKey });
+      const previousData = queryClient.getQueryData<User>(profileQueryKey); // Expect User type
 
-      // Apply optimistic update from cache.ts
       optimisticUpdates.optOutStore(storeId);
 
       return { previousData };
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(
-          cacheKeys.users.preferences(),
+          cacheKeys.users.profile(), // Rollback profile cache
           context.previousData,
         );
       }
     },
     onSettled: () => {
+      // Invalidate both profile and preferences as backend updates both
+      queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
       queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
+      });
+      // Also invalidate consenting stores list
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.dashboard.consentingStores(),
       });
     },
   });

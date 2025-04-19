@@ -27,8 +27,6 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
-  /** User interest preferences with taxonomy categorization */
-  preferences?: PreferenceItem[];
   privacySettings?: {
     /** @default false */
     dataSharingConsent?: boolean;
@@ -176,16 +174,6 @@ export interface SearchEntry {
 export interface UserPreferences {
   userId?: string;
   preferences?: PreferenceItem[];
-  privacySettings?: {
-    /** @default false */
-    dataSharingConsent?: boolean;
-    /** @default false */
-    anonymizeData?: boolean;
-    /** List of store IDs user has opted into */
-    optInStores?: string[];
-    /** List of store IDs user has opted out from */
-    optOutStores?: string[];
-  };
   /** @format date-time */
   updatedAt?: string;
 }
@@ -323,6 +311,65 @@ export interface UserMetadataResponse {
   };
 }
 
+export interface UsageSummary {
+  /** Total number of times data was submitted by stores about the user. */
+  totalDataSubmissions?: number;
+  /** Total number of times stores requested the user's preferences. */
+  totalPreferenceRequests?: number;
+  storeBreakdown?: StoreUsage[];
+}
+
+export interface StoreUsage {
+  storeId?: string;
+  storeName?: string;
+  /** Number of data submissions from this store. */
+  dataSubmissions?: number;
+  /** Number of preference requests from this store. */
+  preferenceRequests?: number;
+}
+
+export interface SpendingAnalytics {
+  /**
+   * Total amount spent across all categories.
+   * @format float
+   */
+  totalSpent?: number;
+  categoryBreakdown?: CategorySpending[];
+}
+
+export interface CategorySpending {
+  /** Top-level category ID from taxonomy. */
+  categoryId?: string;
+  /** Top-level category name from taxonomy. */
+  categoryName?: string;
+  /**
+   * Total amount spent in this category.
+   * @format float
+   */
+  totalAmount?: number;
+  /** Number of items purchased in this category. */
+  itemCount?: number;
+}
+
+export interface RecentDataEntry {
+  /** The ID of the userData document. */
+  entryId?: string;
+  storeId?: string;
+  storeName?: string;
+  dataType?: "purchase" | "search";
+  /** @format date-time */
+  timestamp?: string;
+  /** A brief summary, e.g., "Purchase of 3 items" or "Search for 'laptop'". */
+  summary?: string;
+}
+
+export interface ConsentingStore {
+  storeId?: string;
+  name?: string;
+  /** @format date-time */
+  optInDate?: string;
+}
+
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data
@@ -334,4 +381,14 @@ export interface GetApiKeyUsagePayload {
    * @format date
    */
   endDate?: string;
+}
+
+export interface GetRecentDataParams {
+  /**
+   * Maximum number of recent entries to return.
+   * @min 1
+   * @max 50
+   * @default 10
+   */
+  limit?: number;
 }

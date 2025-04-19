@@ -561,6 +561,104 @@ paths:
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Authentication
 
+  /users/dashboard/usage-summary:
+    get:
+      tags: [User Management]
+      summary: Get User Data Usage Summary
+      description: Provides a summary of how many times the user's data has been collected or accessed by different stores.
+      operationId: getUsageSummary
+      security:
+        - oauth2: [user:read]
+      responses:
+        "200":
+          description: Usage summary retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageSummary"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: UserDashboard
+
+  /users/dashboard/spending-analytics:
+    get:
+      tags: [User Management]
+      summary: Get User Spending Analytics
+      description: Provides aggregated spending data grouped by top-level product categories.
+      operationId: getSpendingAnalytics
+      security:
+        - oauth2: [user:read]
+      responses:
+        "200":
+          description: Spending analytics retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingAnalytics"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: UserDashboard
+
+  /users/dashboard/recent-data:
+    get:
+      tags: [User Management]
+      summary: Get Recent User Data Entries
+      description: Retrieves a list of the most recent data collection events (purchases, searches) for the user.
+      operationId: getRecentData
+      security:
+        - oauth2: [user:read]
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of recent entries to return.
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        "200":
+          description: Recent data entries retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecentDataEntry"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: UserDashboard
+
+  /users/dashboard/consenting-stores:
+    get:
+      tags: [User Management]
+      summary: Get Consenting Stores
+      description: Retrieves a list of stores the user has currently opted into sharing data with.
+      operationId: getConsentingStores
+      security:
+        - oauth2: [user:read]
+      responses:
+        "200":
+          description: List of consenting stores retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConsentingStore"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: UserDashboard
+
 components:
   schemas:
     AttributeDistribution:
@@ -1112,6 +1210,94 @@ components:
               type: boolean
               description: Whether registration process is complete
           description: User metadata from Auth0
+
+    UsageSummary:
+      type: object
+      properties:
+        totalDataSubmissions:
+          type: integer
+          description: Total number of times data was submitted by stores about the user.
+        totalPreferenceRequests:
+          type: integer
+          description: Total number of times stores requested the user's preferences.
+        storeBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoreUsage"
+
+    StoreUsage:
+      type: object
+      properties:
+        storeId:
+          type: string
+        storeName:
+          type: string
+        dataSubmissions:
+          type: integer
+          description: Number of data submissions from this store.
+        preferenceRequests:
+          type: integer
+          description: Number of preference requests from this store.
+
+    SpendingAnalytics:
+      type: object
+      properties:
+        totalSpent:
+          type: number
+          format: float
+          description: Total amount spent across all categories.
+        categoryBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategorySpending"
+
+    CategorySpending:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          description: Top-level category ID from taxonomy.
+        categoryName:
+          type: string
+          description: Top-level category name from taxonomy.
+        totalAmount:
+          type: number
+          format: float
+          description: Total amount spent in this category.
+        itemCount:
+          type: integer
+          description: Number of items purchased in this category.
+
+    RecentDataEntry:
+      type: object
+      properties:
+        entryId:
+          type: string
+          description: The ID of the userData document.
+        storeId:
+          type: string
+        storeName:
+          type: string
+        dataType:
+          type: string
+          enum: [purchase, search]
+        timestamp:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          description: A brief summary, e.g., "Purchase of 3 items" or "Search for 'laptop'".
+
+    ConsentingStore:
+      type: object
+      properties:
+        storeId:
+          type: string
+        name:
+          type: string
+        optInDate:
+          type: string
+          format: date-time
 
   responses:
     BadRequestError:

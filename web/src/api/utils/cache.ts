@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
-import { UserPreferences } from "../types/data-contracts";
+// Import User type instead of UserPreferences
+import { User } from "../types/data-contracts"; // #attachment:web/src/api/types/data-contracts.ts
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {
@@ -26,6 +27,24 @@ export const cacheKeys = {
     all: ["users"],
     profile: () => [...cacheKeys.users.all, "profile"],
     preferences: () => [...cacheKeys.users.all, "preferences"],
+    // Add dashboard keys under users
+    dashboard: {
+      all: () => [...cacheKeys.users.all, "dashboard"],
+      usageSummary: () => [...cacheKeys.users.dashboard.all(), "usage-summary"],
+      spendingAnalytics: () => [
+        ...cacheKeys.users.dashboard.all(),
+        "spending-analytics",
+      ],
+      recentData: (limit?: number) => [
+        ...cacheKeys.users.dashboard.all(),
+        "recent-data",
+        limit ?? "default", // Add limit to key if provided
+      ],
+      consentingStores: () => [
+        ...cacheKeys.users.dashboard.all(),
+        "consenting-stores",
+      ],
+    },
   },
   stores: {
     all: ["stores"],
@@ -69,18 +88,24 @@ export const cacheSettings = {
     staleTime: CACHE_TIMES.SHORT,
     gcTime: CACHE_TIMES.SHORT * 2,
   },
+  dashboard: {
+    // Add settings for dashboard data
+    staleTime: CACHE_TIMES.MEDIUM,
+    gcTime: CACHE_TIMES.MEDIUM * 2,
+  },
 };
 
 // Helper for optimistic updates
 export const optimisticUpdates = {
-  // Add a store to opt-in list and remove from opt-out list
+  // Update optInStore to target the user profile cache
   optInStore: (storeId: string) => {
     queryClient.setQueryData(
-      cacheKeys.users.preferences(),
-      (oldData: UserPreferences | undefined) => {
-        // Use standard UserPreferences type
+      cacheKeys.users.profile(), // Target profile cache
+      (oldData: User | undefined) => {
+        // Expect User type
         if (!oldData) return oldData;
 
+        // Access privacySettings directly from User object
         const privacySettings = oldData.privacySettings || {};
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
@@ -106,25 +131,24 @@ export const optimisticUpdates = {
     );
   },
 
-  // New optOutStore function with mirrored logic
+  // Update optOutStore to target the user profile cache
   optOutStore: (storeId: string) => {
     queryClient.setQueryData(
-      cacheKeys.users.preferences(),
-      (oldData: UserPreferences | undefined) => {
-        // Use standard UserPreferences type
+      cacheKeys.users.profile(), // Target profile cache
+      (oldData: User | undefined) => {
+        // Expect User type
         if (!oldData) return oldData;
 
+        // Access privacySettings directly from User object
         const privacySettings = oldData.privacySettings || {};
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
 
-        // Remove from opt-in list if present
         const optInIndex = optInStores.indexOf(storeId);
         if (optInIndex >= 0) {
           optInStores.splice(optInIndex, 1);
         }
 
-        // Add to opt-out list if not already there
         if (!optOutStores.includes(storeId)) {
           optOutStores.push(storeId);
         }

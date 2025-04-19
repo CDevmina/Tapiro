@@ -1,119 +1,53 @@
-const { getDB } = require('../utils/mongoUtil');
-const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
-const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const crypto = require('crypto');
-const { ObjectId } = require('mongodb'); // Make sure you have this import
+const { getDB } = require('../utils/mongoUtil');
 
-/**
- * Track API key usage
- */
-async function trackApiUsage(req, apiKey, storeId, keyId) {
-  try {
-    // Don't block the response - use a non-awaited operation
-    const db = getDB();
-    const usageData = {
-      storeId,
-      apiKeyId: keyId,
-      apiKeyPrefix: apiKey.substring(0, 8),
-      endpoint: req.originalUrl || req.url,
-      method: req.method,
-      timestamp: new Date(),
-      userAgent: req.headers['user-agent'] || 'unknown'
-    };
-    
-    // Fire and forget - don't await to avoid slowing down the response
-    db.collection('apiUsage').insertOne(usageData)
-      .catch(error => console.error('Failed to track API usage:', error));
-  } catch (error) {
-    // Log but don't throw errors - we don't want tracking failures to break the API
-    console.error('Error tracking API usage:', error);
+async function apiKeyAuth(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey) {
+    return res.status(401).json({ code: 401, message: 'API key required' });
   }
-}
 
-/**
- * Middleware to validate API keys for store endpoints
- * Returns true if valid, throws error if invalid
- */
-const validateApiKey = async (req, scopes, schema) => {
   try {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey) {
-      throw new Error('API key required');
-    }
-
-    // Try to get store ID from cache first
-    const cacheKey = `${CACHE_KEYS.API_KEY}${apiKey}`;
-    const cachedStoreId = await getCache(cacheKey);
-    const prefix = apiKey.substring(0, 8);
-    
-    if (cachedStoreId) {
-      // Even if we have a cached entry, verify that the key is still active
-      const db = getDB();
-      const storeWithKey = await db.collection('stores').findOne(
-        { 
-          _id: new ObjectId(cachedStoreId),
-          'apiKeys.prefix': prefix,
-          'apiKeys.status': 'active'
-        },
-        { projection: { 'apiKeys.$': 1 } }
-      );
-      
-      // If key is no longer active, remove from cache and reject
-      if (!storeWithKey) {
-        console.log(`API key ${prefix} was in cache but is no longer active`);
-        await invalidateCache(cacheKey);
-        throw new Error('API key revoked or invalid');
-      }
-      
-      // Key is still valid
-      req.storeId = cachedStoreId;
-      
-      // Track API usage - get keyId from found key
-      const keyId = storeWithKey.apiKeys[0].keyId;
-      trackApiUsage(req, apiKey, cachedStoreId, keyId);
-      
-      return true;
-    }
-
-    // If not in cache, look up in database
     const db = getDB();
+    const prefix = apiKey.substring(0, 8);
+    const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-    // Find store with matching API key prefix
+    // Find store by API key prefix and hashed key
     const store = await db.collection('stores').findOne({
       'apiKeys.prefix': prefix,
-      'apiKeys.status': 'active',
+      'apiKeys.hashedKey': hashedKey,
+      'apiKeys.status': 'active', // Ensure key is active
     });
 
     if (!store) {
-      throw new Error('Invalid API key');
+      // Log the prefix for debugging, but don't expose hash or full key
+      console.warn(`API key auth failed: No active key found for prefix ${prefix}`);
+      return res.status(401).json({ code: 401, message: 'Invalid or inactive API key' });
     }
 
-    // Find the specific API key
-    const foundKey = store.apiKeys.find((key) => key.prefix === prefix && key.status === 'active');
+    // Find the specific key details
+    const activeKey = store.apiKeys.find(k => k.prefix === prefix && k.hashedKey === hashedKey && k.status === 'active');
 
-    if (!foundKey) {
-      throw new Error('Invalid API key');
+    if (!activeKey) {
+        // This case should theoretically not happen if the store was found, but good for safety
+        console.warn(`API key auth failed: Key details mismatch for prefix ${prefix} in store ${store._id}`);
+        return res.status(401).json({ code: 401, message: 'Invalid or inactive API key details' });
     }
 
-    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-    // Check if the hash matches
-    if (keyHash !== foundKey.hashedKey) {
-      throw new Error('Invalid API key');
-    }
+    // Attach storeId and key details to the request object for downstream use
+    req.storeId = store._id.toString(); // Use string representation of ObjectId
+    req.apiKeyId = activeKey.keyId; // Attach keyId (already a string)
+    req.apiKeyPrefix = activeKey.prefix; // Attach prefix
 
-    // Set store ID in request and cache the mapping
-    req.storeId = store._id.toString();
-    await setCache(cacheKey, req.storeId, { EX: CACHE_TTL.API_KEY || 1800 });
-    
-    // Track API usage
-    trackApiUsage(req, apiKey, req.storeId, foundKey.keyId);
-    
-    return true;
+    // Removed tracking from middleware - moved to services where more context is available
+    // trackApiUsage(req, apiKey, req.storeId, activeKey.keyId);
+
+    next();
   } catch (error) {
-    console.error('API key validation failed:', error);
-    throw error;
+    console.error('API key authentication error:', error);
+    res.status(500).json({ code: 500, message: 'Internal server error during API key validation' });
   }
-};
+}
 
-module.exports = { validateApiKey };
+module.exports = apiKeyAuth;

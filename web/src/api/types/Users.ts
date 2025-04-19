@@ -11,7 +11,12 @@
  */
 
 import {
+  ConsentingStore,
   Error,
+  GetRecentDataParams,
+  RecentDataEntry,
+  SpendingAnalytics,
+  UsageSummary,
   User,
   UserCreate,
   UserData,
@@ -259,6 +264,87 @@ export class Users<
   getUserMetadata = (params: RequestParams = {}) =>
     this.request<UserMetadataResponse, Error>({
       path: `/users/metadata/get`,
+      method: "GET",
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Provides a summary of how many times the user's data has been collected or accessed by different stores.
+   *
+   * @tags User Management
+   * @name GetUsageSummary
+   * @summary Get User Data Usage Summary
+   * @request GET:/users/dashboard/usage-summary
+   * @secure
+   * @response `200` `UsageSummary` Usage summary retrieved successfully.
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getUsageSummary = (params: RequestParams = {}) =>
+    this.request<UsageSummary, Error>({
+      path: `/users/dashboard/usage-summary`,
+      method: "GET",
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Provides aggregated spending data grouped by top-level product categories.
+   *
+   * @tags User Management
+   * @name GetSpendingAnalytics
+   * @summary Get User Spending Analytics
+   * @request GET:/users/dashboard/spending-analytics
+   * @secure
+   * @response `200` `SpendingAnalytics` Spending analytics retrieved successfully.
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getSpendingAnalytics = (params: RequestParams = {}) =>
+    this.request<SpendingAnalytics, Error>({
+      path: `/users/dashboard/spending-analytics`,
+      method: "GET",
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Retrieves a list of the most recent data collection events (purchases, searches) for the user.
+   *
+   * @tags User Management
+   * @name GetRecentData
+   * @summary Get Recent User Data Entries
+   * @request GET:/users/dashboard/recent-data
+   * @secure
+   * @response `200` `(RecentDataEntry)[]` Recent data entries retrieved successfully.
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getRecentData = (query: GetRecentDataParams, params: RequestParams = {}) =>
+    this.request<RecentDataEntry[], Error>({
+      path: `/users/dashboard/recent-data`,
+      method: "GET",
+      query: query,
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Retrieves a list of stores the user has currently opted into sharing data with.
+   *
+   * @tags User Management
+   * @name GetConsentingStores
+   * @summary Get Consenting Stores
+   * @request GET:/users/dashboard/consenting-stores
+   * @secure
+   * @response `200` `(ConsentingStore)[]` List of consenting stores retrieved successfully.
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getConsentingStores = (params: RequestParams = {}) =>
+    this.request<ConsentingStore[], Error>({
+      path: `/users/dashboard/consenting-stores`,
       method: "GET",
       secure: true,
       format: "json",
