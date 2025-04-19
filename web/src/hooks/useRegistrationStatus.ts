@@ -1,41 +1,51 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "./useAuth";
 import { useUserMetadata } from "../api/hooks/useAuthHooks";
 
-export function useRegistrationStatus() {
+type Status = {
+  isComplete: boolean;
+  type: "user" | "store" | null;
+  shouldShowRegistration: boolean;
+  isLoading: boolean;
+};
+
+export function useRegistrationStatus(): Status {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { data: metadata, isLoading: isMetadataLoading } = useUserMetadata();
-  const [registrationStatus, setRegistrationStatus] = useState({
+  const {
+    data: metadata,
+    isLoading: metaLoading,
+    isFetched, // ← new
+  } = useUserMetadata();
+
+  const [state, setState] = useState<Status>({
     isComplete: false,
-    type: null as "user" | "store" | null,
+    type: null,
     shouldShowRegistration: false,
-    isLoading: true, // Add loading state to track initial load
+    isLoading: true,
   });
 
   useEffect(() => {
-    // If either auth or metadata is still loading, mark the overall status as loading
-    if (authLoading || isMetadataLoading) {
-      setRegistrationStatus((prev) => ({ ...prev, isLoading: true }));
+    // still waiting for Auth0 or for metadata to actually come back?
+    if (authLoading || metaLoading || !isFetched) {
+      setState((s) => ({ ...s, isLoading: true }));
       return;
     }
 
-    // Only when both auth and metadata loading are complete, determine if registration is needed
-    const isComplete = metadata?.metadata?.registrationComplete || false;
+    // now we really have metadata
+    const isComplete = !!metadata?.metadata?.registrationComplete;
     const type = metadata?.metadata?.registrationType as
       | "user"
       | "store"
       | null;
-    // Only show registration when authenticated AND registration is confirmed incomplete
-    const shouldShowRegistration =
-      isAuthenticated && !authLoading && !isComplete;
+    const shouldShow = isAuthenticated && !isComplete;
 
-    setRegistrationStatus({
+    setState({
       isComplete,
       type,
-      shouldShowRegistration,
-      isLoading: false, // We're done loading
+      shouldShowRegistration: shouldShow,
+      isLoading: false,
     });
-  }, [isAuthenticated, authLoading, metadata, isMetadataLoading]);
+  }, [authLoading, metaLoading, isFetched, isAuthenticated, metadata]);
 
-  return registrationStatus;
+  return state;
 }

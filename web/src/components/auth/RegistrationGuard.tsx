@@ -24,7 +24,7 @@ export const RegistrationGuard: React.FC<RegistrationGuardProps> = ({
     // Only show registration loading if authenticated
     return (
       <div className="flex h-screen items-center justify-center">
-        <LoadingSpinner message="Checking status..." />
+        <LoadingSpinner message="Checking registration status…" />
       </div>
     );
   }
