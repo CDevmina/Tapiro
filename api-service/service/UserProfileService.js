@@ -21,11 +21,17 @@ exports.getUserProfile = async function (req) {
     const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
     const cachedUser = await getCache(cacheKey);
     if (cachedUser) {
-      return respondWithCode(200, JSON.parse(cachedUser));
+      // Exclude preferences from cached response
+      const userProfile = JSON.parse(cachedUser);
+      delete userProfile.preferences;
+      return respondWithCode(200, userProfile);
     }
 
-    // Get from database
-    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    // Get from database, excluding preferences field
+    const user = await db.collection('users').findOne(
+      { auth0Id: userData.sub },
+      { projection: { preferences: 0 } } // Exclude preferences field
+    );
     if (!user) {
       return respondWithCode(404, {
         code: 404,
@@ -33,9 +39,9 @@ exports.getUserProfile = async function (req) {
       });
     }
 
-    // Cache the result with standardized TTL
+    // Cache the result (without preferences) with standardized TTL
     await setCache(cacheKey, JSON.stringify(user), { EX: CACHE_TTL.USER_DATA });
-    return respondWithCode(200, user);
+    return respondWithCode(200, user); // user already excludes preferences
   } catch (error) {
     console.error('Get profile failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });

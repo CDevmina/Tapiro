@@ -17,29 +17,30 @@ exports.getUserOwnPreferences = async function (req) {
     const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
     const cachedPreferences = await getCache(cacheKey);
     if (cachedPreferences) {
-      return respondWithCode(200, JSON.parse(cachedPreferences));
+      // Exclude privacySettings from cached response
+      const prefs = JSON.parse(cachedPreferences);
+      delete prefs.privacySettings;
+      return respondWithCode(200, prefs);
     }
 
-    // Find user in database
-    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    // Find user in database, only selecting necessary fields
+    const user = await db.collection('users').findOne(
+      { auth0Id: userData.sub },
+      { projection: { _id: 1, preferences: 1, updatedAt: 1 } } // Select only needed fields
+    );
     if (!user) {
       return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Return just the preferences part
+    // Return just the preferences part, excluding privacySettings
     const preferences = {
       userId: user._id.toString(),
       preferences: user.preferences || [],
-      privacySettings: user.privacySettings || {
-        dataSharingConsent: false,
-        anonymizeData: false,
-        optInStores: [],
-        optOutStores: []
-      },
+      // REMOVED: privacySettings field
       updatedAt: user.updatedAt || new Date(),
     };
 
-    // Cache the preferences result with specific TTL
+    // Cache the preferences result (without privacySettings) with specific TTL
     await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferences);
