@@ -5,15 +5,11 @@ import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
-  // Get clientsReady state
   const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
-
   return useQuery({
     queryKey: cacheKeys.users.profile(),
     queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
-    // Update enabled check
-    enabled: isAuthenticated && !authLoading && clientsReady,
+    enabled: clientsReady,
     ...cacheSettings.user,
   });
 }
