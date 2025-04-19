@@ -21,16 +21,6 @@ module.exports.registerStore = function registerStore(req, res, next, body) {
     });
 };
 
-module.exports.updateUserMetadata = function updateUserMetadata(req, res, next, body) {
-  Authentication.updateUserMetadata(req, body)
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
-};
-
 module.exports.getUserMetadata = function getUserMetadata(req, res, next) {
   Authentication.getUserMetadata(req)
     .then((response) => {

@@ -153,9 +153,37 @@ async function updateUserMetadata(userId, metadata, invalidateUserCache = false)
   }
 }
 
+/**
+ * Get Auth0 user metadata
+ * @param {string} userId - Auth0 user ID
+ * @returns {Promise<Object>} - User metadata
+ */
+async function getUserMetadata(userId) {
+  try {
+    const token = await getManagementToken();
+    
+    // Get user with metadata from Auth0 Management API
+    const response = await axios.get(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    return response.data.user_metadata || {};
+  } catch (error) {
+    console.error('Failed to get user metadata:', error?.response?.data || error);
+    throw error;
+  }
+}
+
 module.exports = { 
   getManagementToken, 
   assignUserRole, 
   linkAccounts,
-  updateUserMetadata 
+  updateUserMetadata,
+  getUserMetadata
 };

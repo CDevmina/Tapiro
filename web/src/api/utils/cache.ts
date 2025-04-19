@@ -57,6 +57,10 @@ export const cacheSettings = {
     staleTime: CACHE_TIMES.MEDIUM,
     gcTime: CACHE_TIMES.MEDIUM * 2,
   },
+  metadata: {
+    staleTime: CACHE_TIMES.MEDIUM, // Consider fresh for 5 mins
+    gcTime: CACHE_TIMES.MEDIUM * 2, // Keep in cache for 10 mins after inactive
+  },
   apiKeys: {
     staleTime: CACHE_TIMES.SHORT, // More frequent updates for security
     gcTime: CACHE_TIMES.SHORT * 2,

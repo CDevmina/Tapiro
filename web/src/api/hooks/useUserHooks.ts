@@ -2,24 +2,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
 import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
-  const { users } = useApiClients();
-
+  const { apiClients, clientsReady } = useApiClients();
   return useQuery({
     queryKey: cacheKeys.users.profile(),
-    queryFn: () => users.getUserProfile().then((res) => res.data),
+    queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
+    enabled: clientsReady,
     ...cacheSettings.user,
   });
 }
 
 export function useUpdateUserProfile() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (userData: UserUpdate) =>
-      users.updateUserProfile(userData).then((res) => res.data),
+      apiClients.users.updateUserProfile(userData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
     },
@@ -27,22 +28,29 @@ export function useUpdateUserProfile() {
 }
 
 export function useUserPreferences() {
-  const { users } = useApiClients();
+  // Get clientsReady state
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
     queryKey: cacheKeys.users.preferences(),
-    queryFn: () => users.getUserOwnPreferences().then((res) => res.data),
+    queryFn: () =>
+      apiClients.users.getUserOwnPreferences().then((res) => res.data),
+    // Update enabled check
+    enabled: isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.preferences,
   });
 }
 
 export function useUpdateUserPreferences() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (preferences: UserPreferencesUpdate) =>
-      users.updateUserPreferences(preferences).then((res) => res.data),
+      apiClients.users
+        .updateUserPreferences(preferences)
+        .then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
@@ -52,12 +60,12 @@ export function useUpdateUserPreferences() {
 }
 
 export function useOptInToStore() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeId: string) =>
-      users.optInToStore(storeId).then((res) => res.data),
+      apiClients.users.optInToStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
       // Optimistic update
       await queryClient.cancelQueries({
@@ -90,12 +98,12 @@ export function useOptInToStore() {
 }
 
 export function useOptOutFromStore() {
-  const { users } = useApiClients();
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (storeId: string) =>
-      users.optOutFromStore(storeId).then((res) => res.data),
+      apiClients.users.optOutFromStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
       // Optimistic update
       await queryClient.cancelQueries({
@@ -127,4 +135,17 @@ export function useOptOutFromStore() {
   });
 }
 
-// Additional user-related hooks...
+export function useDeleteUserProfile() {
+  const { apiClients } = useApiClients();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      apiClients.users.deleteUserProfile().then((res) => res.data),
+    onSuccess: () => {
+      // After successful deletion, clear user-related cache
+      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}

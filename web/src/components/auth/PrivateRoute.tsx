@@ -9,24 +9,43 @@ interface PrivateRouteProps {
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
-  const { isAuthenticated, isLoading, userRoles } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    userRoles,
+    tokenError,
+  } = useAuth();
   const location = useLocation();
 
-  // Wait for authentication to complete and roles to load
-  if (isLoading) {
-    return <LoadingSpinner message="Checking authentication..." />;
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <LoadingSpinner message="Checking authentication..." />
+      </div>
+    );
+  }
+
+  if (tokenError) {
+    return (
+      <ErrorDisplay
+        title="Authentication Error"
+        message={`Failed to verify authentication status: ${tokenError.message}. Please try logging out and back in.`}
+        error={tokenError}
+      />
+    );
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Only check roles after loading is complete and we have data from Auth0
   if (allowedRoles && allowedRoles.length > 0) {
-    // Add additional check to ensure userRoles array is populated
-    if (userRoles.length === 0) {
-      // Still loading roles or user has no roles yet
-      return <LoadingSpinner message="Loading user permissions..." />;
+    if (userRoles.length === 0 && !authLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <LoadingSpinner message="Loading user permissions..." />
+        </div>
+      );
     }
 
     const hasRequiredRole = allowedRoles.some((role) =>
@@ -46,7 +65,6 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
     }
   }
 
-  // Authenticated and authorized
   return <Outlet />;
 };
 

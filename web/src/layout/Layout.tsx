@@ -1,6 +1,7 @@
 import { Outlet } from "react-router";
 import { Header } from "./Header"; // Assuming Header is in the same layout folder
 import { Footer } from "./Footer"; // Assuming Footer is in the same layout folder
+import { RegistrationGuard } from "../components/auth/RegistrationGuard"; // Import the guard
 
 export function Layout() {
   return (
@@ -8,9 +9,11 @@ export function Layout() {
       {" "}
       {/* Added dark background */}
       <Header />
-      {/* Outlet renders the matched child route component (e.g., HomePage) */}
+      {/* Wrap Outlet with RegistrationGuard */}
       <main className="flex-grow">
-        <Outlet />
+        <RegistrationGuard>
+          <Outlet />
+        </RegistrationGuard>
       </main>
       <Footer />
     </div>

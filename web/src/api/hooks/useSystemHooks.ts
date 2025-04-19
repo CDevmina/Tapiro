@@ -1,23 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings } from "../utils/cache";
+import { HealthStatus, PingStatus } from "../types/data-contracts";
 
 export function useHealthCheck() {
-  const { health } = useApiClients();
+  // Destructure apiClients first, then get health from it
+  const { apiClients } = useApiClients();
+  const { health } = apiClients; // Now get health client
 
-  return useQuery({
+  // Adjust the useQuery generic to expect HealthStatus as the data type
+  return useQuery<HealthStatus, Error>({
     queryKey: cacheKeys.system.health(),
+    // Ensure health client exists before calling
     queryFn: () => health.healthCheck().then((res) => res.data),
     ...cacheSettings.system,
   });
 }
 
 export function usePing() {
-  const { ping } = useApiClients();
+  // Destructure apiClients first, then get ping from it
+  const { apiClients } = useApiClients();
+  const { ping } = apiClients; // Now get ping client
 
-  return useQuery({
+  // Adjust the useQuery generic to expect PingStatus as the data type
+  return useQuery<PingStatus, Error>({
     queryKey: cacheKeys.system.ping(),
-    queryFn: () => ping.ping().then((res) => res.data),
+    // Ensure ping client exists before calling
+    queryFn: () => ping.ping().then((res) => res.data), // queryFn returns PingStatus
     ...cacheSettings.system,
+    // Ping doesn't require auth, so no enabled check needed here
   });
 }
