@@ -10,6 +10,7 @@ export interface AuthContextProps {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   tokenError: Error | null;
+  refreshTokens: () => Promise<void>;
 }
 
 // Export the context so it can be imported by useAuth.ts and AuthContext.tsx

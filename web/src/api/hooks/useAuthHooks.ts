@@ -1,7 +1,7 @@
 import { useApiClients } from "../apiClient";
 import { useAuth } from "../../hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCreate, StoreCreate } from "../types/data-contracts";
+import { UserCreate, StoreCreate, User, Store } from "../types/data-contracts";
 import { cacheSettings, cacheKeys } from "../utils/cache"; // Import cacheSettings
 
 export function useUserMetadata() {
@@ -19,40 +19,51 @@ export function useUserMetadata() {
 }
 
 export function useRegisterUser() {
-  const { apiClients } = useApiClients(); // Only need clients here
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
+  const auth = useAuth();
 
-  return useMutation({
+  return useMutation<User, Error, UserCreate>({
     mutationFn: (userData: UserCreate) =>
       apiClients.users.registerUser(userData).then((res) => res.data),
-    onSuccess: () => {
-      // After successful registration, refresh metadata
-      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
-      // --- Start Changes ---
-      // Also invalidate user profile/preferences if registration affects them
-      queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+      await auth.refreshTokens();
+
+      await queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.profile(),
+      });
+      await queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
       });
-      // --- End Changes ---
+      // Add any other relevant query invalidations here
     },
   });
 }
 
 export function useRegisterStore() {
-  const { apiClients } = useApiClients(); // Only need clients here
+  const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
+  const auth = useAuth();
 
-  return useMutation({
+  return useMutation<Store, Error, StoreCreate>({
     mutationFn: (storeData: StoreCreate) =>
       apiClients.stores.registerStore(storeData).then((res) => res.data),
-    onSuccess: () => {
-      // After successful registration, refresh metadata
-      queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
-      // --- Start Changes ---
-      // Also invalidate store profile if registration affects it
-      queryClient.invalidateQueries({ queryKey: cacheKeys.stores.profile() });
-      // --- End Changes ---
+    onSuccess: async () => {
+      // Remove 'data' parameter if not used elsewhere
+      // 1. Invalidate metadata
+      await queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
+
+      // 2. (Removed) Set roles directly in React context state
+
+      // 3. Attempt to refresh the actual tokens in the SDK cache
+      await auth.refreshTokens(); // <-- Rely on this
+
+      // 4. Invalidate local API data
+      await queryClient.invalidateQueries({
+        queryKey: cacheKeys.stores.profile(),
+      });
+      // Add any other relevant query invalidations here (e.g., apiKeys if applicable)
     },
   });
 }
