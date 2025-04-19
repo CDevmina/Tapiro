@@ -1,10 +1,14 @@
 const crypto = require('crypto');
-const { getDB } = require('../utils/mongoUtil');
+const { getDB } = require('../utils/mongoUtil'); // #attachment:api-service/utils/mongoUtil.js
+const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
 
-async function apiKeyAuth(req, res, next) {
+// Middleware function registered as the 'apiKey' security handler
+// Signature matches oas3-tools expectation: (req, scopes, schema)
+async function apiKeyAuth(req, scopes, schema) {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) {
-    return res.status(401).json({ code: 401, message: 'API key required' });
+    // Throw error instead of sending response
+    throw new Error('API key required');
   }
 
   try {
@@ -22,7 +26,8 @@ async function apiKeyAuth(req, res, next) {
     if (!store) {
       // Log the prefix for debugging, but don't expose hash or full key
       console.warn(`API key auth failed: No active key found for prefix ${prefix}`);
-      return res.status(401).json({ code: 401, message: 'Invalid or inactive API key' });
+      // Throw error instead of sending response
+      throw new Error('Invalid or inactive API key');
     }
 
     // Find the specific key details
@@ -31,7 +36,8 @@ async function apiKeyAuth(req, res, next) {
     if (!activeKey) {
         // This case should theoretically not happen if the store was found, but good for safety
         console.warn(`API key auth failed: Key details mismatch for prefix ${prefix} in store ${store._id}`);
-        return res.status(401).json({ code: 401, message: 'Invalid or inactive API key details' });
+        // Throw error instead of sending response
+        throw new Error('Invalid or inactive API key details');
     }
 
 
@@ -40,14 +46,18 @@ async function apiKeyAuth(req, res, next) {
     req.apiKeyId = activeKey.keyId; // Attach keyId (already a string)
     req.apiKeyPrefix = activeKey.prefix; // Attach prefix
 
-    // Removed tracking from middleware - moved to services where more context is available
-    // trackApiUsage(req, apiKey, req.storeId, activeKey.keyId);
+    // Return true on success as expected by oas3-tools
+    return true;
 
-    next();
   } catch (error) {
-    console.error('API key authentication error:', error);
-    res.status(500).json({ code: 500, message: 'Internal server error during API key validation' });
+    // Log the specific error during validation
+    // Use the existing error message or create a generic one
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error during API key validation';
+    console.error('API key authentication error:', errorMessage);
+    // Re-throw the error so oas3-tools handles it as an authentication failure
+    // It will typically result in a 401 or 500 response automatically based on the error type
+    throw new Error(errorMessage); // Throw a new error with the message
   }
 }
 
-module.exports = apiKeyAuth;
+module.exports = apiKeyAuth; // Export the handler function directly

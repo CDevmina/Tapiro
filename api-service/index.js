@@ -5,7 +5,7 @@ const express = require('express'); // Import express
 const oas3Tools = require('oas3-tools');
 const cors = require('cors');
 const { auth, checkJwtAndScope } = require('./middleware/authMiddleware');
-const { validateApiKey } = require('./middleware/apiKeyMiddleware');
+const apiKeyAuth = require('./middleware/apiKeyMiddleware');
 const { connectDB } = require('./utils/mongoUtil');
 const { connectRedis } = require('./utils/redisUtil');
 
@@ -30,7 +30,7 @@ const options = {
     validateSecurity: {
       handlers: {
         oauth2: checkJwtAndScope,
-        apiKey: validateApiKey,
+        apiKey: apiKeyAuth,
       },
     },
   },

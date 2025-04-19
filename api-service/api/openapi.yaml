@@ -927,48 +927,26 @@ components:
         - name
         - category
       properties:
-        sku:
-          type: string
         name:
           type: string
         category:
           type: string
-          description: Category ID (e.g., "101") or name (e.g., "smartphones")
-        quantity:
-          type: integer
-          default: 1
+          description: Category ID from the taxonomy
         price:
           type: number
           format: float
+        quantity:
+          type: integer
+          minimum: 1
         attributes:
-          $ref: "#/components/schemas/ItemAttributes"
+          $ref: "#/components/schemas/ItemAttributes" # Reference remains the same
 
     ItemAttributes:
       type: object
-      description: Category-specific attributes
-      properties:
-        price_range:
-          type: string
-          enum: [budget, mid_range, premium, luxury]
-        brand:
-          type: string
-        color:
-          type: string
-        material:
-          type: string
-        style:
-          type: string
-        room:
-          type: string
-        size:
-          type: string
-        feature:
-          type: string
-        season:
-          type: string
-        gender:
-          type: string
-      additionalProperties: false
+      # Allow any properties (attributes) since they are dynamic based on category
+      additionalProperties: {} # <-- CHANGE THIS (from false or remove the line if default is true)
+      description: Dynamic attributes based on the item's category from the taxonomy.
+      example: { "brand": "Nike", "color": "blue", "size": "L" }
 
     SearchEntry:
       type: object
