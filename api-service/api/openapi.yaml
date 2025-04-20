@@ -1108,17 +1108,6 @@ components:
           type: string
           format: date-time
 
-    UserMetadataUpdate:
-      type: object
-      properties:
-        registrationType:
-          type: string
-          enum: [user, store]
-          description: The type of registration (user or store)
-        registrationComplete:
-          type: boolean
-          description: Whether registration process is complete
-
     UserMetadataResponse:
       type: object
       properties:
