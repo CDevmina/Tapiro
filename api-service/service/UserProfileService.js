@@ -3,9 +3,8 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const { getManagementToken } = require('../utils/auth0Util');
-const AIService = require('../clients/AIService');
-const axios = require('axios'); // Added missing import
+// Import the new function
+const { updateUserMetadata, updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
 
 /**
  * Get User Profile
@@ -56,106 +55,108 @@ exports.getUserProfile = async function (req) {
 exports.updateUserProfile = async function (req, body) {
   try {
     const db = getDB();
-
-    // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    const auth0UserId = userData.sub;
 
-    // If username is being updated, check for uniqueness
+    // --- Local DB Username Uniqueness Check ---
+    // Keep this check for your application's internal username uniqueness
     if (body.username) {
       const existingUser = await db.collection('users').findOne({
         username: body.username,
-        auth0Id: { $ne: userData.sub },
+        auth0Id: { $ne: auth0UserId },
       });
-
       if (existingUser) {
-        return respondWithCode(409, {
+        return respondWithCode(409, { code: 409, message: 'Username already taken in application' });
+      }
+    }
+
+    // --- Auth0 Username Update ---
+    // Attempt to update the Auth0 username if provided in the body.
+    // Auth0 will enforce its own uniqueness rules per connection.
+    if (body.username) {
+      try {
+        await updateAuth0Username(auth0UserId, body.username);
+        // Optionally: Update nickname in metadata as well if desired
+        // await updateUserMetadata(auth0UserId, { nickname: body.username });
+      } catch (auth0Error) {
+        // If Auth0 update fails (e.g., username exists in Auth0 connection), return an error
+        // You might want to check the specific error type from auth0Error
+        console.error(`Auth0 username update failed for ${auth0UserId}:`, auth0Error);
+        return respondWithCode(409, { // Use 409 Conflict or appropriate code
           code: 409,
-          message: 'Username already taken',
+          message: 'Failed to update username with identity provider. It might already be taken.',
+          // Optionally include details: details: auth0Error.message
         });
       }
     }
 
-    // Preferences are managed separately, remove if present in body
-    // We still might need to call AI service if preferences *were* sent,
-    // but we won't save them directly here.
-    let preferencesToProcess = null;
-    if (body.preferences) {
-      preferencesToProcess = body.preferences;
-      delete body.preferences; // Remove from direct update data
-    }
-
-    // If preferences were provided, send to FastAPI for processing
-    if (preferencesToProcess) {
+    // --- Phone Number Update in Auth0 ---
+    if (body.phone && body.phone !== userData.phone_number) {
       try {
-        // Find user email if not readily available (needed for AI service)
-        const currentUser = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { email: 1 } });
-        if (currentUser?.email) {
-          await AIService.updateUserPreferences(
-            userData.sub,
-            currentUser.email, // Use fetched email
-            preferencesToProcess
-          );
-          // Invalidate preferences cache as AI service might have updated them
-          await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-        } else {
-           console.error('Could not find user email to process preferences via AI service.');
-        }
-
-      } catch (error) {
-        console.error('Failed to process preferences through AI service:', error);
-        // Decide if failure here should prevent profile update or just log
+        await updateUserPhone(auth0UserId, body.phone);
+      } catch (auth0Error) {
+        // Log and continue, or return error as needed
+        console.error(`Auth0 phone update failed for ${auth0UserId}:`, auth0Error);
+        // return respondWithCode(500, { code: 500, message: 'Failed to update phone number with identity provider.' });
       }
     }
 
-    // Update user
+    // --- Database Update ---
     const updateData = {
       updatedAt: new Date(),
-      ...body, // Apply other updates from body (excluding preferences)
     };
+    // Update local DB username only if Auth0 update was successful (or not attempted)
+    if (body.username !== undefined) updateData.username = body.username;
+    if (body.phone !== undefined) updateData.phone = body.phone;
 
-    // Ensure only allowed fields are set explicitly if needed, or rely on body structure
-    // Example:
-    // if (body.username !== undefined) updateData.username = body.username;
-    // if (body.phone !== undefined) updateData.phone = body.phone;
-    // if (body.privacySettings !== undefined) updateData.privacySettings = body.privacySettings;
-    // if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
+    // Only update allowed privacy settings
+    if (body.privacySettings !== undefined) {
+      updateData.privacySettings = {};
+      if (body.privacySettings.dataSharingConsent !== undefined) {
+        updateData.privacySettings.dataSharingConsent = body.privacySettings.dataSharingConsent;
+      }
+      if (body.privacySettings.anonymizeData !== undefined) {
+        updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
+      }
+      // DO NOT update optInStores or optOutStores here
+    }
 
+    if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
 
     const result = await db
       .collection('users')
       .findOneAndUpdate(
-        { auth0Id: userData.sub },
+        { auth0Id: auth0UserId },
         { $set: updateData },
-        { returnDocument: 'after', projection: { preferences: 0 } }, // Exclude preferences from returned doc
+        { returnDocument: 'after', projection: { preferences: 0 } },
       );
 
     if (!result) {
-      return respondWithCode(404, {
-        code: 404,
-        message: 'User not found',
-      });
+      // This case might occur if the user was deleted between checks
+      return respondWithCode(404, { code: 404, message: 'User not found during final update' });
     }
 
-    // Invalidate user data cache
-    const cacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
+    // --- Cache Invalidation & Update ---
+    const cacheKey = `${CACHE_KEYS.USER_DATA}${auth0UserId}`;
     await invalidateCache(cacheKey);
 
-    // If privacy settings change, it might affect store data access, invalidate those too:
+    // Invalidate store preferences if privacy settings changed
     if (updateData.privacySettings && result.privacySettings?.optInStores) {
-       // Invalidate store-specific preference caches for opted-in stores
-       const userObjectId = result._id; // Get the actual ObjectId
+       const userObjectId = result._id;
        for (const storeId of result.privacySettings.optInStores) {
          await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
        }
     }
 
-
     // Update cache with the new data (without preferences)
+    // Note: This happens *after* invalidation, ensuring fresh data is set if needed immediately
     await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
-    return respondWithCode(200, result); // result already excludes preferences
+
+    return respondWithCode(200, result);
   } catch (error) {
+    // Catch errors not handled specifically above
     console.error('Update profile failed:', error);
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+    return respondWithCode(500, { code: 500, message: 'Internal server error during profile update' });
   }
 };
 
@@ -192,18 +193,8 @@ exports.deleteUserProfile = async function (req) {
       });
     }
 
-    // Delete from Auth0
-    try {
-      const managementToken = await getManagementToken();
-      await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
-        headers: {
-          Authorization: `Bearer ${managementToken}`,
-        },
-      });
-    } catch (error) {
-      // Log error but don't fail the request if Auth0 deletion fails
-      console.error('Auth0 deletion failed:', error.response?.data || error.message);
-    }
+    // Delete from Auth0 using the utility function
+    await deleteAuth0User(userData.sub); // Call the new function
 
     // Clear user-specific caches
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);

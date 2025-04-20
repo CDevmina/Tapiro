@@ -14,6 +14,8 @@ import StoreDashboard from "./pages/StoreDashboard";
 import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
+import UserProfilePage from "./pages/UserProfilePage";
+import StoreProfilePage from "./pages/StoreProfilePage";
 
 const router = createBrowserRouter([
   {
@@ -44,6 +46,11 @@ const router = createBrowserRouter([
             path: "dashboard/user",
             element: <UserDashboard />,
           },
+          // Add User Profile Route
+          {
+            path: "profile/user",
+            element: <UserProfilePage />,
+          },
         ],
       },
       // --- Protected Store Routes ---
@@ -53,6 +60,11 @@ const router = createBrowserRouter([
           {
             path: "dashboard/store",
             element: <StoreDashboard />,
+          },
+          // Add Store Profile Route
+          {
+            path: "profile/store",
+            element: <StoreProfilePage />,
           },
         ],
       },

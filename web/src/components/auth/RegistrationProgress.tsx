@@ -13,12 +13,10 @@ export function RegistrationProgress({
 
   return (
     <div className="mb-6">
-      {/* Add dark mode text color */}
       <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Step {step} of {totalSteps}
       </div>
-      {/* Flowbite Progress handles its own dark mode */}
-      <Progress progress={progress} size="lg" labelProgress />
+      <Progress progress={progress} size="lg" />
     </div>
   );
 }

@@ -32,6 +32,17 @@ export function Header() {
     return "/";
   };
 
+  // Determine profile link based on role
+  const getProfileLink = () => {
+    if (userRoles.includes("store")) {
+      return "/profile/store";
+    }
+    if (userRoles.includes("user")) {
+      return "/profile/user";
+    }
+    return "/";
+  };
+
   const handleLogin = () => login();
   const handleLogout = () => logout();
 
@@ -72,6 +83,10 @@ export function Header() {
                 {user?.email}
               </span>
             </DropdownHeader>
+            {/* Add Profile Link */}
+            <DropdownItem as={Link} to={getProfileLink()}>
+              Profile
+            </DropdownItem>
             <DropdownDivider />
             <DropdownItem onClick={handleLogout}>Sign out</DropdownItem>
           </Dropdown>

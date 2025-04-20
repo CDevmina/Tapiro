@@ -1,3 +1,6 @@
+import { useState, useEffect } from "react"; // <-- Import hooks
+import { Toast, ToastToggle } from "flowbite-react"; // <-- Import Toast components
+import { HiCheck } from "react-icons/hi"; // <-- Import icon
 import {
   DocsIcon,
   BlocksIcon,
@@ -6,6 +9,23 @@ import {
 } from "../../components/icons/ResourceIcons";
 
 export default function HomePage() {
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  // Check for post-logout toast message on mount
+  useEffect(() => {
+    const message = sessionStorage.getItem("showPostLogoutToast");
+    if (message) {
+      setToastMessage(message);
+      setShowToast(true);
+      sessionStorage.removeItem("showPostLogoutToast"); // Clear the flag
+
+      // Optional: Auto-hide toast after a delay
+      const timer = setTimeout(() => setShowToast(false), 5000);
+      return () => clearTimeout(timer); // Cleanup timer on unmount
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const CARDS = [
     {
       title: "Flowbite React Docs",
@@ -51,10 +71,20 @@ export default function HomePage() {
     },
   ];
 
-  // Removed the outer <main> tag and DarkThemeToggle from original App.tsx
-  // Added container and padding for spacing within the Layout's main area
   return (
-    <div className="container mx-auto px-4 py-12">
+    // Add relative positioning if needed for absolute toast
+    <div className="relative container mx-auto px-4 py-12">
+      {/* Success Toast */}
+      {showToast && (
+        <Toast className="absolute top-5 right-5 z-50">
+          <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+            <HiCheck className="h-5 w-5" />
+          </div>
+          <div className="ml-3 text-sm font-normal">{toastMessage}</div>
+          <ToastToggle onDismiss={() => setShowToast(false)} />
+        </Toast>
+      )}
+
       {/* Background pattern - kept for visual style */}
       <div className="absolute inset-0 -z-10 size-full">
         <div className="relative h-full w-full select-none">

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Button, Label, TextInput } from "flowbite-react";
+import { useForm, SubmitHandler } from "react-hook-form"; // Import useForm and SubmitHandler
+import { Button, FloatingLabel, HelperText } from "flowbite-react";
 import { StoreCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
 
@@ -8,77 +8,102 @@ interface StoreRegistrationFormProps {
   isLoading: boolean;
 }
 
+// Define form data type
+type StoreRegistrationFormData = {
+  name: string;
+  address?: string; // Address is optional based on current setup
+};
+
 export function StoreRegistrationForm({
   onSubmit,
   isLoading,
 }: StoreRegistrationFormProps) {
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
+  // Initialize react-hook-form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<StoreRegistrationFormData>();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Use the handleSubmit from react-hook-form
+  const handleFormSubmit: SubmitHandler<StoreRegistrationFormData> = (data) => {
     const storeData: StoreCreate = {
-      name,
-      address,
-      webhooks: [], // We can leave this empty for now
+      name: data.name,
+      address: data.address || "", // Ensure address is string or empty string
+      webhooks: [],
     };
-
     onSubmit(storeData);
   };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      {/* Add dark mode text color */}
+    // Use the handleSubmit from react-hook-form
+    <form className="space-y-6" onSubmit={handleSubmit(handleFormSubmit)}>
       <h3 className="text-center text-xl font-medium text-gray-900 dark:text-white">
         Complete Store Registration
       </h3>
 
-      <div>
-        <div className="mb-2 block">
-          {/* Add dark mode text color */}
-          <Label
-            htmlFor="store-name"
-            className="text-gray-700 dark:text-gray-300"
-          >
-            Store Name
-          </Label>
-        </div>
-        {/* Flowbite TextInput handles dark mode */}
-        <TextInput
+      {/* Store Name with FloatingLabel and Icon */}
+      <div className="relative">
+        <FloatingLabel
+          variant="outlined"
           id="store-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Enter your store name"
-          required
+          label="Store Name"
+          color={errors.name ? "error" : "default"} // Use errors object
+          // Register the input with validation
+          {...register("name", {
+            required: "Store name is required",
+            minLength: {
+              value: 2,
+              message: "Name must be at least 2 characters",
+            },
+            maxLength: {
+              value: 100,
+              message: "Name cannot exceed 100 characters",
+            },
+          })}
+          required // Keep HTML required for accessibility/native behavior
         />
+        {/* Display validation error */}
+        {errors.name && (
+          <HelperText color="failure" className="mt-1">
+            {errors.name.message}
+          </HelperText>
+        )}
       </div>
 
-      <div>
-        <div className="mb-2 block">
-          {/* Add dark mode text color */}
-          <Label
-            htmlFor="store-address"
-            className="text-gray-700 dark:text-gray-300"
-          >
-            Store Address
-          </Label>
-        </div>
-        {/* Flowbite TextInput handles dark mode */}
-        <TextInput
+      {/* Store Address with FloatingLabel and Icon */}
+      <div className="relative">
+        <FloatingLabel
+          variant="outlined"
           id="store-address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter your store address"
-          required
+          label="Store Address"
+          color={errors.address ? "error" : "default"} // Use errors object
+          // Register the input (optional validation)
+          {...register("address", {
+            maxLength: {
+              value: 200,
+              message: "Address cannot exceed 200 characters",
+            },
+          })}
         />
+        {/* Display validation error */}
+        {errors.address && (
+          <HelperText color="failure" className="mt-1">
+            {errors.address.message}
+          </HelperText>
+        )}
+        {!errors.address && ( // Show helper text only if no error
+          <HelperText color="gray" className="mt-1">
+            Optional: Provide a physical or primary business address.
+          </HelperText>
+        )}
       </div>
 
       <div className="flex justify-center pt-2">
         {isLoading ? (
           <LoadingSpinner size="md" className="py-2" />
         ) : (
-          // Flowbite Button handles dark mode
+          // No need to manually disable based on name state anymore
           <Button type="submit" disabled={isLoading} size="lg">
             Complete Registration
           </Button>

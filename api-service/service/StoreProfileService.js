@@ -1,10 +1,9 @@
-const axios = require('axios');
 const { getDB } = require('../utils/mongoUtil');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const { getManagementToken } = require('../utils/auth0Util');
+const { deleteAuth0User } = require('../utils/auth0Util');
 
 /**
  * Get Store Profile
@@ -107,17 +106,8 @@ exports.deleteStoreProfile = async function (req) {
       });
     }
 
-    // Delete from Auth0
-    try {
-      const managementToken = await getManagementToken();
-      await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userData.sub}`, {
-        headers: {
-          Authorization: `Bearer ${managementToken}`,
-        },
-      });
-    } catch (error) {
-      console.error('Auth0 deletion failed:', error);
-    }
+    // Delete from Auth0 using the utility function
+    await deleteAuth0User(userData.sub); // Call the new function
 
     // Clear cache using standardized key
     await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
