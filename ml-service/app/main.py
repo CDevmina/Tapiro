@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.router import api_router
 from app.db.mongodb import connect_to_mongodb, close_mongodb_connection
+# Import the new sync function
+from app.services.taxonomyService import sync_taxonomy_with_file
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -34,11 +36,15 @@ async def root():
 
 # Startup and shutdown events
 @app.on_event("startup")
-async def startup_db_client():
+async def startup_event():
+    # Connect to DB first
     await connect_to_mongodb()
+    # Then sync taxonomy from file to DB
+    await sync_taxonomy_with_file()
+    # Note: TaxonomyService singleton is initialized on first request via get_taxonomy_service
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
+async def shutdown_event():
     await close_mongodb_connection()
 
 if __name__ == "__main__":

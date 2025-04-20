@@ -9,42 +9,107 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 from app.models.taxonomy import TaxonomyAttribute, TaxonomyCategory, Taxonomy
 from app.utils.redis_util import get_cache, set_cache, get_cache_json, set_cache_json, CACHE_KEYS, CACHE_TTL
+from app.db.mongodb import get_database 
 
 logger = logging.getLogger(__name__)
 
+# --- Add this new function ---
+async def sync_taxonomy_with_file():
+    """
+    Loads taxonomy from YAML file and ensures the database version matches.
+    Updates the database if the file version is different or DB is empty.
+    """
+    db = await get_database()
+    if db is None:
+        logger.error("Database connection not available for taxonomy sync.")
+        return
+
+    # 1. Load taxonomy from YAML file
+    file_taxonomy = None
+    try:
+        file_path = Path(__file__).parent.parent / "data" / "taxonomy.yaml"
+        with open(file_path, 'r') as file:
+            data = yaml.safe_load(file)
+            file_taxonomy = Taxonomy(**data)
+        logger.info(f"Loaded taxonomy version {file_taxonomy.version} from file for sync check.")
+    except Exception as e:
+        logger.error(f"Failed to load taxonomy from file during sync: {str(e)}")
+        return # Cannot proceed without file data
+
+    # 2. Get current taxonomy version from DB
+    db_version = None
+    try:
+        db_doc = await db.taxonomy.find_one({"current": True})
+        if db_doc and 'data' in db_doc and 'version' in db_doc['data']:
+            db_version = db_doc['data']['version']
+    except Exception as e:
+        logger.error(f"Error fetching current taxonomy version from DB: {str(e)}")
+        # Continue, assuming DB needs update if file loaded successfully
+
+    # 3. Compare versions and update DB if needed
+    if db_version != file_taxonomy.version:
+        logger.info(f"DB taxonomy version ('{db_version}') differs from file version ('{file_taxonomy.version}'). Updating database.")
+        try:
+            # Mark existing current documents as not current
+            await db.taxonomy.update_many(
+                {"current": True},
+                {"$set": {"current": False}}
+            )
+            # Upsert the new version from the file, marking it as current
+            await db.taxonomy.update_one(
+                {"version": file_taxonomy.version}, # Use version as the unique key for upsert
+                {"$set": {
+                    "data": file_taxonomy.dict(),
+                    "current": True,
+                    "updated_at": datetime.now()
+                }},
+                upsert=True
+            )
+            logger.info(f"Successfully updated database with taxonomy version {file_taxonomy.version}.")
+        except Exception as e:
+            logger.error(f"Failed to update taxonomy in database: {str(e)}")
+    else:
+        logger.info(f"Database taxonomy version ('{db_version}') matches file version. No update needed.")
+
+# --- Modify TaxonomyService ---
 class TaxonomyService:
-    def __init__(self, db=None):
-        self.db = db
+    def __init__(self, db=None): # db parameter can be optional now for initialization
+        self.db = db # Store db if provided, might be useful elsewhere
         self.taxonomy = None
         self.embedding_model = None
         self.category_embeddings = {}
-        
+
     async def initialize(self):
-        """Initialize taxonomy from file and DB"""
-        # Try loading from DB first
-        if self.db is not None:  # Changed from 'if self.db:'
-            cached = await self.db.taxonomy.find_one({"current": True})
-            if cached:
-                self.taxonomy = Taxonomy(**cached["data"])
-                logger.info(f"Loaded taxonomy from DB: {self.taxonomy.version}")
-                
-        # If not in DB or load failed, use file
+        """Initialize taxonomy, preferring DB, fallback to file."""
+        loaded_from = None
+        # Try loading from DB first if db connection exists
+        db = await get_database() # Get db connection if available
+        if db:
+            try:
+                cached = await db.taxonomy.find_one({"current": True})
+                if cached and 'data' in cached:
+                    self.taxonomy = Taxonomy(**cached["data"])
+                    logger.info(f"TaxonomyService initialized from DB version: {self.taxonomy.version}")
+                    loaded_from = "db"
+            except Exception as e:
+                logger.error(f"Failed to load taxonomy from DB during initialization: {str(e)}. Falling back to file.")
+
+        # If not loaded from DB, load from file
         if not self.taxonomy:
-            self._load_from_file()
-            
-            # Save to DB if available
-            if self.db is not None:
-                await self.db.taxonomy.update_one(
-                    {"current": True},
-                    {"$set": {"data": self.taxonomy.dict(), "updated_at": datetime.now()}},
-                    upsert=True
-                )
-        
-        # Initialize embedding model (try Redis cache first)
+            try:
+                self._load_from_file() # Loads into self.taxonomy
+                loaded_from = "file"
+                logger.info(f"TaxonomyService initialized from file version: {self.taxonomy.version}")
+            except Exception as e:
+                logger.error(f"FATAL: Failed to initialize taxonomy from both DB and file: {str(e)}")
+                # Depending on requirements, you might raise an exception or proceed without taxonomy
+                return # Stop initialization if file load also fails
+
+        # Initialize embedding model (can proceed even if taxonomy load failed, though search might not work)
         await self._initialize_embeddings()
-        
+
     def _load_from_file(self):
-        """Load taxonomy from YAML file"""
+        """Load taxonomy from YAML file into self.taxonomy"""
         file_path = Path(__file__).parent.parent / "data" / "taxonomy.yaml"
         try:
             with open(file_path, 'r') as file:
@@ -180,10 +245,12 @@ class TaxonomyService:
 # Singleton instance
 _taxonomy_service = None
 
-async def get_taxonomy_service(db=None):
+async def get_taxonomy_service(): # Remove db parameter
     """Get or create the taxonomy service singleton"""
     global _taxonomy_service
     if _taxonomy_service is None:
-        _taxonomy_service = TaxonomyService(db)
+        logger.info("Creating TaxonomyService singleton instance.")
+        # Pass db=None, initialize will get it if needed
+        _taxonomy_service = TaxonomyService()
         await _taxonomy_service.initialize()
     return _taxonomy_service
