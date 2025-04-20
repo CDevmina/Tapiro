@@ -722,11 +722,12 @@ components:
     UserUpdate:
       type: object
       properties:
-        preferences:
-          type: array
-          items:
-            $ref: "#/components/schemas/PreferenceItem"
-          description: User interest preferences with taxonomy categorization
+        username:
+          type: string
+          description: User's unique username
+        phone:
+          type: string
+          description: User's phone number (E.164 format recommended)
         privacySettings:
           type: object
           properties:
@@ -734,14 +735,6 @@ components:
               type: boolean
             anonymizeData:
               type: boolean
-            optInStores:
-              type: array
-              items:
-                type: string
-            optOutStores:
-              type: array
-              items:
-                type: string
         dataAccess:
           type: object
           properties:
@@ -749,6 +742,7 @@ components:
               type: array
               items:
                 type: string
+                description: List of domains allowed to access user data via API keys
 
     ApiKey:
       type: object

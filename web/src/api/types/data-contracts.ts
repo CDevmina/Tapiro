@@ -87,13 +87,13 @@ export interface StoreCreate {
 }
 
 export interface UserUpdate {
-  /** User interest preferences with taxonomy categorization */
-  preferences?: PreferenceItem[];
+  /** User's unique username */
+  username?: string;
+  /** User's phone number (E.164 format recommended) */
+  phone?: string;
   privacySettings?: {
     dataSharingConsent?: boolean;
     anonymizeData?: boolean;
-    optInStores?: string[];
-    optOutStores?: string[];
   };
   dataAccess?: {
     allowedDomains?: string[];
