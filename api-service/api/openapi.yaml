@@ -581,7 +581,6 @@ components:
       properties:
         userId:
           type: string
-          format: ObjectId
           readOnly: true
           description: Internal user ID
         auth0Id:
@@ -728,6 +727,11 @@ components:
         phone:
           type: string
           description: User's phone number (E.164 format recommended)
+        preferences:
+          type: array
+          description: User interest preferences with taxonomy categorization
+          items:
+            $ref: "#/components/schemas/PreferenceItem"
         privacySettings:
           type: object
           properties:
@@ -735,6 +739,16 @@ components:
               type: boolean
             anonymizeData:
               type: boolean
+            optInStores:
+              type: array
+              items:
+                type: string
+                description: List of store IDs the user has opted into sharing data with
+            optOutStores:
+              type: array
+              items:
+                type: string
+                description: List of store IDs the user has opted out of sharing data with
         dataAccess:
           type: object
           properties:
@@ -894,7 +908,6 @@ components:
       properties:
         userId:
           type: string
-          format: ObjectId
           description: Internal user ID
         preferences:
           type: array

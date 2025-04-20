@@ -166,7 +166,7 @@ async function updateUserPhone(userId, phone) {
     const phoneUpdate = {
       phone_number: phone,
       // Consider if phone_verified should be reset here
-      // phone_verified: false,
+      phone_verified: false,
     };
 
     // Update user phone number in Auth0

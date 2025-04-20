@@ -14,10 +14,7 @@
 export type AttributeDistribution = Record<string, number>;
 
 export interface User {
-  /**
-   * Internal user ID
-   * @format ObjectId
-   */
+  /** Internal user ID */
   userId?: string;
   /** Auth0 user ID */
   auth0Id: string;
@@ -91,9 +88,13 @@ export interface UserUpdate {
   username?: string;
   /** User's phone number (E.164 format recommended) */
   phone?: string;
+  /** User interest preferences with taxonomy categorization */
+  preferences?: PreferenceItem[];
   privacySettings?: {
     dataSharingConsent?: boolean;
     anonymizeData?: boolean;
+    optInStores?: string[];
+    optOutStores?: string[];
   };
   dataAccess?: {
     allowedDomains?: string[];
@@ -176,10 +177,7 @@ export interface SearchEntry {
 }
 
 export interface UserPreferences {
-  /**
-   * Internal user ID
-   * @format ObjectId
-   */
+  /** Internal user ID */
   userId?: string;
   preferences?: PreferenceItem[];
   /** @format date-time */
