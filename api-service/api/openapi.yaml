@@ -390,6 +390,29 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
+  /users/preferences/store-consent:
+    get:
+      tags: [Preference Management]
+      summary: Get user's store opt-in/out lists
+      description: Retrieves the lists of store IDs the user has explicitly opted into or opted out of sharing data with.
+      operationId: getStoreConsentLists
+      responses:
+        "200":
+          description: Successfully retrieved store consent lists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreConsentList"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read] # Requires user read scope
+      x-swagger-router-controller: PreferenceManagement
+
   /stores/api-keys:
     post:
       tags: [Store Management]
@@ -1041,6 +1064,20 @@ components:
                 format: date
               count:
                 type: integer
+
+    StoreConsentList:
+      type: object
+      properties:
+        optInStores:
+          type: array
+          items:
+            type: string
+          description: List of store IDs the user has opted into.
+        optOutStores:
+          type: array
+          items:
+            type: string
+          description: List of store IDs the user has opted out of.
 
     HealthStatus:
       type: object

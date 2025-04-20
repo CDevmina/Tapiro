@@ -252,3 +252,42 @@ exports.optInToStore = async function (req, storeId) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
+/**
+ * Get user's store opt-in/out lists
+ */
+exports.getStoreConsentLists = async function (req) {
+  try {
+    // Get user data - use req.user if available (from middleware) or fetch it
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    const db = getDB();
+
+    // Find user in database using Auth0 ID, projecting only necessary fields
+    const user = await db.collection('users').findOne(
+      { auth0Id: userData.sub },
+      { projection: { 'privacySettings.optInStores': 1, 'privacySettings.optOutStores': 1, _id: 0 } } // Only get opt-in/out lists
+    );
+
+    if (!user) {
+      return respondWithCode(404, {
+        code: 404,
+        message: 'User not found',
+      });
+    }
+
+    // Prepare the response object, defaulting to empty arrays if fields don't exist
+    const consentLists = {
+      optInStores: user.privacySettings?.optInStores || [],
+      optOutStores: user.privacySettings?.optOutStores || [],
+    };
+
+    // Note: Caching could be added here if needed, potentially using a specific key
+    // or relying on the USER_DATA cache invalidation from opt-in/out actions.
+
+    return respondWithCode(200, consentLists);
+  } catch (error) {
+    console.error('Get store consent lists failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};

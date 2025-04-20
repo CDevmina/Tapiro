@@ -40,3 +40,14 @@ module.exports.optOutFromStore = function optOutFromStore(req, res, next, storeI
       utils.writeJson(res, response);
     });
 };
+
+// Add the new controller function
+module.exports.getStoreConsentLists = function getStoreConsentLists(req, res, next) {
+  PreferenceManagement.getStoreConsentLists(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
