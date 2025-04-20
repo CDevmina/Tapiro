@@ -217,6 +217,44 @@ async function getUserMetadata(userId) {
 }
 
 /**
+ * Update Auth0 user's root username attribute (for database connections)
+ * @param {string} userId - Auth0 user ID
+ * @param {string} newUsername - The new username
+ * @returns {Promise<Object>} - Updated user data from Auth0
+ */
+async function updateAuth0Username(userId, newUsername) {
+  try {
+    const token = await getManagementToken();
+
+    const usernameUpdate = {
+      username: newUsername,
+      // Note: You might need to consider connection-specific rules here.
+      // For Auth0 database connections, 'username' is the field.
+    };
+
+    // Update username using the Management API
+    const response = await axios.patch(
+      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
+      usernameUpdate,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Successfully updated Auth0 username for ${userId}.`);
+    return response.data;
+  } catch (error) {
+    // Log the specific error (e.g., username already exists)
+    console.error(`Failed to update Auth0 username for ${userId}:`, error?.response?.data || error.message);
+    // Re-throw the error so the calling service knows the update failed
+    throw error;
+  }
+}
+
+/**
  * Delete a user from Auth0
  * @param {string} userId - Auth0 user ID
  * @returns {Promise<void>}
@@ -250,5 +288,6 @@ module.exports = {
   updateUserMetadata,
   updateUserPhone,
   getUserMetadata,
+  updateAuth0Username, // <-- Export the new function
   deleteAuth0User,
 };

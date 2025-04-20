@@ -3,7 +3,8 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-const { updateUserMetadata, updateUserPhone, deleteAuth0User } = require('../utils/auth0Util');
+// Import the new function
+const { updateUserMetadata, updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
 
 /**
  * Get User Profile
@@ -57,37 +58,45 @@ exports.updateUserProfile = async function (req, body) {
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
     const auth0UserId = userData.sub;
 
-    // --- Username Uniqueness Check ---
-    if (body.username && body.username !== userData.nickname) { // Check only if username changed
+    // --- Local DB Username Uniqueness Check ---
+    // Keep this check for your application's internal username uniqueness
+    if (body.username) {
       const existingUser = await db.collection('users').findOne({
         username: body.username,
         auth0Id: { $ne: auth0UserId },
       });
       if (existingUser) {
-        return respondWithCode(409, { code: 409, message: 'Username already taken' });
+        return respondWithCode(409, { code: 409, message: 'Username already taken in application' });
       }
-      // Also update Auth0 nickname if username changes
+    }
+
+    // --- Auth0 Username Update ---
+    // Attempt to update the Auth0 username if provided in the body.
+    // Auth0 will enforce its own uniqueness rules per connection.
+    if (body.username) {
       try {
-        // Pass invalidateUserCache: true if you want the main user cache invalidated here
-        await updateUserMetadata(auth0UserId, { nickname: body.username } /*, true */);
+        await updateAuth0Username(auth0UserId, body.username);
+        // Optionally: Update nickname in metadata as well if desired
+        // await updateUserMetadata(auth0UserId, { nickname: body.username });
       } catch (auth0Error) {
-        console.error(`Failed to update Auth0 nickname for ${auth0UserId}:`, auth0Error);
-        // Log and continue DB update
+        // If Auth0 update fails (e.g., username exists in Auth0 connection), return an error
+        // You might want to check the specific error type from auth0Error
+        console.error(`Auth0 username update failed for ${auth0UserId}:`, auth0Error);
+        return respondWithCode(409, { // Use 409 Conflict or appropriate code
+          code: 409,
+          message: 'Failed to update username with identity provider. It might already be taken.',
+          // Optionally include details: details: auth0Error.message
+        });
       }
     }
 
     // --- Phone Number Update in Auth0 ---
-    if (body.phone && body.phone !== userData.phone_number) { // Check only if phone changed
+    if (body.phone && body.phone !== userData.phone_number) {
       try {
-        // Call the utility function
         await updateUserPhone(auth0UserId, body.phone);
-        // Optionally invalidate user cache here if phone update should trigger it
-        // await invalidateCache(`${CACHE_KEYS.USER_DATA}${auth0UserId}`);
       } catch (auth0Error) {
-        // Error is already logged in updateUserPhone
-        // Decide if this should be a fatal error or just logged
-        // For now, log and continue DB update
-        // Consider returning a specific error if Auth0 update is critical
+        // Log and continue, or return error as needed
+        console.error(`Auth0 phone update failed for ${auth0UserId}:`, auth0Error);
         // return respondWithCode(500, { code: 500, message: 'Failed to update phone number with identity provider.' });
       }
     }
@@ -96,6 +105,7 @@ exports.updateUserProfile = async function (req, body) {
     const updateData = {
       updatedAt: new Date(),
     };
+    // Update local DB username only if Auth0 update was successful (or not attempted)
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
@@ -122,11 +132,11 @@ exports.updateUserProfile = async function (req, body) {
       );
 
     if (!result) {
-      return respondWithCode(404, { code: 404, message: 'User not found' });
+      // This case might occur if the user was deleted between checks
+      return respondWithCode(404, { code: 404, message: 'User not found during final update' });
     }
 
-    // --- Cache Invalidation ---
-    // Invalidate main user cache *after* successful DB update
+    // --- Cache Invalidation & Update ---
     const cacheKey = `${CACHE_KEYS.USER_DATA}${auth0UserId}`;
     await invalidateCache(cacheKey);
 
@@ -138,17 +148,15 @@ exports.updateUserProfile = async function (req, body) {
        }
     }
 
-    // --- Update Cache ---
     // Update cache with the new data (without preferences)
     // Note: This happens *after* invalidation, ensuring fresh data is set if needed immediately
     await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, result);
   } catch (error) {
+    // Catch errors not handled specifically above
     console.error('Update profile failed:', error);
-    // Check if the error came from Auth0 phone update and customize response if needed
-    // if (error.message.includes('Auth0 phone number')) { ... }
-    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+    return respondWithCode(500, { code: 500, message: 'Internal server error during profile update' });
   }
 };
 
