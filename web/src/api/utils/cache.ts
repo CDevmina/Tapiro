@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { UserPreferences } from "../types/data-contracts";
+import { User } from "../types/data-contracts";
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {
@@ -73,15 +73,16 @@ export const cacheSettings = {
 
 // Helper for optimistic updates
 export const optimisticUpdates = {
-  // Add a store to opt-in list and remove from opt-out list
+  // Add a store to opt-in list and remove from opt-out list within the User profile cache
   optInStore: (storeId: string) => {
     queryClient.setQueryData(
-      cacheKeys.users.preferences(),
-      (oldData: UserPreferences | undefined) => {
-        // Use standard UserPreferences type
+      cacheKeys.users.profile(),
+      (oldData: User | undefined) => {
         if (!oldData) return oldData;
-
-        const privacySettings = oldData.privacySettings || {};
+        // Ensure privacySettings exists, initialize if not
+        const privacySettings = oldData.privacySettings || {
+          dataSharingConsent: false,
+        }; // Default consent if needed
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
 
@@ -106,15 +107,18 @@ export const optimisticUpdates = {
     );
   },
 
-  // New optOutStore function with mirrored logic
+  // Remove store from opt-in list and add to opt-out list within the User profile cache
   optOutStore: (storeId: string) => {
     queryClient.setQueryData(
-      cacheKeys.users.preferences(),
-      (oldData: UserPreferences | undefined) => {
-        // Use standard UserPreferences type
+      cacheKeys.users.profile(), // <--- Target user profile cache
+      (oldData: User | undefined) => {
+        // <--- Use User type
         if (!oldData) return oldData;
 
-        const privacySettings = oldData.privacySettings || {};
+        // Ensure privacySettings exists, initialize if not
+        const privacySettings = oldData.privacySettings || {
+          dataSharingConsent: false,
+        }; // Default consent if needed
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
 

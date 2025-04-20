@@ -14,6 +14,10 @@
 export type AttributeDistribution = Record<string, number>;
 
 export interface User {
+  /**
+   * Internal user ID
+   * @format ObjectId
+   */
   userId?: string;
   /** Auth0 user ID */
   auth0Id: string;
@@ -27,9 +31,7 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
-  /** User interest preferences with taxonomy categorization */
-  preferences?: PreferenceItem[];
-  privacySettings?: {
+  privacySettings: {
     /** @default false */
     dataSharingConsent?: boolean;
     /** @default false */
@@ -174,18 +176,12 @@ export interface SearchEntry {
 }
 
 export interface UserPreferences {
+  /**
+   * Internal user ID
+   * @format ObjectId
+   */
   userId?: string;
   preferences?: PreferenceItem[];
-  privacySettings?: {
-    /** @default false */
-    dataSharingConsent?: boolean;
-    /** @default false */
-    anonymizeData?: boolean;
-    /** List of store IDs user has opted into */
-    optInStores?: string[];
-    /** List of store IDs user has opted out from */
-    optOutStores?: string[];
-  };
   /** @format date-time */
   updatedAt?: string;
 }
@@ -302,13 +298,6 @@ export interface PingStatus {
   status?: "ok";
   /** @format date-time */
   timestamp?: string;
-}
-
-export interface UserMetadataUpdate {
-  /** The type of registration (user or store) */
-  registrationType?: "user" | "store";
-  /** Whether registration process is complete */
-  registrationComplete?: boolean;
 }
 
 export interface UserMetadataResponse {

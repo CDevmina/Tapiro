@@ -17,32 +17,35 @@ exports.getUserOwnPreferences = async function (req) {
     const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
     const cachedPreferences = await getCache(cacheKey);
     if (cachedPreferences) {
-      return respondWithCode(200, JSON.parse(cachedPreferences));
+      // Ensure privacySettings are not included in the cached response being returned
+      const prefs = JSON.parse(cachedPreferences);
+      delete prefs.privacySettings;
+      return respondWithCode(200, prefs);
     }
 
-    // Find user in database
-    const user = await db.collection('users').findOne({ auth0Id: userData.sub });
+    // Find user in database, only selecting necessary fields
+    const user = await db.collection('users').findOne(
+        { auth0Id: userData.sub },
+        { projection: { _id: 1, preferences: 1, updatedAt: 1 } } // Select only needed fields
+    );
     if (!user) {
       return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Return just the preferences part
-    const preferences = {
+    // Prepare the response object without privacySettings
+    const preferencesResponse = {
       userId: user._id.toString(),
       preferences: user.preferences || [],
-      privacySettings: user.privacySettings || {
-        dataSharingConsent: false,
-        anonymizeData: false,
-        optInStores: [],
-        optOutStores: []
-      },
+      // REMOVED privacySettings
       updatedAt: user.updatedAt || new Date(),
     };
 
-    // Cache the preferences result with specific TTL
-    await setCache(cacheKey, JSON.stringify(preferences), { EX: CACHE_TTL.USER_DATA });
+    // Cache the preferences result (without privacySettings) with specific TTL
+    // Note: Caching the minimal response. If optimistic updates need privacySettings,
+    // they might need to fetch the full user profile or adjust logic.
+    await setCache(cacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
 
-    return respondWithCode(200, preferences);
+    return respondWithCode(200, preferencesResponse);
   } catch (error) {
     console.error('Get preferences failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
@@ -97,10 +100,10 @@ exports.optOutFromStore = async function (req, storeId) {
       },
     );
 
-    // Clear cache using standardized approach
+    // Clear relevant caches
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // Add this line
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
 
     return respondWithCode(204);
   } catch (error) {
@@ -128,24 +131,23 @@ exports.updateUserPreferences = async function (req, body) {
       });
     }
 
-    // REMOVED: The taxonomy validation code
     // If preferences are provided, send to FastAPI for processing
     if (body.preferences) {
       try {
         // Call the AI service to process preferences
         await AIService.updateUserPreferences(
           userData.sub,
-          user.email,
+          user.email, // Use email from the found user document
           body.preferences
         );
       } catch (error) {
         console.error('Failed to process preferences through AI service:', error);
-        // Continue with the update, we'll use the raw preferences without validation
+        // Continue with the update, we'll use the raw preferences without validation for now
       }
     }
 
-    // Update preferences with the data as provided (without validation)
-    await db.collection('users').updateOne(
+    // Update preferences in the database
+    const updateResult = await db.collection('users').updateOne(
       { _id: user._id },
       {
         $set: {
@@ -155,24 +157,36 @@ exports.updateUserPreferences = async function (req, body) {
       },
     );
 
-    // Clear related caches using the invalidation helper
+     // Fetch the updated user data to get the latest timestamp
+    const updatedUser = await db.collection('users').findOne(
+        { _id: user._id },
+        { projection: { preferences: 1, updatedAt: 1 } }
+    );
+
+
+    // Clear related caches
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
-    // Clear store-specific preference caches
+    // Clear store-specific preference caches as preferences changed
     if (user.privacySettings?.optInStores) {
       for (const storeId of user.privacySettings.optInStores) {
         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }
 
-    // Return updated preferences
-    const preferences = {
+    // Return updated preferences object (without privacySettings)
+    const preferencesResponse = {
       userId: user._id.toString(),
-      preferences: user.preferences || [], // Fixed: consistent naming
-      updatedAt: user.updatedAt || new Date(),
+      preferences: updatedUser.preferences || [],
+      updatedAt: updatedUser.updatedAt, // Use the actual updated timestamp
     };
 
-    return respondWithCode(200, preferences);
+     // Update the cache with the minimal response
+    const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+    await setCache(cacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
+
+
+    return respondWithCode(200, preferencesResponse);
   } catch (error) {
     console.error('Update user preferences failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
@@ -227,10 +241,10 @@ exports.optInToStore = async function (req, storeId) {
       },
     );
 
-    // Clear cache using invalidation helper
+    // Clear relevant caches
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
 
     return respondWithCode(204);
   } catch (error) {
