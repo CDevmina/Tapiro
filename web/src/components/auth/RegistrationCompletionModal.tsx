@@ -64,7 +64,7 @@ export function RegistrationCompletionModal() {
   };
 
   return (
-    <Modal show={true} size="md" popup dismissible={false}>
+    <Modal show={true} size="lg" popup dismissible={false}>
       <ModalHeader />
       <ModalBody>
         <RegistrationProgress step={step} totalSteps={totalSteps} />
