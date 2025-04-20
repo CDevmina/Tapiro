@@ -21,6 +21,8 @@ tags:
     description: Health and uptime monitoring
   - name: Admin
     description: Administrative operations for managing taxonomy and keyword mappings
+  - name: Taxonomy
+    description: Operations related to the product/interest taxonomy
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -583,6 +585,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Authentication
+
+  /taxonomy/categories:
+    get:
+      tags: [Taxonomy]
+      summary: Get Taxonomy Categories
+      description: Retrieves the full taxonomy structure from the database.
+      operationId: getTaxonomyCategories
+      responses:
+        "200":
+          description: Successfully retrieved the taxonomy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Taxonomy"
+        "404":
+          description: Taxonomy data not found in the database.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Taxonomy
 
 components:
   schemas:
@@ -1150,6 +1175,63 @@ components:
               type: boolean
               description: Whether registration process is complete
           description: User metadata from Auth0
+
+    TaxonomyAttribute:
+      type: object
+      description: Attribute within a taxonomy category
+      required:
+        - name
+        - values
+      properties:
+        name:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          nullable: true
+
+    TaxonomyCategory:
+      type: object
+      description: Category within a taxonomy system
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        parent_id:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        attributes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaxonomyAttribute"
+          default: []
+
+    Taxonomy:
+      type: object
+      description: Complete taxonomy definition with categories and version
+      required:
+        - categories
+        - version
+      properties:
+        _id:
+          type: string
+          readOnly: true
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaxonomyCategory"
+        version:
+          type: string
 
   responses:
     BadRequestError:
