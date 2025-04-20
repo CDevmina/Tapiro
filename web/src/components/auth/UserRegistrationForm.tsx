@@ -7,6 +7,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Popover, // <-- Import Popover
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -59,6 +60,16 @@ export function UserRegistrationForm({
     setShowConsentModal(false);
   };
 
+  // Content for the popover
+  const popoverContent = (
+    <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
+      <p>
+        Please click 'Review Data Sharing Consent Details' first to read and
+        accept the terms.
+      </p>
+    </div>
+  );
+
   return (
     <>
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -68,22 +79,47 @@ export function UserRegistrationForm({
 
         {/* Consent Section */}
         <div className="flex flex-col space-y-2 rounded border border-gray-200 p-4 dark:border-gray-600">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="data-sharing"
-              checked={dataSharingConsent}
-              // Disable checkbox until consent is accepted via modal
-              disabled={!consentAccepted}
-              onChange={(e) => setDataSharingConsent(e.target.checked)}
-              required // Keep required for form validation if needed
-            />
-            <Label
-              htmlFor="data-sharing"
-              className="flex text-gray-700 dark:text-gray-300"
-            >
-              I agree to the data sharing terms
-            </Label>
-          </div>
+          {/* Conditionally wrap Checkbox/Label in Popover */}
+          {!consentAccepted ? (
+            <Popover content={popoverContent} trigger="hover">
+              {/* This div is the target for the popover when checkbox is disabled */}
+              <div className="flex cursor-not-allowed items-center gap-2 opacity-50">
+                {" "}
+                {/* Add styling for disabled look */}
+                <Checkbox
+                  id="data-sharing-disabled" // Use different ID when disabled to avoid label conflict
+                  checked={false} // Always false when disabled
+                  disabled={true}
+                  readOnly // Prevent interaction
+                />
+                <Label
+                  htmlFor="data-sharing-disabled"
+                  className="flex text-gray-700 dark:text-gray-300"
+                >
+                  I agree to the data sharing terms
+                </Label>
+              </div>
+            </Popover>
+          ) : (
+            // Render the interactive Checkbox/Label when consent is accepted
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="data-sharing"
+                checked={dataSharingConsent}
+                disabled={false} // Enable it
+                onChange={(e) => setDataSharingConsent(e.target.checked)}
+                required
+              />
+              <Label
+                htmlFor="data-sharing"
+                className="flex text-gray-700 dark:text-gray-300"
+              >
+                I agree to the data sharing terms
+              </Label>
+            </div>
+          )}
+
+          {/* Button to open the modal remains the same */}
           <button
             type="button"
             onClick={() => setShowConsentModal(true)}
@@ -92,6 +128,7 @@ export function UserRegistrationForm({
             <HiInformationCircle className="mr-1 h-4 w-4" />
             Review Data Sharing Consent Details
           </button>
+          {/* Confirmation message remains the same */}
           {consentAccepted && (
             <p className="mt-1 flex items-center text-sm text-green-600 dark:text-green-400">
               <HiCheckCircle className="mr-1 h-4 w-4" /> Consent Accepted
@@ -99,18 +136,18 @@ export function UserRegistrationForm({
           )}
         </div>
 
+        {/* Submit button logic remains the same */}
         <div className="flex justify-center pt-2">
           {isLoading ? (
             <LoadingSpinner size="md" className="py-2" />
           ) : (
             <Button
               type="submit"
-              // Disable submission if consent hasn't been accepted via modal
-              disabled={isLoading || !consentAccepted}
+              disabled={isLoading || !consentAccepted} // Disable if loading OR consent not accepted
               size="lg"
               title={
                 !consentAccepted
-                  ? "Please review and accept the data sharing consent"
+                  ? "Please review and accept the data sharing consent first"
                   : ""
               }
             >

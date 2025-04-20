@@ -89,7 +89,7 @@ exports.registerUser = async function (req, body) {
     // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: userData.nickname,
+      username: userData.username,
       email: userData.email,
       phone: userData.phone_number || null,
       preferences: preferences || [],
