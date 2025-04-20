@@ -124,18 +124,17 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (isDeleteSuccess) {
       setShowDeleteModal(false); // Close modal on success
-      // Show toast briefly before logout/redirect
-      setShowSuccessToast(true);
-      setToastMessage("User account deleted successfully.");
+      // Don't show toast here, set flag for home page instead
+      // setShowSuccessToast(true);
+      // setToastMessage("User account deleted successfully.");
+      sessionStorage.setItem(
+        "showPostLogoutToast",
+        "User account deleted successfully.",
+      ); // <-- Set flag
       resetDeleteMutation();
-      // Logout after a short delay to allow toast visibility
-      const timer = setTimeout(() => {
-        setShowSuccessToast(false);
-        logout(); // <-- Use default logout behavior
-      }, 3000); // Adjust delay as needed
-      return () => clearTimeout(timer);
+      logout(); // <-- Call logout directly
     }
-  }, [isDeleteSuccess, resetDeleteMutation, logout]);
+  }, [isDeleteSuccess, resetDeleteMutation, logout]); // Keep dependencies
 
   useEffect(() => {
     if (deleteError) {
