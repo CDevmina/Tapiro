@@ -227,11 +227,26 @@ export default function UserProfilePage() {
               {/* Username */}
               <div className="relative">
                 <FloatingLabel
-                  variant="standard"
+                  variant="outlined"
                   id="username"
                   label="Username"
                   color={errors.username ? "error" : "default"}
-                  {...register("username")}
+                  {...register("username", {
+                    required: "Username is required",
+                    minLength: {
+                      value: 3,
+                      message: "Username must be at least 3 characters",
+                    },
+                    maxLength: {
+                      value: 15,
+                      message: "Username cannot exceed 15 characters",
+                    },
+                    pattern: {
+                      value: /^[a-zA-Z0-9_-]+$/,
+                      message:
+                        "Username can only contain letters, numbers, underscores, and hyphens",
+                    },
+                  })}
                 />
                 {errors.username?.message && (
                   <HelperText color="failure">
@@ -243,7 +258,7 @@ export default function UserProfilePage() {
               {/* Phone Number */}
               <div className="relative">
                 <FloatingLabel
-                  variant="standard"
+                  variant="outlined"
                   id="phone"
                   label="Phone Number (e.g., +14155552671)"
                   color={errors.phone ? "error" : "default"}

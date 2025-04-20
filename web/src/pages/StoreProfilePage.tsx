@@ -217,7 +217,7 @@ export default function StoreProfilePage() {
               {/* Store Name */}
               <div className="relative">
                 <FloatingLabel
-                  variant="standard"
+                  variant="outlined"
                   id="name"
                   label="Store Name"
                   color={errors.name ? "error" : "default"}
@@ -231,7 +231,7 @@ export default function StoreProfilePage() {
               {/* Address */}
               <div className="relative">
                 <FloatingLabel
-                  variant="standard"
+                  variant="outlined"
                   id="address"
                   label="Address"
                   color={errors.address ? "error" : "default"}
