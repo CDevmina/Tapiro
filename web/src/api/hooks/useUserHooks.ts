@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
-import { UserPreferencesUpdate, UserUpdate } from "../types/data-contracts";
+import {
+  UserPreferencesUpdate,
+  UserUpdate,
+  User,
+} from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useUserProfile() {
@@ -67,32 +71,29 @@ export function useOptInToStore() {
     mutationFn: (storeId: string) =>
       apiClients.users.optInToStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
-      const previousData = queryClient.getQueryData(
-        cacheKeys.users.preferences(),
-      );
+      // Optimistic update on the USER PROFILE cache
+      const queryKey = cacheKeys.users.profile(); // <--- Use profile key
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData<User>(queryKey); // <--- Use User type
 
-      // Apply optimistic update from cache.ts
+      // Apply optimistic update (which now targets the profile cache)
       optimisticUpdates.optInStore(storeId);
 
-      return { previousData };
+      return { previousData, queryKey }; // Pass queryKey for rollback/settled
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
+      // Rollback on error using the correct key and data
       if (context?.previousData) {
-        queryClient.setQueryData(
-          cacheKeys.users.preferences(),
-          context.previousData,
-        );
+        queryClient.setQueryData(context.queryKey, context.previousData);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
+    onSettled: (_data, _error, _variables, context) => {
+      // Invalidate the USER PROFILE cache on settled
+      if (context?.queryKey) {
+        queryClient.invalidateQueries({ queryKey: context.queryKey });
+      }
+      // Also invalidate preferences cache as opt-in/out might affect derived data?
+      // queryClient.invalidateQueries({ queryKey: cacheKeys.users.preferences() });
     },
   });
 }
@@ -105,32 +106,29 @@ export function useOptOutFromStore() {
     mutationFn: (storeId: string) =>
       apiClients.users.optOutFromStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
-      const previousData = queryClient.getQueryData(
-        cacheKeys.users.preferences(),
-      );
+      // Optimistic update on the USER PROFILE cache
+      const queryKey = cacheKeys.users.profile(); // <--- Use profile key
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData<User>(queryKey); // <--- Use User type
 
-      // Apply optimistic update from cache.ts
+      // Apply optimistic update (which now targets the profile cache)
       optimisticUpdates.optOutStore(storeId);
 
-      return { previousData };
+      return { previousData, queryKey }; // Pass queryKey for rollback/settled
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
+      // Rollback on error using the correct key and data
       if (context?.previousData) {
-        queryClient.setQueryData(
-          cacheKeys.users.preferences(),
-          context.previousData,
-        );
+        queryClient.setQueryData(context.queryKey, context.previousData);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: cacheKeys.users.preferences(),
-      });
+    onSettled: (_data, _error, _variables, context) => {
+      // Invalidate the USER PROFILE cache on settled
+      if (context?.queryKey) {
+        queryClient.invalidateQueries({ queryKey: context.queryKey });
+      }
+      // Also invalidate preferences cache as opt-in/out might affect derived data?
+      // queryClient.invalidateQueries({ queryKey: cacheKeys.users.preferences() });
     },
   });
 }
