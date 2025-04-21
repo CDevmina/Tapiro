@@ -396,11 +396,11 @@ paths:
     get:
       tags: [Preference Management]
       summary: Get user's store opt-in/out lists
-      description: Retrieves the lists of store IDs the user has explicitly opted into or opted out of sharing data with.
+      description: Retrieves the lists of stores (with names and IDs) the user has explicitly opted into or opted out of sharing data with.
       operationId: getStoreConsentLists
       responses:
         "200":
-          description: Successfully retrieved store consent lists.
+          description: Successfully retrieved store consent lists with details.
           content:
             application/json:
               schema:
@@ -412,7 +412,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
       security:
-        - oauth2: [user:read] # Requires user read scope
+        - oauth2: [user:read]
       x-swagger-router-controller: PreferenceManagement
 
   /stores/api-keys:
@@ -608,6 +608,52 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Taxonomy
+
+  /users/activity/summary:
+    get:
+      tags: [User Management]
+      summary: Get User Activity Summary
+      description: Retrieves a summary of recent API usage and data submissions related to the authenticated user.
+      operationId: getUserActivitySummary
+      security:
+        - oauth2: [user:read]
+      responses:
+        "200":
+          description: Successfully retrieved activity summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserActivitySummary"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: UserProfile
+
+  /users/analytics/spending:
+    get:
+      tags: [User Management]
+      summary: Get user spending analytics
+      description: Retrieves a breakdown of user spending by category based on purchase data.
+      operationId: getUserSpendingAnalytics
+      responses:
+        "200":
+          description: Spending analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingAnalyticsResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
 
 components:
   schemas:
@@ -1090,19 +1136,37 @@ components:
               count:
                 type: integer
 
+    StoreConsentDetail:
+      type: object
+      properties:
+        storeId:
+          type: string
+          description: The unique identifier for the store.
+          example: "60d5ecb8b48f4d001f9e8f8a"
+        name:
+          type: string
+          description: The name of the store.
+          example: "Example Electronics Store"
+      required:
+        - storeId
+        - name
+
     StoreConsentList:
       type: object
       properties:
         optInStores:
           type: array
+          description: List of stores the user has opted into sharing data with.
           items:
-            type: string
-          description: List of store IDs the user has opted into.
+            $ref: "#/components/schemas/StoreConsentDetail"
         optOutStores:
           type: array
+          description: List of stores the user has opted out of sharing data with.
           items:
-            type: string
-          description: List of store IDs the user has opted out of.
+            $ref: "#/components/schemas/StoreConsentDetail"
+      required:
+        - optInStores
+        - optOutStores
 
     HealthStatus:
       type: object
@@ -1232,6 +1296,89 @@ components:
             $ref: "#/components/schemas/TaxonomyCategory"
         version:
           type: string
+
+    ActivityByStore:
+      type: object
+      properties:
+        storeId:
+          type: string
+          description: The unique identifier for the store.
+        name:
+          type: string
+          description: The name of the store.
+        count:
+          type: integer
+          description: The number of activities associated with this store.
+      required:
+        - storeId
+        - name
+        - count
+
+    UserActivitySummary:
+      type: object
+      properties:
+        recentApiUsage:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of API calls accessing the user's data recently.
+            byStore:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActivityByStore"
+              description: Breakdown of API calls by store.
+        recentSubmissions:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of data submissions made about the user recently.
+            byStore:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActivityByStore"
+              description: Breakdown of data submissions by store.
+      required:
+        - recentApiUsage
+        - recentSubmissions
+
+    SpendingBreakdownItem:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          description: The ID of the spending category from the taxonomy.
+        categoryName:
+          type: string
+          description: The name of the spending category.
+        totalSpent:
+          type: number
+          format: double
+          description: The total amount spent in this category.
+      required:
+        - categoryId
+        - categoryName
+        - totalSpent
+
+    SpendingAnalyticsResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: The user's unique identifier.
+        timeframe:
+          type: string
+          description: Description of the time period covered (e.g., "Last 30 days").
+          example: "All Time"
+        spendingBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendingBreakdownItem"
+      required:
+        - userId
+        - timeframe
+        - spendingBreakdown
 
   responses:
     BadRequestError:

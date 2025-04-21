@@ -263,6 +263,26 @@ export interface ApiKeyUsage {
   }[];
 }
 
+export interface StoreConsentDetail {
+  /**
+   * The unique identifier for the store.
+   * @example "60d5ecb8b48f4d001f9e8f8a"
+   */
+  storeId: string;
+  /**
+   * The name of the store.
+   * @example "Example Electronics Store"
+   */
+  name: string;
+}
+
+export interface StoreConsentList {
+  /** List of stores the user has opted into sharing data with. */
+  optInStores: StoreConsentDetail[];
+  /** List of stores the user has opted out of sharing data with. */
+  optOutStores: StoreConsentDetail[];
+}
+
 export interface HealthStatus {
   /** Overall health status of the Health */
   status?: "healthy" | "degraded" | "unhealthy";
@@ -308,6 +328,77 @@ export interface UserMetadataResponse {
     /** Whether registration process is complete */
     registrationComplete?: boolean;
   };
+}
+
+/** Attribute within a taxonomy category */
+export interface TaxonomyAttribute {
+  name: string;
+  values: string[];
+  description?: string | null;
+}
+
+/** Category within a taxonomy system */
+export interface TaxonomyCategory {
+  id: string;
+  name: string;
+  parent_id?: string | null;
+  description?: string | null;
+  /** @default [] */
+  attributes?: TaxonomyAttribute[];
+}
+
+/** Complete taxonomy definition with categories and version */
+export interface Taxonomy {
+  _id?: string;
+  categories: TaxonomyCategory[];
+  version: string;
+}
+
+export interface ActivityByStore {
+  /** The unique identifier for the store. */
+  storeId: string;
+  /** The name of the store. */
+  name: string;
+  /** The number of activities associated with this store. */
+  count: number;
+}
+
+export interface UserActivitySummary {
+  recentApiUsage: {
+    /** Total number of API calls accessing the user's data recently. */
+    total?: number;
+    /** Breakdown of API calls by store. */
+    byStore?: ActivityByStore[];
+  };
+  recentSubmissions: {
+    /** Total number of data submissions made about the user recently. */
+    total?: number;
+    /** Breakdown of data submissions by store. */
+    byStore?: ActivityByStore[];
+  };
+}
+
+export interface SpendingBreakdownItem {
+  /** The ID of the spending category from the taxonomy. */
+  categoryId: string;
+  /** The name of the spending category. */
+  categoryName: string;
+  /**
+   * The total amount spent in this category.
+   * @format double
+   */
+  totalSpent: number;
+}
+
+export interface SpendingAnalyticsResponse {
+  /** The user's unique identifier. */
+  userId: string;
+  /**
+   * Description of the time period covered (e.g., "Last 30 days").
+   * @example "All Time"
+   */
+  timeframe: string;
+  spendingBreakdown: SpendingBreakdownItem[];
 }
 
 export interface GetApiKeyUsagePayload {
