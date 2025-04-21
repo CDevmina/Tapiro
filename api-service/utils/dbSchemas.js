@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.1';
+const SCHEMA_VERSION = '2.0.2';
 
 const userSchema = {
   validator: {
@@ -186,7 +186,7 @@ const userDataSchema = {
                   properties: {
                     name: { bsonType: 'string' },
                     category: { bsonType: 'string' },
-                    price: { bsonType: 'double' },
+                    price: { bsonType: ['double', 'int'] },
                     quantity: { bsonType: 'int' },
                     attributes: {
                       bsonType: 'object',
