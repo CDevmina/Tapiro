@@ -16,6 +16,9 @@ import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import StoreProfilePage from "./pages/StoreProfilePage";
+import UserPreferencesPage from "./pages/UserPreferencesPage";
+import UserDataSharingPage from "./pages/UserDataSharingPage";
+import UserAnalyticsPage from "./pages/UserAnalyticsPage";
 
 const router = createBrowserRouter([
   {
@@ -50,6 +53,19 @@ const router = createBrowserRouter([
           {
             path: "profile/user",
             element: <UserProfilePage />,
+          },
+          // --- Add New User Dashboard Sub-routes ---
+          {
+            path: "profile/user/preferences", // Route for preferences
+            element: <UserPreferencesPage />,
+          },
+          {
+            path: "profile/user/sharing", // Route for data sharing
+            element: <UserDataSharingPage />,
+          },
+          {
+            path: "profile/user/analytics", // Route for analytics
+            element: <UserAnalyticsPage />,
           },
         ],
       },

@@ -26,6 +26,13 @@ export const cacheKeys = {
     all: ["users"],
     profile: () => [...cacheKeys.users.all, "profile"],
     preferences: () => [...cacheKeys.users.all, "preferences"],
+    recentData: (limit: number, page: number) => [
+      ...cacheKeys.users.all,
+      "recentData",
+      { limit, page },
+    ],
+    spendingAnalytics: () => [...cacheKeys.users.all, "spendingAnalytics"],
+    storeConsent: () => [...cacheKeys.users.all, "storeConsent"],
   },
   stores: {
     all: ["stores"],
@@ -36,10 +43,12 @@ export const cacheKeys = {
       keyId,
       "usage",
     ],
+    lookup: (ids: string[]) => [...cacheKeys.stores.all, "lookup", ids],
   },
   system: {
     health: () => ["system", "health"],
     ping: () => ["system", "ping"],
+    taxonomy: () => ["system", "taxonomy"],
   },
 };
 

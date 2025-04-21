@@ -2,6 +2,7 @@ import { Users } from "./types/Users";
 import { Stores } from "./types/Stores";
 import { Health } from "./types/Health";
 import { Ping } from "./types/Ping";
+import { Taxonomy } from "./types/Taxonomy"; // <-- Import Taxonomy client
 // Add useState import
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth"; // ← use your context
@@ -24,6 +25,9 @@ export function createApiClients() {
           },
         };
       }
+      // Return an empty object or undefined if no securityData is present
+      // to avoid potential issues with Axios/fetch expecting an object.
+      return {};
     },
   };
 
@@ -33,6 +37,7 @@ export function createApiClients() {
     stores: new Stores(config),
     health: new Health(config),
     ping: new Ping(config),
+    taxonomy: new Taxonomy(config), // <-- Instantiate Taxonomy client
   };
 }
 
@@ -53,15 +58,16 @@ export function useApiClients() {
         try {
           const token = await getAccessToken(); // This now throws on error
           if (isMounted) {
-            Object.values(apiClients).forEach(
-              (c) => c.setSecurityData(token || null), // Should always have token here if no error
+            // Ensure all clients get the security data
+            Object.values(apiClients).forEach((c) =>
+              c.setSecurityData(token || null),
             );
             setClientsReady(true); // <-- Set clients as ready AFTER token is set
           }
         } catch {
-          // <-- Remove 'e' from here
-          // Error fetching token (already logged in getAccessToken)
+          // Error fetching token
           if (isMounted) {
+            // Ensure all clients have security data cleared on error
             Object.values(apiClients).forEach((c) => c.setSecurityData(null));
             setClientsReady(false); // <-- Clients are not ready
           }
@@ -69,6 +75,7 @@ export function useApiClients() {
       })();
     } else {
       // If not authenticated or still loading, ensure clients are not ready and have no token
+      // Ensure all clients have security data cleared
       Object.values(apiClients).forEach((c) => c.setSecurityData(null));
       setClientsReady(false); // <-- Clients are not ready
     }
@@ -76,8 +83,6 @@ export function useApiClients() {
     return () => {
       isMounted = false;
     };
-    // Add clientsReady to dependency array? No, causes infinite loop.
-    // The effect should run based on auth state changes.
   }, [isAuthenticated, authLoading, getAccessToken, apiClients]);
 
   // Return clients and the readiness state
