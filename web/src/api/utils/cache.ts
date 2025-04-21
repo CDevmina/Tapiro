@@ -31,7 +31,12 @@ export const cacheKeys = {
       "recentData",
       { limit, page },
     ],
-    spendingAnalytics: () => [...cacheKeys.users.all, "spendingAnalytics"],
+    // Update spendingAnalytics to accept optional dates
+    spendingAnalytics: (startDate?: string, endDate?: string) => [
+      ...cacheKeys.users.all,
+      "spendingAnalytics",
+      { startDate: startDate ?? "all", endDate: endDate ?? "all" }, // Use 'all' if undefined
+    ],
     storeConsent: () => [...cacheKeys.users.all, "storeConsent"],
   },
   stores: {

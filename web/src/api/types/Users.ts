@@ -13,8 +13,9 @@
 import {
   Error,
   GetRecentUserDataParams,
+  GetSpendingAnalyticsParams,
+  MonthlySpendingAnalytics,
   RecentUserDataEntry,
-  SpendingAnalytics,
   StoreConsentList,
   User,
   UserCreate,
@@ -314,21 +315,26 @@ export class Users<
       ...params,
     });
   /**
-   * @description Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+   * @description Retrieves aggregated spending data by category and month for the authenticated user.
    *
    * @tags User Management
    * @name GetSpendingAnalytics
    * @summary Get User Spending Analytics
    * @request GET:/users/analytics/spending
    * @secure
-   * @response `200` `SpendingAnalytics` Spending analytics retrieved successfully
+   * @response `200` `MonthlySpendingAnalytics` Spending analytics retrieved successfully.
    * @response `401` `Error`
+   * @response `404` `Error`
    * @response `500` `Error`
    */
-  getSpendingAnalytics = (params: RequestParams = {}) =>
-    this.request<SpendingAnalytics, Error>({
+  getSpendingAnalytics = (
+    query: GetSpendingAnalyticsParams,
+    params: RequestParams = {},
+  ) =>
+    this.request<MonthlySpendingAnalytics, Error>({
       path: `/users/analytics/spending`,
       method: "GET",
+      query: query,
       secure: true,
       format: "json",
       ...params,

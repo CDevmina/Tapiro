@@ -1,5 +1,5 @@
-import { useMemo } from "react"; // <-- Import React
-import { Link } from "react-router"; // <-- Correct import
+import { useMemo, useState } from "react";
+import { Link } from "react-router"; // <-- Corrected import
 import {
   Card,
   Alert,
@@ -12,27 +12,31 @@ import {
   TimelineTitle,
   TimelineBody,
   ListItem,
-} from "flowbite-react"; // <-- Keep existing imports
+  Datepicker,
+  Button,
+} from "flowbite-react";
 import {
   HiArrowRight,
   HiClock,
   HiInformationCircle,
-  HiOutlineNewspaper, // Icon for activity
-  HiOutlineCurrencyDollar, // Icon for spending
-  HiOutlineShare, // Icon for sharing
-  HiOutlineAdjustments, // Icon for preferences
+  HiOutlineNewspaper,
+  HiOutlineCurrencyDollar,
+  HiOutlineShare,
+  HiOutlineAdjustments,
+  HiCalendar,
 } from "react-icons/hi";
-// Import Recharts components - Added BarChart, XAxis, YAxis, CartesianGrid, Bar, Legend
 import {
   ResponsiveContainer,
-  BarChart, // Changed from PieChart
-  Bar, // Added Bar
-  XAxis, // Added XAxis
-  YAxis, // Added YAxis
-  CartesianGrid, // Added CartesianGrid
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
-  Legend, // Added Legend
-  Cell, // Keep Cell for color mapping if needed later, but maybe not for BarChart
+  Legend,
+  BarChart,
+  Bar,
+  Cell,
 } from "recharts";
 
 import {
@@ -42,16 +46,16 @@ import {
   useStoreConsentLists,
   useUserPreferences,
 } from "../api/hooks/useUserHooks";
-import { useLookupStores } from "../api/hooks/useStoreHooks"; // Import useLookupStores
+import { useLookupStores } from "../api/hooks/useStoreHooks";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorDisplay from "../components/common/ErrorDisplay";
 import {
   RecentUserDataEntry,
-  StoreBasicInfo, // <-- Import StoreBasicInfo
-  PreferenceItem, // <-- Import PreferenceItem
-} from "../api/types/data-contracts"; // Import types
+  StoreBasicInfo,
+  MonthlySpendingItem,
+} from "../api/types/data-contracts";
 
-// Helper function to format date
+// Helper function to format date (keep existing)
 const formatDate = (dateString: string | Date | undefined) => {
   if (!dateString) return "N/A";
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -63,17 +67,21 @@ const formatDate = (dateString: string | Date | undefined) => {
   });
 };
 
-// Define colors for the pie chart (can be reused or adapted for BarChart)
-const COLORS = [
+// Define colors for the lines (can reuse or define new ones)
+const LINE_COLORS = [
   "#0088FE",
   "#00C49F",
   "#FFBB28",
   "#FF8042",
   "#8884D8",
   "#82CA9D",
+  "#FF5733",
+  "#C70039",
+  "#900C3F",
+  "#581845",
 ];
 
-// Helper to format currency for Tooltip/Axis
+// Helper to format currency (keep existing)
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -83,7 +91,31 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+// Helper to format YYYY-MM date string for display
+const formatMonth = (monthString: string) => {
+  try {
+    const [year, month] = monthString.split("-");
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+    });
+  } catch {
+    return monthString; // Fallback
+  }
+};
+
+// Helper to format Date object to YYYY-MM-DD string
+const formatDateToISO = (date: Date | null | undefined): string | undefined => {
+  if (!date) return undefined;
+  return date.toISOString().split("T")[0];
+};
+
 export default function UserDashboard() {
+  // --- State for Date Range ---
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
   // --- Fetch Data (Hooks called unconditionally at the top) ---
   const {
     data: profile,
@@ -94,12 +126,15 @@ export default function UserDashboard() {
     data: recentActivity,
     isLoading: activityLoading,
     error: activityError,
-  } = useRecentUserData(5); // Fetch latest 5 activities
+  } = useRecentUserData(5);
   const {
     data: spendingData,
     isLoading: spendingLoading,
     error: spendingError,
-  } = useSpendingAnalytics();
+  } = useSpendingAnalytics({
+    startDate: formatDateToISO(startDate),
+    endDate: formatDateToISO(endDate),
+  });
   const {
     data: consentLists,
     isLoading: consentLoading,
@@ -112,10 +147,8 @@ export default function UserDashboard() {
   } = useUserPreferences();
 
   // --- Prepare Derived Data (useMemo hooks called unconditionally) ---
-  // Note: Hooks now handle potentially undefined data internally
-
   const optInStoreIds = useMemo(
-    () => consentLists?.optInStores || [], // Handle undefined consentLists
+    () => consentLists?.optInStores || [],
     [consentLists],
   );
 
@@ -123,39 +156,60 @@ export default function UserDashboard() {
     data: storeDetails,
     isLoading: storesLoading,
     error: storesError,
-  } = useLookupStores(optInStoreIds); // Hook call is unconditional
+  } = useLookupStores(optInStoreIds);
 
   const storeNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    // Handle undefined storeDetails
     storeDetails?.forEach((store: StoreBasicInfo) => {
-      // <-- Add type annotation
       map.set(store.storeId, store.name || `Store ID: ${store.storeId}`);
     });
     return map;
   }, [storeDetails]);
 
-  // Data for Spending Bar Chart
-  const spendingChartData = useMemo(() => {
-    if (!spendingData) return []; // Handle undefined spendingData
-    return Object.entries(spendingData)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+  // --- Data Transformation for Spending Line Chart ---
+  const { lineChartData, categories } = useMemo(() => {
+    if (!spendingData) return { lineChartData: [], categories: [] };
+
+    const allCategories = new Set<string>();
+    const dataMap = new Map<string, Record<string, number | string>>();
+
+    spendingData.forEach((monthlyItem: MonthlySpendingItem) => {
+      const monthData: Record<string, number | string> = {
+        month: monthlyItem.month,
+      };
+      Object.entries(monthlyItem.spending).forEach(([category, amount]) => {
+        allCategories.add(category);
+        monthData[category] = amount;
+      });
+      dataMap.set(monthlyItem.month, monthData);
+    });
+
+    const processedData = spendingData.map((item: MonthlySpendingItem) => {
+      const monthEntry = dataMap.get(item.month) || { month: item.month };
+      allCategories.forEach((cat) => {
+        if (!(cat in monthEntry)) {
+          monthEntry[cat] = 0;
+        }
+      });
+      return monthEntry;
+    });
+
+    return {
+      lineChartData: processedData,
+      categories: Array.from(allCategories).sort(),
+    };
   }, [spendingData]);
 
   // Data for Preferences Bar Chart
   const topPreferencesChartData = useMemo(() => {
-    if (!preferencesData?.preferences) return []; // Handle undefined preferencesData
-    return (
-      [...preferencesData.preferences]
-        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-        .slice(0, 5)
-        // Format for BarChart (horizontal)
-        .map((pref) => ({
-          name: pref.category, // Use category name for the axis label
-          score: pref.score * 100, // Convert score to percentage for display
-        }))
-    );
+    if (!preferencesData?.preferences) return [];
+    return [...preferencesData.preferences]
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 5)
+      .map((pref) => ({
+        name: pref.category,
+        score: pref.score != null ? pref.score * 100 : 0,
+      }));
   }, [preferencesData]);
 
   // --- Loading and Error States (Checked AFTER hooks) ---
@@ -167,7 +221,7 @@ export default function UserDashboard() {
     preferencesLoading ||
     storesLoading;
 
-  const combinedError = // Combine errors for a single display if needed
+  const combinedError =
     profileError ||
     activityError ||
     spendingError ||
@@ -175,12 +229,11 @@ export default function UserDashboard() {
     preferencesError ||
     storesError;
 
-  if (isLoading) {
+  if (isLoading && !spendingData) {
     return <LoadingSpinner message="Loading your dashboard..." />;
   }
 
-  // Display a general error if any query failed
-  if (combinedError) {
+  if (combinedError && !spendingData) {
     return (
       <ErrorDisplay
         title="Failed to load dashboard"
@@ -197,22 +250,15 @@ export default function UserDashboard() {
         Welcome back, {profile?.username || "User"}!
       </h2>
 
-      {/* Adjusted grid layout */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* --- Recent Activity Card --- Adjusted span */}
+        {/* --- Recent Activity Card --- */}
         <Card className="col-span-1 flex flex-col">
-          {" "}
-          {/* Changed lg:col-span-2 to col-span-1, added flex flex-col */}
           <div className="flex-grow">
-            {" "}
-            {/* Added flex-grow to push link down */}
             <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-              {" "}
-              {/* Added mb-4 */}
               <HiOutlineNewspaper className="mr-2 h-5 w-5" />
               Recent Activity
             </h3>
-            {activityError ? ( // Show specific error if only this section failed
+            {activityError ? (
               <Alert color="failure" icon={HiInformationCircle}>
                 Could not load recent activity.
               </Alert>
@@ -247,68 +293,102 @@ export default function UserDashboard() {
               </Timeline>
             )}
           </div>
-          {/* Moved Link to the bottom */}
           <Link
             to="/profile/user/analytics"
-            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Added self-start
+            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
           >
             View All Activity <HiArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Card>
 
-        {/* --- Spending Overview Card --- Adjusted span and chart type */}
+        {/* --- Spending Overview Card --- */}
         <Card className="col-span-1 flex flex-col md:col-span-2">
-          {" "}
-          {/* Changed col-span-1 to md:col-span-2, added flex flex-col */}
           <div className="flex-grow">
-            {" "}
-            {/* Added flex-grow */}
-            <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-              {" "}
-              {/* Added mb-4 */}
-              <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
-              Spending Overview
-            </h3>
-            {spendingError ? ( // Show specific error
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+              <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
+                Spending Overview
+              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <Datepicker
+                  icon={HiCalendar}
+                  value={startDate ?? undefined}
+                  onSelectedDateChanged={(date) => setStartDate(date)}
+                  maxDate={endDate || undefined}
+                  className="w-full"
+                  placeholder="Start Date"
+                />
+                <Datepicker
+                  icon={HiCalendar}
+                  value={endDate ?? undefined}
+                  onSelectedDateChanged={(date) => setEndDate(date)}
+                  minDate={startDate || undefined}
+                  className="w-full"
+                  placeholder="End Date"
+                />
+                {(startDate || endDate) && (
+                  <Button
+                    size="xs"
+                    color="light"
+                    onClick={() => {
+                      setStartDate(null);
+                      setEndDate(null);
+                    }}
+                    title="Clear date range"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {spendingError ? (
               <Alert color="failure" icon={HiInformationCircle}>
-                Could not load spending data.
+                Could not load spending data for the selected range.
               </Alert>
-            ) : !spendingChartData || spendingChartData.length === 0 ? (
+            ) : spendingLoading ? (
+              <div className="flex h-[250px] items-center justify-center">
+                <LoadingSpinner message="Loading spending data..." />
+              </div>
+            ) : !lineChartData || lineChartData.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400">
-                No spending data available yet.
+                No spending data available
+                {startDate || endDate ? " for this period" : " yet"}.
               </p>
             ) : (
-              // Changed to BarChart
-              <div style={{ width: "100%", height: 250 }}>
+              <div style={{ width: "100%", height: 300 }}>
                 <ResponsiveContainer>
-                  <BarChart
-                    data={spendingChartData}
+                  <LineChart
+                    data={lineChartData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
+                    <XAxis dataKey="month" tickFormatter={formatMonth} />
                     <YAxis tickFormatter={formatCurrency} />
                     <Tooltip
                       formatter={(value: number) => formatCurrency(value)}
+                      labelFormatter={formatMonth}
                     />
                     <Legend />
-                    <Bar dataKey="value" name="Total Spent" fill="#8884d8">
-                      {spendingChartData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                    {categories.map((category, index) => (
+                      <Line
+                        key={category}
+                        type="monotone"
+                        dataKey={category}
+                        stroke={LINE_COLORS[index % LINE_COLORS.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 6 }}
+                      />
+                    ))}
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
-          {/* Moved Link to the bottom */}
           <Link
             to="/profile/user/analytics"
-            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Added self-start
+            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
           >
             View Detailed Analytics <HiArrowRight className="ml-1 h-4 w-4" />
           </Link>
@@ -316,23 +396,16 @@ export default function UserDashboard() {
 
         {/* --- Data Sharing Card --- */}
         <Card className="col-span-1 flex flex-col">
-          {" "}
-          {/* Added flex flex-col */}
           <div className="flex-grow">
-            {" "}
-            {/* Added flex-grow */}
             <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-              {" "}
-              {/* Added mb-4 */}
               <HiOutlineShare className="mr-2 h-5 w-5" />
               Data Sharing
             </h3>
-            {consentError || storesError ? ( // Show specific error
+            {consentError || storesError ? (
               <Alert color="failure" icon={HiInformationCircle}>
                 Could not load sharing status.
               </Alert>
-            ) : // Use optional chaining and nullish coalescing for safety
-            (consentLists?.optInStores?.length ?? 0) === 0 ? (
+            ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
               <p className="text-gray-500 dark:text-gray-400">
                 You are not currently sharing data with any stores.
               </p>
@@ -360,60 +433,74 @@ export default function UserDashboard() {
               </>
             )}
           </div>
-          {/* Moved Link to the bottom */}
           <Link
             to="/profile/user/sharing"
-            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Added self-start
+            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
           >
             Manage Sharing Settings <HiArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Card>
 
-        {/* --- Preferences Summary Card --- Adjusted span and content */}
+        {/* --- Preferences Summary Card --- */}
         <Card className="col-span-1 flex flex-col md:col-span-2">
-          {" "}
-          {/* Changed lg:col-span-2 to md:col-span-2, added flex flex-col */}
           <div className="flex-grow">
-            {" "}
-            {/* Added flex-grow */}
             <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-              {" "}
-              {/* Added mb-4 */}
               <HiOutlineAdjustments className="mr-2 h-5 w-5" />
-              Your Top Preferences
+              Top Preferences
             </h3>
-            {preferencesError ? ( // Show specific error
+            {preferencesError ? (
               <Alert color="failure" icon={HiInformationCircle}>
-                Could not load preferences.
+                Could not load preferences data.
               </Alert>
+            ) : preferencesLoading ? (
+              <div className="flex h-[250px] items-center justify-center">
+                <LoadingSpinner message="Loading preferences..." />
+              </div>
             ) : !topPreferencesChartData ||
               topPreferencesChartData.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400">
-                No preferences set yet.
+                No preference data available yet.
               </p>
             ) : (
-              // Changed to Horizontal BarChart
-              <div style={{ width: "100%", height: 250 }}>
-                <ResponsiveContainer>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    layout="vertical" // Make it horizontal
+                    layout="vertical"
                     data={topPreferencesChartData}
-                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }} // Adjust margins for labels
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 100]} unit="%" />{" "}
-                    {/* Score axis */}
-                    <YAxis dataKey="name" type="category" width={100} />{" "}
-                    {/* Category axis */}
-                    <Tooltip
-                      formatter={(value: number) => `${value.toFixed(0)}%`}
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 100]}
+                      tickFormatter={(value) => `${value}%`}
+                      fontSize={12}
+                      tick={{ fill: "currentColor" }}
                     />
-                    {/* <Legend /> */}
-                    <Bar dataKey="score" name="Preference Score" fill="#00C49F">
-                      {topPreferencesChartData.map((entry, index) => (
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={100}
+                      fontSize={12}
+                      tick={{ fill: "currentColor" }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => `${value.toFixed(1)}%`}
+                      cursor={{ fill: "rgba(156, 163, 175, 0.2)" }}
+                      contentStyle={{
+                        backgroundColor: "rgba(31, 41, 55, 0.9)",
+                        borderColor: "rgba(75, 85, 99, 0.5)",
+                        borderRadius: "0.375rem",
+                      }}
+                      itemStyle={{ color: "#e5e7eb" }}
+                      labelStyle={{ color: "#f9fafb", fontWeight: "bold" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "12px" }} />
+                    <Bar dataKey="score" name="Preference Score">
+                      {topPreferencesChartData.map((_entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
+                          fill={LINE_COLORS[index % LINE_COLORS.length]}
                         />
                       ))}
                     </Bar>
@@ -422,30 +509,13 @@ export default function UserDashboard() {
               </div>
             )}
           </div>
-          {/* Moved Link to the bottom */}
           <Link
             to="/profile/user/preferences"
-            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Added self-start
+            className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
           >
             Manage All Preferences <HiArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Card>
-
-        {/* --- Quick Links/Actions Card (Optional - Uncomment to use Button/Icons) --- */}
-        {/* <Card className="col-span-1">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Quick Links</h3>
-          <div className="flex flex-col space-y-2">
-             <Button as={Link} to="/profile/user" color="light" className="w-full justify-start">
-               <HiUserCircle className="mr-2 h-5 w-5" /> View Profile
-             </Button>
-             <Button as={Link} to="/profile/user/preferences" color="light" className="w-full justify-start">
-               <HiCog className="mr-2 h-5 w-5" /> Edit Preferences
-             </Button>
-             <Button as={Link} to="/profile/user/sharing" color="light" className="w-full justify-start">
-               <HiShare className="mr-2 h-5 w-5" /> Manage Sharing
-             </Button>
-          </div>
-        </Card> */}
       </div>
     </div>
   );

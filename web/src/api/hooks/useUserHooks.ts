@@ -5,9 +5,11 @@ import {
   UserPreferencesUpdate,
   UserUpdate,
   User,
-  RecentUserDataEntry, // <-- Add import
-  SpendingAnalytics, // <-- Add import
-  StoreConsentList, // <-- Add import
+  RecentUserDataEntry,
+  // SpendingAnalytics, // <-- Remove old type if not used elsewhere
+  StoreConsentList,
+  MonthlySpendingAnalytics, // <-- Import new type
+  GetSpendingAnalyticsParams, // <-- Import params type
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -176,18 +178,28 @@ export function useRecentUserData(limit: number = 10, page: number = 1) {
   });
 }
 
-export function useSpendingAnalytics() {
+export function useSpendingAnalytics(
+  params?: GetSpendingAnalyticsParams, // Accept optional params
+) {
   const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  return useQuery<SpendingAnalytics, Error>({
-    // Expect SpendingAnalytics type
-    queryKey: cacheKeys.users.spendingAnalytics(),
+  // Destructure params for queryKey dependency, provide defaults
+  const { startDate, endDate } = params || {};
+
+  return useQuery<MonthlySpendingAnalytics, Error>({
+    // <-- Use new response type
+    // Update queryKey to include dates for unique caching
+    queryKey: cacheKeys.users.spendingAnalytics(startDate, endDate),
     queryFn: () =>
-      apiClients.users.getSpendingAnalytics().then((res) => res.data),
+      // Pass params to the API call
+      apiClients.users
+        .getSpendingAnalytics({ startDate, endDate })
+        .then((res) => res.data),
     enabled: isAuthenticated && !authLoading && clientsReady,
     // Add specific cache settings if needed
     // ...cacheSettings.analytics, // Example
+    placeholderData: (previousData) => previousData, // Keep placeholderData for smoother transitions
   });
 }
 

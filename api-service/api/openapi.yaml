@@ -651,17 +651,34 @@ paths:
     get:
       tags: [User Management]
       summary: Get User Spending Analytics
-      description: Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+      description: Retrieves aggregated spending data by category and month for the authenticated user.
       operationId: getSpendingAnalytics
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter results from this date onwards (YYYY-MM-DD).
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter results up to this date (YYYY-MM-DD).
       responses:
         "200":
-          description: Spending analytics retrieved successfully
+          description: Spending analytics retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SpendingAnalytics"
+                $ref: "#/components/schemas/MonthlySpendingAnalytics"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "500":
           $ref: "#/components/responses/InternalServerError"
       security:
@@ -1351,15 +1368,18 @@ components:
 
     SpendingAnalytics:
       type: object
-      description: Aggregated spending data per category.
+      description: >
+        Aggregated spending data per category over time.
+        The structure might vary based on implementation (e.g., object keyed by month/year,
+        or an array of objects each representing a time point).
       additionalProperties:
-        type: number
-        format: float
-        description: Total amount spent in this category.
+        type: object # Example: { "YYYY-MM": { "Category1": 100, "Category2": 50 } }
+        additionalProperties:
+          type: number
+          format: float
       example:
-        "Electronics": 1299.99
-        "Clothing": 250.50
-        "Home": 85.00
+        "2025-01": { "Electronics": 1299.99, "Clothing": 150.5 }
+        "2025-02": { "Clothing": 100, "Home": 85 }
 
     StoreBasicInfo:
       type: object
@@ -1373,6 +1393,32 @@ components:
       required:
         - storeId
         - name
+
+    MonthlySpendingItem:
+      type: object
+      properties:
+        month:
+          type: string
+          format: date
+          description: The month of the spending data (e.g., "2024-01").
+        spending:
+          type: object
+          description: An object mapping category names to the total amount spent in that category for the month.
+          additionalProperties:
+            type: number
+            format: float
+      required:
+        - month
+        - spending
+      example:
+        month: "2024-01"
+        spending: { "Electronics": 1299.99, "Clothing": 150.50 }
+
+    MonthlySpendingAnalytics:
+      type: array
+      description: An array of monthly spending breakdowns.
+      items:
+        $ref: "#/components/schemas/MonthlySpendingItem"
 
   responses:
     BadRequestError:

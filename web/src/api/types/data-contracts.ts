@@ -363,10 +363,10 @@ export interface RecentUserDataEntry {
 }
 
 /**
- * Aggregated spending data per category.
- * @example {"Electronics":1299.99,"Clothing":250.5,"Home":85}
+ * Aggregated spending data per category over time. The structure might vary based on implementation (e.g., object keyed by month/year, or an array of objects each representing a time point).
+ * @example {"2025-01":{"Electronics":1299.99,"Clothing":150.5},"2025-02":{"Clothing":100,"Home":85}}
  */
-export type SpendingAnalytics = Record<string, number>;
+export type SpendingAnalytics = Record<string, Record<string, number>>;
 
 export interface StoreBasicInfo {
   /** The unique ID of the store. */
@@ -374,6 +374,20 @@ export interface StoreBasicInfo {
   /** The name of the store. */
   name: string;
 }
+
+/** @example {"month":"2024-01","spending":{"Electronics":1299.99,"Clothing":150.5}} */
+export interface MonthlySpendingItem {
+  /**
+   * The month of the spending data (e.g., "2024-01").
+   * @format date
+   */
+  month: string;
+  /** An object mapping category names to the total amount spent in that category for the month. */
+  spending: Record<string, number>;
+}
+
+/** An array of monthly spending breakdowns. */
+export type MonthlySpendingAnalytics = MonthlySpendingItem[];
 
 export interface GetApiKeyUsagePayload {
   /**
@@ -399,6 +413,19 @@ export interface GetRecentUserDataParams {
    * @default 1
    */
   page?: number;
+}
+
+export interface GetSpendingAnalyticsParams {
+  /**
+   * Filter results from this date onwards (YYYY-MM-DD).
+   * @format date
+   */
+  startDate?: string;
+  /**
+   * Filter results up to this date (YYYY-MM-DD).
+   * @format date
+   */
+  endDate?: string;
 }
 
 export interface LookupStoresParams {

@@ -4,6 +4,7 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const {updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
+const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
 
 /**
  * Get User Profile
@@ -279,33 +280,65 @@ exports.getSpendingAnalytics = async function (req) {
     const db = getDB();
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
+    // --- Date Range Handling ---
+    const { startDate, endDate } = req.query;
+    const dateMatch = {};
+    if (startDate) {
+      try {
+        dateMatch['$gte'] = new Date(startDate);
+      } catch (e) {
+        console.warn('Invalid startDate format:', startDate);
+      }
+    }
+    if (endDate) {
+      try {
+        // Add 1 day to endDate to include the whole day
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1);
+        dateMatch['$lt'] = end;
+      } catch (e) {
+        console.warn('Invalid endDate format:', endDate);
+      }
+    }
+    const hasDateFilter = Object.keys(dateMatch).length > 0;
+    // --- End Date Range Handling ---
+
+
     // Find user to get their internal _id
     const user = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { _id: 1 } });
     if (!user) {
       return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Fetch the taxonomy once to map category IDs to names
-    // Use the filter { current: true } if you only want the active taxonomy
-    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true }); // Or findOne({}) if 'current' flag isn't always used
-
-    // Correctly access the categories array via taxonomyDoc.data.categories
+    // Fetch the taxonomy once (remains the same)
+    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true });
     const categoryMap = (taxonomyDoc && taxonomyDoc.data && taxonomyDoc.data.categories)
       ? taxonomyDoc.data.categories.reduce((map, cat) => {
-          map[cat.id] = cat.name;
+          map[cat.id] = cat.name; // Assuming category ID is used in items
+          map[cat.name] = cat.name; // Allow matching by name too, just in case
           return map;
         }, {})
-      : {}; // Default to empty map if taxonomy, data, or categories are missing
-
+      : {};
 
     const pipeline = [
+      // Match user and data type
       { $match: { userId: user._id, dataType: 'purchase' } },
+      // Unwind entries array
       { $unwind: '$entries' },
+      // --- Add Date Filtering Stage ---
+      ...(hasDateFilter ? [{ $match: { 'entries.timestamp': dateMatch } }] : []),
+      // Unwind items array
       { $unwind: '$entries.items' },
+      // --- Group by Month and Category ---
       {
         $group: {
-          _id: '$entries.items.category',
-          totalSpent: {
+          _id: {
+            // Group by year-month and category
+            yearMonth: { $dateToString: { format: "%Y-%m", date: "$entries.timestamp" } },
+            category: '$entries.items.category' // Use the category field from item
+          },
+          // Calculate total spent for this category in this month
+          monthlyTotal: {
             $sum: {
               $cond: {
                  if: { $and: [
@@ -313,34 +346,59 @@ exports.getSpendingAnalytics = async function (req) {
                    { $isNumber: '$entries.items.quantity' }
                  ]},
                  then: { $multiply: ['$entries.items.price', '$entries.items.quantity'] },
+                 // Handle cases where quantity might be missing but price exists
                  else: { $cond: { if: { $isNumber: '$entries.items.price' }, then: '$entries.items.price', else: 0 } }
               }
             }
           }
         }
       },
+      // --- Group by Month to structure categories ---
+      {
+        $group: {
+          _id: '$_id.yearMonth', // Group by month string (e.g., "2025-01")
+          categories: {
+            $push: { // Create an array of category-spend pairs for the month
+              k: { $ifNull: [ { $toString: '$_id.category' }, "Unknown" ] }, // Category name (or ID as string)
+              v: '$monthlyTotal'
+            }
+          }
+        }
+      },
+      // --- Convert categories array to object and sort ---
       {
         $project: {
-          _id: 0,
-          category: '$_id',
-          totalSpent: 1
+          _id: 0, // Exclude the default _id
+          month: '$_id', // Rename _id to month
+          spending: { $arrayToObject: '$categories' } // Convert [{k: "Cat1", v: 100}, ...] to { "Cat1": 100, ... }
         }
-      }
+      },
+      // Sort by month ascending
+      { $sort: { month: 1 } }
     ];
 
     const results = await db.collection('userData').aggregate(pipeline).toArray();
 
-    // Transform results using the categoryMap (this part remains the same)
-    const spendingAnalytics = results.reduce((acc, item) => {
-      const categoryName = categoryMap[item.category] || item.category; // Use name from map, fallback to ID
-      acc[categoryName] = (acc[categoryName] || 0) + item.totalSpent;
-      return acc;
-    }, {});
+    // --- Map category IDs/names to proper names from taxonomy ---
+    const spendingAnalytics = results.map(monthlyData => {
+      const mappedSpending = {};
+      for (const categoryKey in monthlyData.spending) {
+        const categoryName = categoryMap[categoryKey] || categoryKey; // Use mapped name or original key
+        mappedSpending[categoryName] = monthlyData.spending[categoryKey];
+      }
+      return {
+        month: monthlyData.month,
+        spending: mappedSpending
+      };
+    });
+    // --- End Mapping ---
 
-    // Caching could be added here
-    // const cacheKey = `${CACHE_KEYS.USER_SPENDING_ANALYTICS}${user._id}`;
+
+    // Caching could be added here, considering date range in the key
+    // const cacheKey = `${CACHE_KEYS.USER_SPENDING_ANALYTICS}${user._id}:${startDate || 'all'}:${endDate || 'all'}`;
     // await setCache(cacheKey, JSON.stringify(spendingAnalytics), { EX: CACHE_TTL.MEDIUM });
 
+    // Return the array structure: [{ month: "YYYY-MM", spending: { "Category1": 100, ... } }, ...]
     return respondWithCode(200, spendingAnalytics);
 
   } catch (error) {
