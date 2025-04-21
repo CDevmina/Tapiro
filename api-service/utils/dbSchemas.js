@@ -31,6 +31,49 @@ const userSchema = {
           bsonType: ['string', 'null'],
           description: 'Phone number',
         },
+        // --- ADDED: User-provided demographics ---
+        providedDemographics: {
+          bsonType: 'object',
+          description: 'Demographic information provided by the user',
+          properties: {
+            // Add specific fields as needed, e.g.:
+            ageRange: { bsonType: 'string', description: 'e.g., 25-34' },
+            location: { bsonType: 'string', description: 'e.g., CA, USA' },
+            // Add other fields like gender, income bracket, etc.
+          },
+          additionalProperties: false, // Prevent extra fields unless intended
+        },
+        // --- ADDED: AI-inferred demographics ---
+        inferredDemographics: {
+          bsonType: 'object',
+          description: 'Demographic information inferred by the AI service',
+          properties: {
+            // Add specific fields with value and confidence, e.g.:
+            gender: {
+              bsonType: 'object',
+              properties: {
+                value: { bsonType: 'string' },
+                confidence: { bsonType: 'double', minimum: 0.0, maximum: 1.0 },
+              },
+            },
+            ageRange: {
+              bsonType: 'object',
+              properties: {
+                value: { bsonType: 'string' },
+                confidence: { bsonType: 'double', minimum: 0.0, maximum: 1.0 },
+              },
+            },
+            incomeBracket: {
+              bsonType: 'object',
+              properties: {
+                value: { bsonType: 'string' },
+                confidence: { bsonType: 'double', minimum: 0.0, maximum: 1.0 },
+              },
+            },
+            // Add other inferred fields
+          },
+          additionalProperties: false, // Prevent extra fields unless intended
+        },
         preferences: {
           bsonType: 'array',
           description: 'User interests and preferences',

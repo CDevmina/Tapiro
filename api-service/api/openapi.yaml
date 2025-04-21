@@ -753,6 +753,11 @@ components:
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
+        providedDemographics:
+          $ref: "#/components/schemas/DemographicsProvided"
+        inferredDemographics:
+          $ref: "#/components/schemas/DemographicsInferred"
+          readOnly: true
         privacySettings:
           type: object
           properties:
@@ -913,6 +918,8 @@ components:
               items:
                 type: string
                 description: List of domains allowed to access user data via API keys
+        providedDemographics:
+          $ref: "#/components/schemas/DemographicsProvided"
 
     ApiKey:
       type: object
@@ -1419,6 +1426,46 @@ components:
       description: An array of monthly spending breakdowns.
       items:
         $ref: "#/components/schemas/MonthlySpendingItem"
+
+    DemographicsProvided:
+      type: object
+      description: Demographic information provided by the user.
+      properties:
+        ageRange:
+          type: string
+          description: e.g., 25-34
+          example: "25-34"
+        location:
+          type: string
+          description: e.g., CA, USA
+          example: "CA"
+      additionalProperties: false
+
+    DemographicsInferredItem:
+      type: object
+      properties:
+        value:
+          type: string
+          description: The inferred value.
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence score of the inference (0.0 to 1.0).
+      required: [value, confidence]
+
+    DemographicsInferred:
+      type: object
+      description: Demographic information inferred by the AI service.
+      properties:
+        gender:
+          $ref: "#/components/schemas/DemographicsInferredItem"
+        ageRange:
+          $ref: "#/components/schemas/DemographicsInferredItem"
+        incomeBracket:
+          $ref: "#/components/schemas/DemographicsInferredItem"
+      additionalProperties: false
 
   responses:
     BadRequestError:

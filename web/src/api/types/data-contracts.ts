@@ -28,6 +28,10 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
+  /** Demographic information provided by the user. */
+  providedDemographics?: DemographicsProvided;
+  /** Demographic information inferred by the AI service. */
+  inferredDemographics?: DemographicsInferred;
   privacySettings: {
     /** @default false */
     dataSharingConsent?: boolean;
@@ -99,6 +103,8 @@ export interface UserUpdate {
   dataAccess?: {
     allowedDomains?: string[];
   };
+  /** Demographic information provided by the user. */
+  providedDemographics?: DemographicsProvided;
 }
 
 export interface ApiKey {
@@ -388,6 +394,39 @@ export interface MonthlySpendingItem {
 
 /** An array of monthly spending breakdowns. */
 export type MonthlySpendingAnalytics = MonthlySpendingItem[];
+
+/** Demographic information provided by the user. */
+export interface DemographicsProvided {
+  /**
+   * e.g., 25-34
+   * @example "25-34"
+   */
+  ageRange?: string;
+  /**
+   * e.g., CA, USA
+   * @example "CA"
+   */
+  location?: string;
+}
+
+export interface DemographicsInferredItem {
+  /** The inferred value. */
+  value: string;
+  /**
+   * Confidence score of the inference (0.0 to 1.0).
+   * @format float
+   * @min 0
+   * @max 1
+   */
+  confidence: number;
+}
+
+/** Demographic information inferred by the AI service. */
+export interface DemographicsInferred {
+  gender?: DemographicsInferredItem;
+  ageRange?: DemographicsInferredItem;
+  incomeBracket?: DemographicsInferredItem;
+}
 
 export interface GetApiKeyUsagePayload {
   /**
