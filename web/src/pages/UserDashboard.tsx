@@ -309,7 +309,7 @@ export default function UserDashboard() {
                 <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
                 Spending Overview
               </h3>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-row items-center gap-2">
                 <Datepicker
                   icon={HiCalendar}
                   value={startDate ?? undefined}
