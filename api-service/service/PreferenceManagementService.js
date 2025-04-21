@@ -254,7 +254,7 @@ exports.optInToStore = async function (req, storeId) {
 };
 
 /**
- * Get user's store opt-in/out lists with store names
+ * Get user's store opt-in/out lists
  */
 exports.getStoreConsentLists = async function (req) {
   try {
@@ -276,55 +276,16 @@ exports.getStoreConsentLists = async function (req) {
       });
     }
 
-    const optInIds = user.privacySettings?.optInStores || [];
-    const optOutIds = user.privacySettings?.optOutStores || [];
-    const allStoreIds = [...new Set([...optInIds, ...optOutIds])];
-
-    // Convert string IDs to ObjectIds for the query, handling potential errors
-    const storeObjectIds = allStoreIds.map(id => {
-      try {
-        // Ensure the ID is a valid ObjectId string before converting
-        if (ObjectId.isValid(id)) {
-          return new ObjectId(id);
-        }
-        console.warn(`Invalid ObjectId format in consent list: ${id}`);
-        return null;
-      } catch (e) {
-        console.warn(`Error converting ObjectId in consent list: ${id}`, e);
-        return null;
-      }
-    }).filter(id => id !== null); // Filter out invalid/null IDs
-
-
-    let storeNameMap = {};
-    if (storeObjectIds.length > 0) {
-      const stores = await db.collection('stores').find(
-        { _id: { $in: storeObjectIds } },
-        { projection: { _id: 1, name: 1 } }
-      ).toArray();
-
-      storeNameMap = stores.reduce((map, store) => {
-        map[store._id.toString()] = store.name;
-        return map;
-      }, {});
-    }
-
-
-    // Map IDs to objects with names
-    const mapIdsToDetails = (ids) => ids.map(id => ({
-      storeId: id,
-      name: storeNameMap[id] || 'Unknown Store' // Provide a fallback name
-    }));
-
-    const consentListsWithDetails = {
-      optInStores: mapIdsToDetails(optInIds),
-      optOutStores: mapIdsToDetails(optOutIds),
+    // Prepare the response object, defaulting to empty arrays if fields don't exist
+    const consentLists = {
+      optInStores: user.privacySettings?.optInStores || [],
+      optOutStores: user.privacySettings?.optOutStores || [],
     };
 
     // Note: Caching could be added here if needed, potentially using a specific key
     // or relying on the USER_DATA cache invalidation from opt-in/out actions.
 
-    return respondWithCode(200, consentListsWithDetails); // Return the detailed lists
+    return respondWithCode(200, consentLists);
   } catch (error) {
     console.error('Get store consent lists failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });

@@ -26,9 +26,6 @@ export const cacheKeys = {
     all: ["users"],
     profile: () => [...cacheKeys.users.all, "profile"],
     preferences: () => [...cacheKeys.users.all, "preferences"],
-    activitySummary: () => [...cacheKeys.users.all, "activitySummary"], // <-- New
-    spendingAnalytics: () => [...cacheKeys.users.all, "spendingAnalytics"], // <-- New
-    storeConsent: () => [...cacheKeys.users.all, "storeConsent"], // <-- New (or rename if exists)
   },
   stores: {
     all: ["stores"],
@@ -43,7 +40,6 @@ export const cacheKeys = {
   system: {
     health: () => ["system", "health"],
     ping: () => ["system", "ping"],
-    taxonomy: () => ["system", "taxonomy"], // <-- New
   },
 };
 
@@ -72,27 +68,6 @@ export const cacheSettings = {
   system: {
     staleTime: CACHE_TIMES.SHORT,
     gcTime: CACHE_TIMES.SHORT * 2,
-  },
-  // Add settings for new data types
-  activitySummary: {
-    // <-- New
-    staleTime: CACHE_TIMES.MEDIUM,
-    gcTime: CACHE_TIMES.MEDIUM * 2,
-  },
-  spendingAnalytics: {
-    // <-- New
-    staleTime: CACHE_TIMES.LONG, // Analytics might be less frequently updated
-    gcTime: CACHE_TIMES.LONG * 2,
-  },
-  storeConsent: {
-    // <-- New
-    staleTime: CACHE_TIMES.MEDIUM,
-    gcTime: CACHE_TIMES.MEDIUM * 2,
-  },
-  taxonomy: {
-    // <-- New
-    staleTime: CACHE_TIMES.LONG * 2, // Taxonomy changes infrequently
-    gcTime: CACHE_TIMES.LONG * 4,
   },
 };
 

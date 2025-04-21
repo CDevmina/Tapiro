@@ -16,9 +16,6 @@ import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import StoreProfilePage from "./pages/StoreProfilePage";
-import UserPreferencesPage from "./pages/UserPreferencesPage";
-import UserConsentPage from "./pages/UserConsentPage";
-import UserAnalyticsPage from "./pages/UserAnalyticsPage";
 
 const router = createBrowserRouter([
   {
@@ -49,24 +46,11 @@ const router = createBrowserRouter([
             path: "dashboard/user",
             element: <UserDashboard />,
           },
+          // Add User Profile Route
           {
-            path: "profile/user", // Base profile page
+            path: "profile/user",
             element: <UserProfilePage />,
           },
-          // --- Add these new routes ---
-          {
-            path: "profile/user/preferences",
-            element: <UserPreferencesPage />,
-          },
-          {
-            path: "profile/user/consent",
-            element: <UserConsentPage />,
-          },
-          {
-            path: "profile/user/analytics",
-            element: <UserAnalyticsPage />,
-          },
-          // --- End of new routes ---
         ],
       },
       // --- Protected Store Routes ---
@@ -77,11 +61,11 @@ const router = createBrowserRouter([
             path: "dashboard/store",
             element: <StoreDashboard />,
           },
+          // Add Store Profile Route
           {
             path: "profile/store",
             element: <StoreProfilePage />,
           },
-          // Add store-specific sub-routes here if needed
         ],
       },
       // --- Catch-all 404 Route ---

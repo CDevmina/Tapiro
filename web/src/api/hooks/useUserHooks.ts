@@ -5,9 +5,6 @@ import {
   UserPreferencesUpdate,
   UserUpdate,
   User,
-  UserActivitySummary, // <-- Import new type
-  SpendingAnalyticsResponse, // <-- Import new type
-  StoreConsentList, // <-- Import new type
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -63,48 +60,6 @@ export function useUpdateUserPreferences() {
         queryKey: cacheKeys.users.preferences(),
       });
     },
-  });
-}
-
-// --- New Hooks ---
-
-export function useUserActivitySummary() {
-  const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  return useQuery<UserActivitySummary, Error>({
-    // <-- Use specific type
-    queryKey: cacheKeys.users.activitySummary(),
-    queryFn: () =>
-      apiClients.users.getUserActivitySummary().then((res) => res.data),
-    enabled: isAuthenticated && !authLoading && clientsReady,
-    ...cacheSettings.activitySummary, // <-- Use specific cache settings
-  });
-}
-
-export function useSpendingAnalytics() {
-  const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  return useQuery<SpendingAnalyticsResponse, Error>({
-    // <-- Use specific type
-    queryKey: cacheKeys.users.spendingAnalytics(),
-    queryFn: () =>
-      apiClients.users.getUserSpendingAnalytics().then((res) => res.data),
-    enabled: isAuthenticated && !authLoading && clientsReady,
-    ...cacheSettings.spendingAnalytics, // <-- Use specific cache settings
-  });
-}
-
-export function useStoreConsentLists() {
-  // <-- Hook for the modified endpoint
-  const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  return useQuery<StoreConsentList, Error>({
-    // <-- Use specific type
-    queryKey: cacheKeys.users.storeConsent(),
-    queryFn: () =>
-      apiClients.users.getStoreConsentLists().then((res) => res.data),
-    enabled: isAuthenticated && !authLoading && clientsReady,
-    ...cacheSettings.storeConsent, // <-- Use specific cache settings
   });
 }
 

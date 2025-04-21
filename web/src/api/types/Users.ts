@@ -12,10 +12,7 @@
 
 import {
   Error,
-  SpendingAnalyticsResponse,
-  StoreConsentList,
   User,
-  UserActivitySummary,
   UserCreate,
   UserData,
   UserMetadataResponse,
@@ -248,27 +245,6 @@ export class Users<
       ...params,
     });
   /**
-   * @description Retrieves the lists of stores (with names and IDs) the user has explicitly opted into or opted out of sharing data with.
-   *
-   * @tags Preference Management
-   * @name GetStoreConsentLists
-   * @summary Get user's store opt-in/out lists
-   * @request GET:/users/preferences/store-consent
-   * @secure
-   * @response `200` `StoreConsentList` Successfully retrieved store consent lists with details.
-   * @response `401` `Error`
-   * @response `404` `Error`
-   * @response `500` `Error`
-   */
-  getStoreConsentLists = (params: RequestParams = {}) =>
-    this.request<StoreConsentList, Error>({
-      path: `/users/preferences/store-consent`,
-      method: "GET",
-      secure: true,
-      format: "json",
-      ...params,
-    });
-  /**
    * @description Retrieve Auth0 metadata for the authenticated user
    *
    * @tags Authentication
@@ -283,48 +259,6 @@ export class Users<
   getUserMetadata = (params: RequestParams = {}) =>
     this.request<UserMetadataResponse, Error>({
       path: `/users/metadata/get`,
-      method: "GET",
-      secure: true,
-      format: "json",
-      ...params,
-    });
-  /**
-   * @description Retrieves a summary of recent API usage and data submissions related to the authenticated user.
-   *
-   * @tags User Management
-   * @name GetUserActivitySummary
-   * @summary Get User Activity Summary
-   * @request GET:/users/activity/summary
-   * @secure
-   * @response `200` `UserActivitySummary` Successfully retrieved activity summary.
-   * @response `401` `Error`
-   * @response `404` `Error`
-   * @response `500` `Error`
-   */
-  getUserActivitySummary = (params: RequestParams = {}) =>
-    this.request<UserActivitySummary, Error>({
-      path: `/users/activity/summary`,
-      method: "GET",
-      secure: true,
-      format: "json",
-      ...params,
-    });
-  /**
-   * @description Retrieves a breakdown of user spending by category based on purchase data.
-   *
-   * @tags User Management
-   * @name GetUserSpendingAnalytics
-   * @summary Get user spending analytics
-   * @request GET:/users/analytics/spending
-   * @secure
-   * @response `200` `SpendingAnalyticsResponse` Spending analytics retrieved successfully
-   * @response `401` `Error`
-   * @response `404` `Error`
-   * @response `500` `Error`
-   */
-  getUserSpendingAnalytics = (params: RequestParams = {}) =>
-    this.request<SpendingAnalyticsResponse, Error>({
-      path: `/users/analytics/spending`,
       method: "GET",
       secure: true,
       format: "json",

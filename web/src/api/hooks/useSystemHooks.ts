@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings } from "../utils/cache";
-import { HealthStatus, PingStatus, Taxonomy } from "../types/data-contracts"; // <-- Add Taxonomy type
+import { HealthStatus, PingStatus } from "../types/data-contracts";
 
 export function useHealthCheck() {
   // Destructure apiClients first, then get health from it
@@ -29,19 +29,5 @@ export function usePing() {
     queryFn: () => ping.ping().then((res) => res.data), // queryFn returns PingStatus
     ...cacheSettings.system,
     // Ping doesn't require auth, so no enabled check needed here
-  });
-}
-
-export function useTaxonomy() {
-  // <-- New Hook
-  const { apiClients } = useApiClients(); // No auth needed for taxonomy usually
-
-  return useQuery<Taxonomy, Error>({
-    // <-- Use specific type
-    queryKey: cacheKeys.system.taxonomy(),
-    queryFn: () =>
-      apiClients.taxonomy.getTaxonomyCategories().then((res) => res.data),
-    // Taxonomy is public, so no 'enabled' check based on auth needed
-    ...cacheSettings.taxonomy, // <-- Use specific cache settings
   });
 }

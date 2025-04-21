@@ -30,23 +30,3 @@ module.exports.deleteUserProfile = function deleteUserProfile(req, res, next) {
       utils.writeJson(res, response);
     });
 };
-
-module.exports.getUserActivitySummary = function getUserActivitySummary(req, res, next) {
-  UserProfile.getUserActivitySummary(req)
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
-};
-
-module.exports.getUserSpendingAnalytics = function getUserSpendingAnalytics(req, res, next) {
-  UserProfile.getUserSpendingAnalytics(req)
-    .then((response) => {
-      utils.writeJson(res, response);
-    })
-    .catch((response) => {
-      utils.writeJson(res, response);
-    });
-};

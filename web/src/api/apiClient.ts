@@ -2,7 +2,7 @@ import { Users } from "./types/Users";
 import { Stores } from "./types/Stores";
 import { Health } from "./types/Health";
 import { Ping } from "./types/Ping";
-import { Taxonomy } from "./types/Taxonomy"; // <-- Import Taxonomy client class
+// Add useState import
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth"; // ← use your context
 import { ApiConfig } from "./types/http-client"; // Import ApiConfig
@@ -33,7 +33,6 @@ export function createApiClients() {
     stores: new Stores(config),
     health: new Health(config),
     ping: new Ping(config),
-    taxonomy: new Taxonomy(config), // <-- Add Taxonomy client instance
   };
 }
 
