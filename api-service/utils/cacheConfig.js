@@ -22,6 +22,7 @@ const CACHE_KEYS = {
   ADMIN_TOKEN: 'auth0_management_token', // Auth0 management token
   PREFERENCES: 'preferences:', // User preferences
   STORE_PREFERENCES: 'prefs:', // Store preferences
+  TAXONOMY: 'taxonomy:current', // <-- Add this line
   AI_REQUEST: 'ai_request:', // AI service request cache
 };
 

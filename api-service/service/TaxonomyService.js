@@ -8,7 +8,8 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
  * Retrieves the full taxonomy structure from the MongoDB 'taxonomy' collection.
  */
 exports.getTaxonomyCategories = async function () {
-  const cacheKey = CACHE_KEYS.TAXONOMY_FULL;
+  // Use the correct cache key defined in cacheConfig.js
+  const cacheKey = CACHE_KEYS.TAXONOMY; // Changed from TAXONOMY_FULL
   try {
     // Check cache first
     const cachedTaxonomy = await getCache(cacheKey);
@@ -24,7 +25,7 @@ exports.getTaxonomyCategories = async function () {
     const db = getDB();
     // Assuming the taxonomy is stored as a single document in the 'taxonomy' collection.
     // Adjust the query if the structure is different (e.g., findOne({ _id: 'current_taxonomy' }))
-    const taxonomyDoc = await db.collection('taxonomy').findOne({}); // Find the first/only document
+    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true }); // Find the current taxonomy
 
     if (!taxonomyDoc) {
       return respondWithCode(404, { code: 404, message: 'Taxonomy data not found in database' });
@@ -32,7 +33,9 @@ exports.getTaxonomyCategories = async function () {
 
     // Cache the result - Use a longer TTL for taxonomy structure
     // Store the raw document including _id in cache
-    await setCache(cacheKey, JSON.stringify(taxonomyDoc), { EX: CACHE_TTL.TAXONOMY }); // Use TAXONOMY TTL
+    // Use a specific TTL for taxonomy if defined, otherwise fallback or use a default
+    const taxonomyTTL = CACHE_TTL.TAXONOMY || CACHE_TTL.LONG || 3600 * 24; // Example: Use TAXONOMY TTL or fallback
+    await setCache(cacheKey, JSON.stringify(taxonomyDoc), { EX: taxonomyTTL });
 
     // Remove MongoDB _id before returning if it's not part of the defined schema response
     // delete taxonomyDoc._id; // Optional: remove _id if not needed in response

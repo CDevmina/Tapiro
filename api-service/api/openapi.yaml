@@ -609,6 +609,97 @@ paths:
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Taxonomy
 
+  /users/data/recent:
+    get:
+      tags: [User Management]
+      summary: Get Recent User Data Submissions
+      description: Retrieves a list of recent data submissions made about the authenticated user.
+      operationId: getRecentUserData
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Recent data submissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecentUserDataEntry"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
+
+  /users/analytics/spending:
+    get:
+      tags: [User Management]
+      summary: Get User Spending Analytics
+      description: Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+      operationId: getSpendingAnalytics
+      responses:
+        "200":
+          description: Spending analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingAnalytics"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
+
+  /stores/lookup:
+    get:
+      tags: [Store Management]
+      summary: Lookup Store Details
+      description: Retrieves basic details (like name) for a list of store IDs.
+      operationId: lookupStores
+      parameters:
+        - name: ids
+          in: query
+          description: Comma-separated list of store IDs to lookup.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Store details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StoreBasicInfo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: StoreProfile
+
 components:
   schemas:
     AttributeDistribution:
@@ -1232,6 +1323,56 @@ components:
             $ref: "#/components/schemas/TaxonomyCategory"
         version:
           type: string
+
+    RecentUserDataEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: The unique ID of the userData entry.
+        storeId:
+          type: string
+          description: The ID of the store that submitted the data.
+        dataType:
+          type: string
+          enum: [purchase, search]
+          description: The type of data submitted.
+        timestamp:
+          type: string
+          format: date-time
+          description: When the data was submitted to Tapiro.
+        entryTimestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the original event (e.g., purchase time).
+        details:
+          type: object
+          description: Simplified details (e.g., item count for purchase, query string for search)
+
+    SpendingAnalytics:
+      type: object
+      description: Aggregated spending data per category.
+      additionalProperties:
+        type: number
+        format: float
+        description: Total amount spent in this category.
+      example:
+        "Electronics": 1299.99
+        "Clothing": 250.50
+        "Home": 85.00
+
+    StoreBasicInfo:
+      type: object
+      properties:
+        storeId:
+          type: string
+          description: The unique ID of the store.
+        name:
+          type: string
+          description: The name of the store.
+      required:
+        - storeId
+        - name
 
   responses:
     BadRequestError:

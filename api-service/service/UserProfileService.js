@@ -3,8 +3,7 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-// Import the new function
-const { updateUserMetadata, updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
+const {updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
 
 /**
  * Get User Profile
@@ -211,6 +210,141 @@ exports.deleteUserProfile = async function (req) {
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get Recent User Data Submissions
+ * Retrieves a list of recent data submissions made about the authenticated user.
+ */
+exports.getRecentUserData = async function (req, limit = 10, page = 1) {
+  try {
+    const db = getDB();
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // Find user to get their internal _id
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found' });
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Query userData collection
+    const recentData = await db.collection('userData')
+      .find({ userId: user._id }) // Filter by the user's ObjectId
+      .sort({ timestamp: -1 }) // Sort by submission time descending
+      .skip(skip)
+      .limit(limit)
+      .project({ // Project only necessary fields for RecentUserDataEntry schema
+        _id: 1,
+        storeId: 1,
+        dataType: 1,
+        timestamp: 1, // Submission timestamp
+        entryTimestamp: '$entries.timestamp', // Assuming timestamp is within entries array
+        // Add simplified details if needed, e.g., item count or query string
+        // details: { $cond: { if: { $eq: ['$dataType', 'purchase'] }, then: { itemCount: { $size: '$entries.items' } }, else: '$entries.query' } }
+      })
+      .toArray();
+
+    // Simple transformation if needed (e.g., flatten entryTimestamp if it's an array)
+    const formattedData = recentData.map(entry => ({
+      ...entry,
+      // If entryTimestamp is an array due to projection, take the first element
+      entryTimestamp: Array.isArray(entry.entryTimestamp) ? entry.entryTimestamp[0] : entry.entryTimestamp,
+      // Add placeholder for details
+      details: {}
+    }));
+
+
+    // Caching could be added here if this data is frequently accessed
+    // const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${page}:${limit}`;
+    // await setCache(cacheKey, JSON.stringify(formattedData), { EX: CACHE_TTL.SHORT }); // Example TTL
+
+    return respondWithCode(200, formattedData);
+
+  } catch (error) {
+    console.error('Get recent user data failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get User Spending Analytics
+ * Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+ */
+exports.getSpendingAnalytics = async function (req) {
+  try {
+    const db = getDB();
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // Find user to get their internal _id
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found' });
+    }
+
+    // Fetch the taxonomy once to map category IDs to names
+    // Use the filter { current: true } if you only want the active taxonomy
+    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true }); // Or findOne({}) if 'current' flag isn't always used
+
+    // Correctly access the categories array via taxonomyDoc.data.categories
+    const categoryMap = (taxonomyDoc && taxonomyDoc.data && taxonomyDoc.data.categories)
+      ? taxonomyDoc.data.categories.reduce((map, cat) => {
+          map[cat.id] = cat.name;
+          return map;
+        }, {})
+      : {}; // Default to empty map if taxonomy, data, or categories are missing
+
+
+    const pipeline = [
+      { $match: { userId: user._id, dataType: 'purchase' } },
+      { $unwind: '$entries' },
+      { $unwind: '$entries.items' },
+      {
+        $group: {
+          _id: '$entries.items.category',
+          totalSpent: {
+            $sum: {
+              $cond: {
+                 if: { $and: [
+                   { $isNumber: '$entries.items.price' },
+                   { $isNumber: '$entries.items.quantity' }
+                 ]},
+                 then: { $multiply: ['$entries.items.price', '$entries.items.quantity'] },
+                 else: { $cond: { if: { $isNumber: '$entries.items.price' }, then: '$entries.items.price', else: 0 } }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          category: '$_id',
+          totalSpent: 1
+        }
+      }
+    ];
+
+    const results = await db.collection('userData').aggregate(pipeline).toArray();
+
+    // Transform results using the categoryMap (this part remains the same)
+    const spendingAnalytics = results.reduce((acc, item) => {
+      const categoryName = categoryMap[item.category] || item.category; // Use name from map, fallback to ID
+      acc[categoryName] = (acc[categoryName] || 0) + item.totalSpent;
+      return acc;
+    }, {});
+
+    // Caching could be added here
+    // const cacheKey = `${CACHE_KEYS.USER_SPENDING_ANALYTICS}${user._id}`;
+    // await setCache(cacheKey, JSON.stringify(spendingAnalytics), { EX: CACHE_TTL.MEDIUM });
+
+    return respondWithCode(200, spendingAnalytics);
+
+  } catch (error) {
+    console.error('Get spending analytics failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

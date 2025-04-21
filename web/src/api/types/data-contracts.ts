@@ -263,6 +263,13 @@ export interface ApiKeyUsage {
   }[];
 }
 
+export interface StoreConsentList {
+  /** List of store IDs the user has opted into. */
+  optInStores?: string[];
+  /** List of store IDs the user has opted out of. */
+  optOutStores?: string[];
+}
+
 export interface HealthStatus {
   /** Overall health status of the Health */
   status?: "healthy" | "degraded" | "unhealthy";
@@ -310,6 +317,64 @@ export interface UserMetadataResponse {
   };
 }
 
+/** Attribute within a taxonomy category */
+export interface TaxonomyAttribute {
+  name: string;
+  values: string[];
+  description?: string | null;
+}
+
+/** Category within a taxonomy system */
+export interface TaxonomyCategory {
+  id: string;
+  name: string;
+  parent_id?: string | null;
+  description?: string | null;
+  /** @default [] */
+  attributes?: TaxonomyAttribute[];
+}
+
+/** Complete taxonomy definition with categories and version */
+export interface Taxonomy {
+  _id?: string;
+  categories: TaxonomyCategory[];
+  version: string;
+}
+
+export interface RecentUserDataEntry {
+  /** The unique ID of the userData entry. */
+  _id?: string;
+  /** The ID of the store that submitted the data. */
+  storeId?: string;
+  /** The type of data submitted. */
+  dataType?: "purchase" | "search";
+  /**
+   * When the data was submitted to Tapiro.
+   * @format date-time
+   */
+  timestamp?: string;
+  /**
+   * The timestamp of the original event (e.g., purchase time).
+   * @format date-time
+   */
+  entryTimestamp?: string;
+  /** Simplified details (e.g., item count for purchase, query string for search) */
+  details?: object;
+}
+
+/**
+ * Aggregated spending data per category.
+ * @example {"Electronics":1299.99,"Clothing":250.5,"Home":85}
+ */
+export type SpendingAnalytics = Record<string, number>;
+
+export interface StoreBasicInfo {
+  /** The unique ID of the store. */
+  storeId: string;
+  /** The name of the store. */
+  name: string;
+}
+
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data
@@ -321,4 +386,22 @@ export interface GetApiKeyUsagePayload {
    * @format date
    */
   endDate?: string;
+}
+
+export interface GetRecentUserDataParams {
+  /**
+   * Maximum number of records to return
+   * @default 10
+   */
+  limit?: number;
+  /**
+   * Page number for pagination
+   * @default 1
+   */
+  page?: number;
+}
+
+export interface LookupStoresParams {
+  /** Comma-separated list of store IDs to lookup. */
+  ids: string;
 }

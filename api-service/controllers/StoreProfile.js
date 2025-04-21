@@ -30,3 +30,13 @@ module.exports.deleteStoreProfile = function deleteStoreProfile(req, res, next) 
       utils.writeJson(res, response);
     });
 };
+
+module.exports.lookupStores = function lookupStores(req, res, next, ids) {
+  StoreProfile.lookupStores(req, ids)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

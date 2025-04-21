@@ -12,6 +12,10 @@
 
 import {
   Error,
+  GetRecentUserDataParams,
+  RecentUserDataEntry,
+  SpendingAnalytics,
+  StoreConsentList,
   User,
   UserCreate,
   UserData,
@@ -245,6 +249,27 @@ export class Users<
       ...params,
     });
   /**
+   * @description Retrieves the lists of store IDs the user has explicitly opted into or opted out of sharing data with.
+   *
+   * @tags Preference Management
+   * @name GetStoreConsentLists
+   * @summary Get user's store opt-in/out lists
+   * @request GET:/users/preferences/store-consent
+   * @secure
+   * @response `200` `StoreConsentList` Successfully retrieved store consent lists.
+   * @response `401` `Error`
+   * @response `404` `Error`
+   * @response `500` `Error`
+   */
+  getStoreConsentLists = (params: RequestParams = {}) =>
+    this.request<StoreConsentList, Error>({
+      path: `/users/preferences/store-consent`,
+      method: "GET",
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
    * @description Retrieve Auth0 metadata for the authenticated user
    *
    * @tags Authentication
@@ -259,6 +284,50 @@ export class Users<
   getUserMetadata = (params: RequestParams = {}) =>
     this.request<UserMetadataResponse, Error>({
       path: `/users/metadata/get`,
+      method: "GET",
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Retrieves a list of recent data submissions made about the authenticated user.
+   *
+   * @tags User Management
+   * @name GetRecentUserData
+   * @summary Get Recent User Data Submissions
+   * @request GET:/users/data/recent
+   * @secure
+   * @response `200` `(RecentUserDataEntry)[]` Recent data submissions retrieved successfully
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getRecentUserData = (
+    query: GetRecentUserDataParams,
+    params: RequestParams = {},
+  ) =>
+    this.request<RecentUserDataEntry[], Error>({
+      path: `/users/data/recent`,
+      method: "GET",
+      query: query,
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+   *
+   * @tags User Management
+   * @name GetSpendingAnalytics
+   * @summary Get User Spending Analytics
+   * @request GET:/users/analytics/spending
+   * @secure
+   * @response `200` `SpendingAnalytics` Spending analytics retrieved successfully
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  getSpendingAnalytics = (params: RequestParams = {}) =>
+    this.request<SpendingAnalytics, Error>({
+      path: `/users/analytics/spending`,
       method: "GET",
       secure: true,
       format: "json",
