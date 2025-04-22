@@ -28,6 +28,27 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
+  /**
+   * User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
+   * @example "female"
+   */
+  gender?: string | null;
+  /**
+   * User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
+   * @example "50k-100k"
+   */
+  incomeBracket?: string | null;
+  /**
+   * User country of residence (ISO 3166-1 alpha-2 code)
+   * @example "US"
+   */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   * @example 35
+   */
+  age?: number | null;
   privacySettings: {
     /** @default false */
     dataSharingConsent?: boolean;
@@ -71,6 +92,17 @@ export interface UserCreate {
   preferences?: PreferenceItem[];
   /** User's consent for data sharing */
   dataSharingConsent: boolean;
+  /** User gender identity */
+  gender?: string | null;
+  /** User income bracket category */
+  incomeBracket?: string | null;
+  /** User country of residence (ISO 3166-1 alpha-2 code) */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   */
+  age?: number | null;
 }
 
 export interface StoreCreate {
@@ -99,6 +131,17 @@ export interface UserUpdate {
   dataAccess?: {
     allowedDomains?: string[];
   };
+  /** User gender identity */
+  gender?: string | null;
+  /** User income bracket category */
+  incomeBracket?: string | null;
+  /** User country of residence (ISO 3166-1 alpha-2 code) */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   */
+  age?: number | null;
 }
 
 export interface ApiKey {

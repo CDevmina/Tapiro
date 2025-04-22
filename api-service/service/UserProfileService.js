@@ -76,11 +76,8 @@ exports.updateUserProfile = async function (req, body) {
     if (body.username) {
       try {
         await updateAuth0Username(auth0UserId, body.username);
-        // Optionally: Update nickname in metadata as well if desired
-        // await updateUserMetadata(auth0UserId, { nickname: body.username });
+        await updateUserMetadata(auth0UserId, { nickname: body.username });
       } catch (auth0Error) {
-        // If Auth0 update fails (e.g., username exists in Auth0 connection), return an error
-        // You might want to check the specific error type from auth0Error
         console.error(`Auth0 username update failed for ${auth0UserId}:`, auth0Error);
         return respondWithCode(409, { // Use 409 Conflict or appropriate code
           code: 409,
@@ -108,6 +105,12 @@ exports.updateUserProfile = async function (req, body) {
     // Update local DB username only if Auth0 update was successful (or not attempted)
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
+
+    // Add demographic fields to updateData if provided
+    if (body.gender !== undefined) updateData.gender = body.gender;
+    if (body.incomeBracket !== undefined) updateData.incomeBracket = body.incomeBracket;
+    if (body.country !== undefined) updateData.country = body.country;
+    if (body.age !== undefined) updateData.age = body.age;
 
     // Only update allowed privacy settings
     if (body.privacySettings !== undefined) {

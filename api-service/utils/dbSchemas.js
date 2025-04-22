@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.2';
+const SCHEMA_VERSION = '2.0.3';
 
 const userSchema = {
   validator: {
@@ -30,6 +30,27 @@ const userSchema = {
         phone: {
           bsonType: ['string', 'null'],
           description: 'Phone number',
+        },
+        gender: {
+          bsonType: ['string', 'null'],
+          description: 'User gender identity',
+          // Optional: Add enum validation if desired
+          enum: ['male', 'female', 'non-binary', 'prefer_not_to_say', null]
+        },
+        incomeBracket: {
+          bsonType: ['string', 'null'],
+          description: 'User income bracket category',
+          // Optional: Add enum validation if desired
+          enum: ['<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say', null]
+        },
+        country: {
+          bsonType: ['string', 'null'],
+          description: 'User country of residence (e.g., ISO 3166-1 alpha-2 code)',
+        },
+        age: {
+          bsonType: ['int', 'null'],
+          description: 'User age',
+          minimum: 0, // Optional: Add validation
         },
         preferences: {
           bsonType: 'array',

@@ -753,6 +753,27 @@ components:
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
+          example: "female"
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
+          example: "50k-100k"
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+          example: "US"
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
+          example: 35
         privacySettings:
           type: object
           properties:
@@ -849,6 +870,23 @@ components:
         dataSharingConsent:
           type: boolean
           description: User's consent for data sharing
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
 
     StoreCreate:
       type: object
@@ -913,6 +951,23 @@ components:
               items:
                 type: string
                 description: List of domains allowed to access user data via API keys
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
 
     ApiKey:
       type: object
