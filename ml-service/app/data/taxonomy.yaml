@@ -204,8 +204,8 @@ categories:
       - name: "touchscreen"
         description: "Whether the laptop has a touchscreen"
         values:
-          - yes
-          - no
+          - "yes"
+          - "no"
 
   - id: "103"
     name: "Tablets"
@@ -250,8 +250,8 @@ categories:
       - name: "pen_support"
         description: "Stylus support"
         values:
-          - yes
-          - no
+          - "yes"
+          - "no"
 
   - id: "104"
     name: "Wearables"
@@ -626,9 +626,9 @@ categories:
       - name: "assembly_required"
         description: "Assembly requirement"
         values:
-          - yes
-          - no
-          - partial
+          - "yes"
+          - "no"
+          - "partial"
 
   - id: "302"
     name: "Kitchen"
@@ -678,8 +678,8 @@ categories:
       - name: "dishwasher_safe"
         description: "Dishwasher compatibility"
         values:
-          - yes
-          - no
+          - "yes"
+          - "no"
 
   - id: "303"
     name: "Gardening"
@@ -934,8 +934,8 @@ categories:
       - name: "bestseller"
         description: "Bestseller status"
         values:
-          - yes
-          - no
+          - "yes"
+          - "no"
       - name: "release_timeframe"
         description: "Release timeframe"
         values:
