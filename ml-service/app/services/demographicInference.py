@@ -73,13 +73,16 @@ async def infer_has_kids(entries: List[Dict[str, Any]]) -> Optional[bool]:
     """Infer if user has kids based on purchase/search keywords."""
     kid_evidence_count = 0
     texts = _extract_text_from_entries(entries)
+    logger.debug(f"Inferring 'has_kids' from {len(texts)} text entries.")
     for text in texts:
         if any(keyword in text for keyword in KIDS_KEYWORDS):
             kid_evidence_count += 1
             logger.debug(f"Kid keyword found: {text}")
 
     if kid_evidence_count >= 2: # Require multiple pieces of evidence
+        logger.debug(f"Inferring 'has_kids' = True (evidence count: {kid_evidence_count})")
         return True
+    logger.debug(f"Inferring 'has_kids' = None (evidence count: {kid_evidence_count})")
     return None # Not enough evidence
 
 async def infer_relationship_status(entries: List[Dict[str, Any]]) -> Optional[str]:
@@ -88,8 +91,10 @@ async def infer_relationship_status(entries: List[Dict[str, Any]]) -> Optional[s
     relationship_evidence = 0
     single_evidence = 0 # Less reliable
     texts = _extract_text_from_entries(entries)
+    logger.debug(f"Inferring 'relationship_status' from {len(texts)} text entries.")
 
     for text in texts:
+        # Check married first for priority
         if any(keyword in text for keyword in MARRIED_KEYWORDS):
             married_evidence += 1
             logger.debug(f"Married keyword found: {text}")
@@ -102,11 +107,15 @@ async def infer_relationship_status(entries: List[Dict[str, Any]]) -> Optional[s
 
     # Prioritize married > relationship > single based on evidence threshold
     if married_evidence >= 1: # Lower threshold for specific events like wedding
+        logger.debug(f"Inferring 'relationship_status' = 'married' (evidence count: {married_evidence})")
         return "married"
     elif relationship_evidence >= 2:
+        logger.debug(f"Inferring 'relationship_status' = 'relationship' (evidence count: {relationship_evidence})")
         return "relationship"
     # elif single_evidence >= 1: # Be very cautious enabling this
+    #    logger.debug(f"Inferring 'relationship_status' = 'single' (evidence count: {single_evidence})")
     #    return "single"
+    logger.debug("Inferring 'relationship_status' = None (insufficient evidence)")
     return None # Not enough evidence
 
 # --- NEW Inference Functions ---
@@ -117,6 +126,7 @@ async def infer_employment_status(entries: List[Dict[str, Any]]) -> Optional[str
     employment_evidence = 0
     # Inferring 'unemployed' directly from keywords is very difficult/unreliable
     texts = _extract_text_from_entries(entries)
+    logger.debug(f"Inferring 'employment_status' from {len(texts)} text entries.")
 
     for text in texts:
         # Check student first due to potential overlap (e.g., "school supplies")
@@ -129,10 +139,13 @@ async def infer_employment_status(entries: List[Dict[str, Any]]) -> Optional[str
 
     # Prioritize student if strong evidence, otherwise employed
     if student_evidence >= 2:
+        logger.debug(f"Inferring 'employment_status' = 'student' (evidence count: {student_evidence})")
         return "student"
     elif employment_evidence >= 2:
+        logger.debug(f"Inferring 'employment_status' = 'employed' (evidence count: {employment_evidence})")
         return "employed"
     # Add more sophisticated logic? Check for conflicting terms?
+    logger.debug("Inferring 'employment_status' = None (insufficient evidence)")
     return None # Not enough evidence
 
 async def infer_education_level(entries: List[Dict[str, Any]]) -> Optional[str]:
@@ -141,6 +154,7 @@ async def infer_education_level(entries: List[Dict[str, Any]]) -> Optional[str]:
     masters_evidence = 0
     bachelors_evidence = 0
     texts = _extract_text_from_entries(entries)
+    logger.debug(f"Inferring 'education_level' from {len(texts)} text entries.")
 
     for text in texts:
         # Check most specific first
@@ -156,12 +170,16 @@ async def infer_education_level(entries: List[Dict[str, Any]]) -> Optional[str]:
 
     # Prioritize highest level found with some evidence threshold
     if doctorate_evidence >= 1:
+        logger.debug(f"Inferring 'education_level' = 'doctorate' (evidence count: {doctorate_evidence})")
         return "doctorate"
     elif masters_evidence >= 1:
+        logger.debug(f"Inferring 'education_level' = 'masters' (evidence count: {masters_evidence})")
         return "masters"
     elif bachelors_evidence >= 2: # Require slightly more for bachelors
+        logger.debug(f"Inferring 'education_level' = 'bachelors' (evidence count: {bachelors_evidence})")
         return "bachelors"
     # Inferring 'high_school' is difficult, maybe default if other evidence is weak?
+    logger.debug("Inferring 'education_level' = None (insufficient evidence)")
     return None # Very uncertain
 
 async def infer_age_bracket(entries: List[Dict[str, Any]]) -> Optional[str]:
@@ -170,6 +188,7 @@ async def infer_age_bracket(entries: List[Dict[str, Any]]) -> Optional[str]:
     mid_career_evidence = 0
     senior_evidence = 0
     texts = _extract_text_from_entries(entries)
+    logger.debug(f"Inferring 'age_bracket' from {len(texts)} text entries.")
 
     for text in texts:
         if any(keyword in text for keyword in AGE_BRACKET_SENIOR_KEYWORDS):
@@ -184,14 +203,18 @@ async def infer_age_bracket(entries: List[Dict[str, Any]]) -> Optional[str]:
 
     # Simple thresholding - needs much refinement or a different approach
     if senior_evidence >= 1:
+        logger.debug(f"Inferring 'age_bracket' = '65+' (evidence count: {senior_evidence})")
         return "65+"
     elif mid_career_evidence >= 2:
         # Could try to differentiate 35-44 vs 45-54 based on keywords, but very hard
+        logger.debug(f"Inferring 'age_bracket' = '35-54' (evidence count: {mid_career_evidence})")
         return "35-54" # Combine for now
     elif young_adult_evidence >= 2:
+        logger.debug(f"Inferring 'age_bracket' = '18-24' (evidence count: {young_adult_evidence})")
         return "18-24"
 
     logger.warning("Age bracket inference based on keywords is highly unreliable.")
+    logger.debug("Inferring 'age_bracket' = None (insufficient evidence)")
     return None # Highly uncertain
 
 # --- Main Inference Runner ---
@@ -218,6 +241,9 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
         if not recent_data:
             logger.info(f"Inference: No recent data found for user {user_id}")
             return False
+        else:
+            logger.info(f"Inference: Found {len(recent_data)} recent data entries for user {user_id}")
+
 
         # --- Run inference functions ---
         inferred_kids = await infer_has_kids(recent_data)
@@ -225,37 +251,45 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
         inferred_employment = await infer_employment_status(recent_data)
         inferred_education = await infer_education_level(recent_data) # Very speculative
         inferred_age_bracket = None
-        # Only infer age bracket if age is not already set
-        if user.get("age") is None:
+        # Only infer age bracket if age is not already set in demographicData
+        current_demographics = user.get("demographicData", {})
+        if current_demographics.get("age") is None:
+            logger.info(f"Inference: User {email} has no age set, attempting age bracket inference.")
             inferred_age_bracket = await infer_age_bracket(recent_data) # Highly speculative
+        else:
+            logger.info(f"Inference: User {email} has age set ({current_demographics.get('age')}), skipping age bracket inference.")
+
 
         # --- Prepare update payload ---
         update_payload = {}
-        current_kids = user.get("inferredHasKids")
-        current_status = user.get("inferredRelationshipStatus")
-        current_employment = user.get("inferredEmploymentStatus")
-        current_education = user.get("inferredEducationLevel")
-        current_age_bracket = user.get("inferredAgeBracket")
+        # Read current values from the nested demographicData object
+        current_kids = current_demographics.get("inferredHasKids")
+        current_status = current_demographics.get("inferredRelationshipStatus")
+        current_employment = current_demographics.get("inferredEmploymentStatus")
+        current_education = current_demographics.get("inferredEducationLevel")
+        current_age_bracket = current_demographics.get("inferredAgeBracket")
 
+        # Use dot notation for updates within the nested object
         if inferred_kids is not None and inferred_kids != current_kids:
-            update_payload["inferredHasKids"] = inferred_kids
-            logger.info(f"Inference update for {email}: inferredHasKids -> {inferred_kids}")
+            update_payload["demographicData.inferredHasKids"] = inferred_kids
+            logger.info(f"Inference update for {email}: demographicData.inferredHasKids -> {inferred_kids} (was {current_kids})")
         if inferred_status is not None and inferred_status != current_status:
-            update_payload["inferredRelationshipStatus"] = inferred_status
-            logger.info(f"Inference update for {email}: inferredRelationshipStatus -> {inferred_status}")
+            update_payload["demographicData.inferredRelationshipStatus"] = inferred_status
+            logger.info(f"Inference update for {email}: demographicData.inferredRelationshipStatus -> {inferred_status} (was {current_status})")
         if inferred_employment is not None and inferred_employment != current_employment:
-            update_payload["inferredEmploymentStatus"] = inferred_employment
-            logger.info(f"Inference update for {email}: inferredEmploymentStatus -> {inferred_employment}")
+            update_payload["demographicData.inferredEmploymentStatus"] = inferred_employment
+            logger.info(f"Inference update for {email}: demographicData.inferredEmploymentStatus -> {inferred_employment} (was {current_employment})")
         if inferred_education is not None and inferred_education != current_education:
-            update_payload["inferredEducationLevel"] = inferred_education
-            logger.info(f"Inference update for {email}: inferredEducationLevel -> {inferred_education}")
+            update_payload["demographicData.inferredEducationLevel"] = inferred_education
+            logger.info(f"Inference update for {email}: demographicData.inferredEducationLevel -> {inferred_education} (was {current_education})")
         if inferred_age_bracket is not None and inferred_age_bracket != current_age_bracket:
-            update_payload["inferredAgeBracket"] = inferred_age_bracket
-            logger.info(f"Inference update for {email}: inferredAgeBracket -> {inferred_age_bracket}")
+            update_payload["demographicData.inferredAgeBracket"] = inferred_age_bracket
+            logger.info(f"Inference update for {email}: demographicData.inferredAgeBracket -> {inferred_age_bracket} (was {current_age_bracket})")
         # --- End Prepare update payload ---
 
         # Update user document in DB if there are changes
         if update_payload:
+            logger.info(f"Inference: Found updates for {email}: {update_payload.keys()}")
             update_payload["updatedAt"] = datetime.now() # Update timestamp
             result = await db.users.update_one(
                 {"_id": user_object_id},
@@ -263,15 +297,17 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
             )
             if result.modified_count > 0:
                 updated = True
-                logger.info(f"Inference: Updated user document for {email}")
+                logger.info(f"Inference: Successfully updated user document for {email}")
 
                 # --- Invalidate Caches on Successful Update ---
                 auth0_id = user.get("auth0Id")
                 if auth0_id:
+                    # Invalidate user data and general preferences
                     await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
                     await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
                     logger.info(f"Inference: Invalidated USER_DATA and PREFERENCES cache for {auth0_id}")
 
+                    # Invalidate store-specific preferences for opt-in stores
                     if user.get("privacySettings", {}).get("optInStores"):
                         user_object_id_str = str(user_object_id)
                         for store_id in user["privacySettings"]["optInStores"]:
@@ -279,7 +315,10 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
                         logger.info(f"Inference: Invalidated STORE_PREFERENCES caches for {auth0_id}")
                 # --- End Cache Invalidation ---
             else:
-                 logger.warning(f"Inference: Update payload generated but DB modify count was 0 for {email}")
+                 logger.warning(f"Inference: Update payload generated but DB modify count was 0 for {email}. Payload: {update_payload}")
+        else:
+            logger.info(f"Inference: No demographic updates found for {email}")
+
 
     except Exception as e:
         logger.error(f"Error during demographic inference for user {user_id}: {str(e)}", exc_info=True)

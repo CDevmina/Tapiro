@@ -15,34 +15,55 @@ logger = logging.getLogger(__name__)
 class TaxonomyService:
     def __init__(self, db=None):
         self.db = db
-        self.taxonomy = None
+        self.taxonomy: Optional[Taxonomy] = None # Add type hint
         self.embedding_model = None
         self.category_embeddings = {}
-        
+        # --- Add mappings for efficient lookups ---
+        self._id_to_name_map: Dict[str, str] = {}
+        self._name_to_id_map: Dict[str, str] = {}
+        # --- End Add mappings ---
+
     async def initialize(self):
         """Initialize taxonomy from file and DB"""
         # Try loading from DB first
-        if self.db is not None:  # Changed from 'if self.db:'
+        if self.db is not None:
             cached = await self.db.taxonomy.find_one({"current": True})
             if cached:
-                self.taxonomy = Taxonomy(**cached["data"])
-                logger.info(f"Loaded taxonomy from DB: {self.taxonomy.version}")
-                
+                try:
+                    self.taxonomy = Taxonomy(**cached["data"])
+                    self._build_lookup_maps() # Build maps after loading
+                    logger.info(f"Loaded taxonomy from DB: {self.taxonomy.version}")
+                except Exception as e:
+                    logger.error(f"Failed to parse taxonomy from DB: {e}")
+                    self.taxonomy = None # Ensure taxonomy is None if parsing fails
+
         # If not in DB or load failed, use file
         if not self.taxonomy:
-            self._load_from_file()
-            
-            # Save to DB if available
-            if self.db is not None:
+            self._load_from_file() # This already calls _build_lookup_maps
+
+            # Save to DB if available and loaded successfully
+            if self.db is not None and self.taxonomy:
                 await self.db.taxonomy.update_one(
                     {"current": True},
                     {"$set": {"data": self.taxonomy.dict(), "updated_at": datetime.now()}},
                     upsert=True
                 )
-        
+
         # Initialize embedding model (try Redis cache first)
-        await self._initialize_embeddings()
-        
+        if self.taxonomy: # Only initialize embeddings if taxonomy loaded
+            await self._initialize_embeddings()
+        else:
+            logger.error("Taxonomy could not be loaded. Skipping embedding initialization.")
+
+
+    def _build_lookup_maps(self):
+        """Builds ID-to-Name and Name-to-ID maps from the loaded taxonomy."""
+        if not self.taxonomy:
+            return
+        self._id_to_name_map = {cat.id: cat.name for cat in self.taxonomy.categories}
+        self._name_to_id_map = {cat.name.lower(): cat.id for cat in self.taxonomy.categories} # Use lower case for name lookup
+        logger.debug(f"Built taxonomy lookup maps: {len(self._id_to_name_map)} categories.")
+
     def _load_from_file(self):
         """Load taxonomy from YAML file"""
         file_path = Path(__file__).parent.parent / "data" / "taxonomy.yaml"
@@ -50,13 +71,19 @@ class TaxonomyService:
             with open(file_path, 'r') as file:
                 data = yaml.safe_load(file)
                 self.taxonomy = Taxonomy(**data)
+                self._build_lookup_maps() # Build maps after loading
                 logger.info(f"Loaded taxonomy from file: {self.taxonomy.version}")
         except Exception as e:
-            logger.error(f"Failed to load taxonomy: {str(e)}")
-            raise HTTPException(status_code=500, detail="Failed to load taxonomy")
-            
+            logger.error(f"Failed to load taxonomy from file: {str(e)}")
+            self.taxonomy = None # Ensure taxonomy is None on failure
+            # Don't raise HTTPException here, allow service to potentially continue without taxonomy if needed
+            # raise HTTPException(status_code=500, detail="Failed to load taxonomy")
+
     async def _initialize_embeddings(self):
         """Initialize embedding model for search processing"""
+        if not self.taxonomy: # Guard against missing taxonomy
+             logger.warning("Cannot initialize embeddings: Taxonomy not loaded.")
+             return
         # Try to get embeddings from Redis cache first
         cache_key = f"{CACHE_KEYS['TAXONOMY_EMBEDDINGS']}all"
         cached_embeddings = await get_cache_json(cache_key)
@@ -108,6 +135,18 @@ class TaxonomyService:
             logger.error(f"Failed to initialize embeddings: {str(e)}")
             # Continue without embeddings, we'll use rule-based only
             
+    # --- Add get_category_name method ---
+    def get_category_name(self, category_id: str) -> Optional[str]:
+        """Get category name from its ID using the lookup map."""
+        return self._id_to_name_map.get(category_id)
+    # --- End Add get_category_name method ---
+
+    # --- Optional: Add get_category_id method ---
+    def get_category_id(self, category_name: str) -> Optional[str]:
+        """Get category ID from its name (case-insensitive) using the lookup map."""
+        return self._name_to_id_map.get(category_name.lower())
+    # --- End Optional: Add get_category_id method ---
+
     def validate_preferences(self, preferences):
         """Validate preference data against taxonomy"""
         if not self.taxonomy:
@@ -148,7 +187,19 @@ class TaxonomyService:
             return cached_result
             
         if not self.embedding_model or not self.category_embeddings:
-            raise ValueError("Embedding model not initialized")
+            # Check if taxonomy exists but embeddings failed
+            if not self.taxonomy:
+                 logger.error("Cannot match category: Taxonomy not loaded.")
+                 raise ValueError("Taxonomy not available for matching.")
+            else:
+                 logger.warning(f"Cannot match category '{query_text}': Embeddings not initialized. Returning None.")
+                 # Return a structure indicating failure or inability to match
+                 return {
+                     "category": None,
+                     "score": 0.0,
+                     "threshold_met": False,
+                     "error": "Embeddings not initialized"
+                 }
             
         # Generate embedding for query
         query_embedding = self.embedding_model.encode(query_text)
@@ -183,7 +234,9 @@ _taxonomy_service = None
 async def get_taxonomy_service(db=None):
     """Get or create the taxonomy service singleton"""
     global _taxonomy_service
-    if _taxonomy_service is None:
+    if (_taxonomy_service is None):
         _taxonomy_service = TaxonomyService(db)
         await _taxonomy_service.initialize()
+    # Ensure the service is returned even if initialization had issues (e.g., file not found)
+    # Downstream code should handle potential lack of taxonomy data within the service object.
     return _taxonomy_service

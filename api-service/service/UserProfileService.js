@@ -104,49 +104,68 @@ exports.updateUserProfile = async function (req, body) {
     };
     let demographicsChanged = false; // Flag to track if demographics were updated
 
-    // Update local DB username only if Auth0 update was successful (or not attempted)
+    // Update local DB username and phone
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
-    // Add demographic fields to updateData if provided and track changes
+    // --- Update Demographic Data ---
+    // Use dot notation to set fields within the demographicData object
     if (body.gender !== undefined) {
-        updateData.gender = body.gender;
+        updateData['demographicData.gender'] = body.gender;
         demographicsChanged = true;
     }
     if (body.incomeBracket !== undefined) {
-        updateData.incomeBracket = body.incomeBracket;
+        updateData['demographicData.incomeBracket'] = body.incomeBracket;
         demographicsChanged = true;
     }
     if (body.country !== undefined) {
-        updateData.country = body.country;
+        updateData['demographicData.country'] = body.country;
         demographicsChanged = true;
     }
     if (body.age !== undefined) {
-        updateData.age = body.age;
-        demographicsChanged = true;
+        // Ensure age is null or an integer
+        const ageValue = body.age === null ? null : parseInt(body.age);
+        if (ageValue === null || !isNaN(ageValue)) {
+             updateData['demographicData.age'] = ageValue;
+             demographicsChanged = true;
+             // If age is being set, clear the inferred age bracket
+             updateData['demographicData.inferredAgeBracket'] = null;
+        } else {
+            console.warn(`Invalid age value provided for user ${auth0UserId}: ${body.age}`);
+            // Optionally return a 400 error here
+        }
     }
+    // --- End Update Demographic Data ---
+
 
     // Only update allowed privacy settings
     let privacySettingsChanged = false; // Flag for privacy changes
     if (body.privacySettings !== undefined) {
-      updateData.privacySettings = {};
+      // Use dot notation for nested privacy settings updates
       if (body.privacySettings.dataSharingConsent !== undefined) {
-        updateData.privacySettings.dataSharingConsent = body.privacySettings.dataSharingConsent;
+        updateData['privacySettings.dataSharingConsent'] = body.privacySettings.dataSharingConsent;
         privacySettingsChanged = true;
       }
       if (body.privacySettings.anonymizeData !== undefined) {
-        updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
+        updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
         privacySettingsChanged = true;
       }
       // DO NOT update optInStores or optOutStores here
     }
 
-    if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
+    // Update dataAccess using dot notation if necessary, or as a whole object
+    if (body.dataAccess !== undefined && body.dataAccess.allowedDomains !== undefined) {
+       updateData['dataAccess.allowedDomains'] = body.dataAccess.allowedDomains;
+    } else if (body.dataAccess !== undefined) {
+       // If updating the whole object (less common for partial updates)
+       // updateData.dataAccess = body.dataAccess;
+    }
 
-    // Check if there's anything to update
-    if (Object.keys(updateData).length <= 1 && !demographicsChanged && !privacySettingsChanged) {
-        // Only updatedAt is set, nothing else changed
-        // Fetch current profile to return if needed, or return specific message
+
+    // Check if there's anything to update (excluding updatedAt)
+    const updateKeys = Object.keys(updateData).filter(key => key !== 'updatedAt');
+    if (updateKeys.length === 0) {
+        // Nothing changed
         const currentUser = await db.collection('users').findOne(
             { auth0Id: auth0UserId },
             { projection: { preferences: 0 } }
@@ -154,6 +173,7 @@ exports.updateUserProfile = async function (req, body) {
         return respondWithCode(200, currentUser || { message: "No changes detected." });
     }
 
+    console.log(`Updating user ${auth0UserId} with data:`, updateData);
 
     const result = await db
       .collection('users')
@@ -164,7 +184,6 @@ exports.updateUserProfile = async function (req, body) {
       );
 
     if (!result) {
-      // This case might occur if the user was deleted between checks
       return respondWithCode(404, { code: 404, message: 'User not found during final update' });
     }
 
@@ -180,10 +199,11 @@ exports.updateUserProfile = async function (req, body) {
 
     // Invalidate store-specific preferences if demographics or relevant privacy settings changed
     // Also invalidate if the optInStores list exists (safer to clear on any profile update)
-    if ((demographicsChanged || privacySettingsChanged) && result.privacySettings?.optInStores) {
-       const userObjectId = result._id; // Use the _id from the updated result
+    const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
+    if ((demographicsChanged || privacySettingsChanged) && updatedUserDoc.privacySettings?.optInStores) {
+       const userObjectId = updatedUserDoc._id; // Use the _id from the updated result
        console.log(`Invalidating store preferences for user ${userObjectId} due to update.`);
-       for (const storeId of result.privacySettings.optInStores) {
+       for (const storeId of updatedUserDoc.privacySettings.optInStores) {
          const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`;
          await invalidateCache(storePrefCacheKey);
          console.log(`Invalidated cache: ${storePrefCacheKey}`);
@@ -191,12 +211,12 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // Update cache with the new data (without preferences)
-    await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
+    await setCache(cacheKey, JSON.stringify(updatedUserDoc), { EX: CACHE_TTL.USER_DATA });
 
-    return respondWithCode(200, result);
+    return respondWithCode(200, updatedUserDoc);
   } catch (error) {
-    // Catch errors not handled specifically above
     console.error('Update profile failed:', error);
+    // Check for specific MongoDB errors if needed (e.g., validation errors)
     return respondWithCode(500, { code: 500, message: 'Internal server error during profile update' });
   }
 };
