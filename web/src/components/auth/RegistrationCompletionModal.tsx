@@ -17,6 +17,7 @@ export function RegistrationCompletionModal() {
     "user" | "store" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const registerUserMutation = useRegisterUser();
   const registerStoreMutation = useRegisterStore();
@@ -31,9 +32,13 @@ export function RegistrationCompletionModal() {
 
   const handleUserSubmit = async (userData: UserCreate) => {
     setError(null);
+    setIsNavigating(true); // Add this state to track navigation
+
     try {
       await registerUserMutation.mutateAsync(userData);
+      // Navigation will happen via the mutation's onSuccess handler
     } catch (err) {
+      setIsNavigating(false);
       console.error("Failed to complete user registration:", err);
       const message =
         err instanceof Error

@@ -3,6 +3,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserCreate, StoreCreate, User, Store } from "../types/data-contracts";
 import { cacheSettings, cacheKeys } from "../utils/cache"; // Import cacheSettings
+import { useNavigate } from "react-router";
 
 export function useUserMetadata() {
   // Get clientsReady state along with apiClients
@@ -22,21 +23,26 @@ export function useRegisterUser() {
   const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
   const auth = useAuth();
+  const navigate = useNavigate();
 
   return useMutation<User, Error, UserCreate>({
     mutationFn: (userData: UserCreate) =>
       apiClients.users.registerUser(userData).then((res) => res.data),
     onSuccess: async () => {
+      // Invalidate metadata and refresh tokens first
       await queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
       await auth.refreshTokens();
 
+      // Navigate to user dashboard after token refresh
+      navigate("/dashboard/user");
+
+      // Invalidate other queries after navigation is triggered
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.users.profile(),
       });
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.users.preferences(),
       });
-      // Add any other relevant query invalidations here
     },
   });
 }
