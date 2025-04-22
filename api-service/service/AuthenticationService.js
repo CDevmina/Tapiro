@@ -13,7 +13,8 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    const { preferences, dataSharingConsent } = body;
+    // Destructure new demographics field from body
+    const { preferences, dataSharingConsent, demographics } = body;
 
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
@@ -23,7 +24,7 @@ exports.registerUser = async function (req, body) {
     if (registration.exists) {
       return respondWithCode(409, {
         code: 409,
-        message: `This account is already registered as a ${registration.type}`,
+        message: `User already registered as a ${registration.type}.`,
       });
     }
 
@@ -86,16 +87,23 @@ exports.registerUser = async function (req, body) {
       });
     }
 
-    // Create user in database
+    // Construct user object including demographics
     const user = {
       auth0Id: userData.sub,
-      username: userData.username,
       email: userData.email,
+      username: userData.nickname || userData.email, // Use nickname or fallback to email
       phone: userData.phone_number || null,
+      demographics: { // Add demographics here
+        gender: demographics?.gender || null,
+        incomeBracket: demographics?.incomeBracket || null,
+        country: demographics?.country || null,
+        // Ensure age is stored as an integer or null
+        age: demographics?.age ? parseInt(demographics.age, 10) : null,
+      },
       preferences: preferences || [],
       privacySettings: {
-        dataSharingConsent,
-        anonymizeData: false,
+        dataSharingConsent: dataSharingConsent || false,
+        anonymizeData: false, // Default value
         optInStores: [],
         optOutStores: [],
       },
@@ -110,32 +118,43 @@ exports.registerUser = async function (req, body) {
 
     const result = await db.collection('users').insertOne(user);
 
-    // Cache the newly created user data
-    const userWithId = { ...user, _id: result.insertedId };
-    await setCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`, JSON.stringify(userWithId), {
+    // Cache the newly created user data (excluding preferences for profile cache)
+    const userProfileData = { ...user };
+    delete userProfileData.preferences; // Exclude preferences from profile cache
+    await setCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`, JSON.stringify(userProfileData), {
       EX: CACHE_TTL.USER_DATA,
     });
 
-    // Also cache user preferences
+    // Cache user preferences separately
     const cachePreferences = {
-      userId: user._id.toString(),
-      preferences: user.preferences || [], // Fixed: consistent naming
+      userId: result.insertedId.toString(),
+      preferences: user.preferences || [],
       updatedAt: user.updatedAt || new Date(),
     };
-
     await setCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`, JSON.stringify(cachePreferences), {
       EX: CACHE_TTL.USER_DATA,
     });
 
-    // Update user metadata
+
+    // Update user metadata in Auth0
     await updateUserMetadata(userData.sub, {
       registrationType: 'user',
-      registrationComplete: true
+      registrationComplete: true,
+      userId: result.insertedId.toString(), // Store MongoDB ID
     });
 
-    return respondWithCode(201, { ...user, userId: result.insertedId });
+    // Assign 'user' role in Auth0
+    await assignUserRole(userData.sub, 'user');
+
+    // Respond with the created user profile (excluding preferences)
+    return respondWithCode(201, userProfileData);
+
   } catch (error) {
     console.error('User registration failed:', error);
+    // Handle potential duplicate key error for username
+    if (error.code === 11000 && error.keyPattern?.username) {
+      return respondWithCode(409, { code: 409, message: 'Username already taken.' });
+    }
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

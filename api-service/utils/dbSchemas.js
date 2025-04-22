@@ -31,6 +31,29 @@ const userSchema = {
           bsonType: ['string', 'null'],
           description: 'Phone number',
         },
+        demographics: {
+          bsonType: 'object',
+          description: 'User demographic information',
+          properties: {
+            gender: {
+              bsonType: ['string', 'null'],
+              description: 'User gender identity',
+            },
+            incomeBracket: {
+              bsonType: ['string', 'null'],
+              description: 'User income bracket category',
+            },
+            country: {
+              bsonType: ['string', 'null'],
+              description: 'User country of residence',
+            },
+            age: {
+              bsonType: ['int', 'null'],
+              minimum: 0,
+              description: 'User age',
+            },
+          },
+        },
         preferences: {
           bsonType: 'array',
           description: 'User interests and preferences',

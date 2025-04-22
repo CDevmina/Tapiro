@@ -109,14 +109,26 @@ exports.updateUserProfile = async function (req, body) {
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
+    // --- Demographics Update ---
+    if (body.demographics !== undefined) {
+      // Use dot notation for partial updates within the demographics object
+      if (body.demographics.gender !== undefined) updateData['demographics.gender'] = body.demographics.gender;
+      if (body.demographics.incomeBracket !== undefined) updateData['demographics.incomeBracket'] = body.demographics.incomeBracket;
+      if (body.demographics.country !== undefined) updateData['demographics.country'] = body.demographics.country;
+      if (body.demographics.age !== undefined) {
+         // Ensure age is stored as an integer or null
+         updateData['demographics.age'] = body.demographics.age ? parseInt(body.demographics.age, 10) : null;
+      }
+    }
+
     // Only update allowed privacy settings
     if (body.privacySettings !== undefined) {
-      updateData.privacySettings = {};
+      // Use dot notation for partial updates within privacySettings
       if (body.privacySettings.dataSharingConsent !== undefined) {
-        updateData.privacySettings.dataSharingConsent = body.privacySettings.dataSharingConsent;
+        updateData['privacySettings.dataSharingConsent'] = body.privacySettings.dataSharingConsent;
       }
       if (body.privacySettings.anonymizeData !== undefined) {
-        updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
+        updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
       }
       // DO NOT update optInStores or optOutStores here
     }
@@ -141,15 +153,16 @@ exports.updateUserProfile = async function (req, body) {
     await invalidateCache(cacheKey);
 
     // Invalidate store preferences if privacy settings changed
-    if (updateData.privacySettings && result.privacySettings?.optInStores) {
+    if (updateData['privacySettings.dataSharingConsent'] !== undefined || updateData['privacySettings.anonymizeData'] !== undefined) {
        const userObjectId = result._id;
-       for (const storeId of result.privacySettings.optInStores) {
-         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+       if (result.privacySettings?.optInStores) {
+         for (const storeId of result.privacySettings.optInStores) {
+           await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+         }
        }
     }
 
     // Update cache with the new data (without preferences)
-    // Note: This happens *after* invalidation, ensuring fresh data is set if needed immediately
     await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, result);
