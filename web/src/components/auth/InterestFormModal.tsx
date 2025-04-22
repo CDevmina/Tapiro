@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"; // <-- Import useMemo
+import { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   Button,
@@ -7,16 +7,56 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
-  Badge, // <-- Import Badge for subcategories
+  Badge,
 } from "flowbite-react";
 import {
   PreferenceItem,
   TaxonomyCategory,
-} from "../../api/types/data-contracts"; // <-- Import TaxonomyCategory
-import { HiChevronDown, HiChevronUp } from "react-icons/hi"; // <-- Icons for expand/collapse
-import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks"; // <-- Import useTaxonomy
-import { useUpdateUserPreferences } from "../../api/hooks/useUserHooks"; // <-- Import useUpdateUserPreferences
-import ErrorDisplay from "../common/ErrorDisplay"; // <-- Import ErrorDisplay
+} from "../../api/types/data-contracts";
+import {
+  HiChevronDown,
+  HiChevronUp,
+  // Import icons for categories
+  HiOutlineDesktopComputer, // Electronics
+  HiOutlineShoppingBag, // Fashion
+  HiOutlineHome, // Home & Garden (covers Home)
+  HiOutlineSparkles, // Beauty & Personal Care (covers Beauty)
+  HiOutlineBookOpen, // Media (Books, Movies, etc.)
+  HiOutlineHeart, // Health & Wellness
+  HiOutlinePuzzle, // Toys & Games
+  HiOutlineBriefcase, // Office Supplies
+  HiOutlineKey, // Gaming (Changed from HiOutlineKey)
+  HiOutlineGlobeAlt, // Travel
+  HiOutlineShoppingCart, // Grocery
+  HiOutlineGift, // Jewelry & Watches, Gifts
+  HiOutlineCode, // Software
+  HiQuestionMarkCircle, // Default
+} from "react-icons/hi";
+import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
+import { useUpdateUserPreferences } from "../../api/hooks/useUserHooks";
+import ErrorDisplay from "../common/ErrorDisplay";
+
+// --- Icon Mapping ---
+const categoryIcons: { [key: string]: React.ElementType } = {
+  Electronics: HiOutlineDesktopComputer,
+  Fashion: HiOutlineShoppingBag,
+  Home: HiOutlineHome, // Covers Home & Garden, Tools, Furniture etc.
+  Beauty: HiOutlineSparkles,
+  Media: HiOutlineBookOpen,
+  "Health & Wellness": HiOutlineHeart,
+  "Toys & Games": HiOutlinePuzzle,
+  "Office Supplies": HiOutlineBriefcase,
+  Gaming: HiOutlineKey, // Corrected Icon
+  Travel: HiOutlineGlobeAlt,
+  Grocery: HiOutlineShoppingCart,
+  "Jewelry & Watches": HiOutlineGift, // Covers Jewelry
+  Gifts: HiOutlineGift,
+  Software: HiOutlineCode,
+  // Add mappings for other new top-level categories if needed
+  // If a category doesn't have a specific icon, it will use DefaultIcon
+};
+const DefaultIcon = HiQuestionMarkCircle;
+// --- End Icon Mapping ---
 
 interface InterestFormModalProps {
   show: boolean;
@@ -31,21 +71,19 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
   } = useTaxonomy();
   const updateUserPreferences = useUpdateUserPreferences();
 
-  // State for selected sub-category IDs
   const [selectedSubCategoryIds, setSelectedSubCategoryIds] = useState<
     string[]
   >([]);
-  // State to track the currently expanded top-level category
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(
-    null,
-  );
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
 
-  // Memoize top-level categories
   const topLevelCategories = useMemo(() => {
-    return taxonomyData?.categories.filter((cat) => !cat.parent_id) || [];
+    return (
+      taxonomyData?.categories
+        .filter((cat) => !cat.parent_id)
+        .sort((a, b) => a.name.localeCompare(b.name)) || []
+    );
   }, [taxonomyData]);
 
-  // Memoize subcategories mapped by their parent ID
   const subCategoriesMap = useMemo(() => {
     const map = new Map<string, TaxonomyCategory[]>();
     if (taxonomyData?.categories) {
@@ -53,19 +91,24 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
         if (category.parent_id) {
           const children = map.get(category.parent_id) || [];
           children.push(category);
-          map.set(category.parent_id, children);
+          map.set(
+            category.parent_id,
+            children.sort((a, b) => a.name.localeCompare(b.name)),
+          );
         }
       }
     }
     return map;
   }, [taxonomyData]);
 
-  // Handler to expand/collapse a top-level category
   const handleExpandCategory = (categoryId: string) => {
-    setExpandedCategoryId((prev) => (prev === categoryId ? null : categoryId));
+    setExpandedCategoryIds((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId],
+    );
   };
 
-  // Handler to select/deselect a subcategory
   const handleSelectSubCategory = (subCategoryId: string) => {
     setSelectedSubCategoryIds((prev) =>
       prev.includes(subCategoryId)
@@ -75,7 +118,6 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
   };
 
   const handleSubmit = async () => {
-    // Submit only the selected subcategory IDs
     const preferences: PreferenceItem[] = selectedSubCategoryIds.map((id) => ({
       category: id,
       score: 1.0,
@@ -98,8 +140,6 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
 
   return (
     <Modal show={show} size="4xl" popup onClose={onClose}>
-      {" "}
-      {/* Increased size */}
       <div className="p-4">
         <ModalHeader>Tell us what you're interested in</ModalHeader>
       </div>
@@ -122,14 +162,16 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
             <div className="space-y-4">
               <p className="text-gray-600 dark:text-gray-400">
                 Select topics to personalize your experience. Click a main topic
-                to see more options.
+                to see more options. Choose at least one specific interest.
               </p>
-              {/* Render Top-Level Categories */}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                 {topLevelCategories.map((category) => {
-                  const isExpanded = expandedCategoryId === category.id;
+                  const isExpanded = expandedCategoryIds.includes(category.id);
                   const subCategories = subCategoriesMap.get(category.id) || [];
                   const hasSubCategories = subCategories.length > 0;
+                  // --- Ensure icon mapping uses the correct category name ---
+                  const IconComponent =
+                    categoryIcons[category.name] || DefaultIcon;
 
                   return (
                     <div key={category.id} className="flex flex-col">
@@ -138,15 +180,17 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                           hasSubCategories
                             ? () => handleExpandCategory(category.id)
                             : undefined
-                        } // Only expandable if it has children
-                        className={`h-full cursor-pointer transition-all duration-150 ${isExpanded ? "ring-2 ring-blue-500 dark:ring-blue-400" : "hover:bg-gray-50 dark:hover:bg-gray-600"}`} // Added h-full
+                        }
+                        className={`h-full cursor-pointer transition-all duration-150 ${isExpanded ? "ring-2 ring-blue-500 dark:ring-blue-400" : "hover:bg-gray-50 dark:hover:bg-gray-600"}`}
                       >
-                        <div className="flex h-full flex-col items-center justify-between p-2 text-center">
-                          {" "}
-                          {/* Added h-full and justify-between */}
-                          <div>
+                        {/* --- Centering Content --- */}
+                        {/* The flex container with items-center should center the content horizontally */}
+                        <div className="flex h-full flex-col items-center justify-between p-3 text-center">
+                          {/* Content Block (Icon, Title, Description) */}
+                          <div className="flex flex-col items-center">
                             {" "}
-                            {/* Wrap text content */}
+                            {/* Ensure this inner div also centers its items */}
+                            <IconComponent className="mb-2 h-8 w-8 text-blue-600 dark:text-blue-500" />
                             <h5 className="text-md font-semibold text-gray-900 dark:text-white">
                               {category.name}
                             </h5>
@@ -156,11 +200,9 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                               </p>
                             )}
                           </div>
-                          {/* Add expand/collapse icon if it has subcategories */}
+                          {/* Chevron Block */}
                           {hasSubCategories && (
                             <div className="mt-2">
-                              {" "}
-                              {/* Keep margin-top */}
                               {isExpanded ? (
                                 <HiChevronUp className="h-5 w-5 text-gray-500" />
                               ) : (
@@ -168,14 +210,13 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                               )}
                             </div>
                           )}
-                          {/* Add a placeholder div if no subcategories to maintain structure */}
                           {!hasSubCategories && (
-                            <div className="mt-2 h-5 w-5"></div>
+                            <div className="mt-2 h-5 w-5"></div> // Placeholder for alignment
                           )}
                         </div>
+                        {/* --- End Centering Content --- */}
                       </Card>
 
-                      {/* Render Subcategories if Expanded */}
                       {isExpanded && hasSubCategories && (
                         <div className="mt-2 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
                           <h6 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -192,8 +233,7 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                                   onClick={() =>
                                     handleSelectSubCategory(subCat.id)
                                   }
-                                  className="cursor-pointer px-2 py-1 text-sm" // Adjusted padding/size
-                                  // title={subCat.description || undefined} // Optional: show description on hover
+                                  className="cursor-pointer px-2 py-1 text-sm"
                                 >
                                   {subCat.name}
                                 </Badge>
@@ -214,7 +254,7 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
           onClick={handleSubmit}
           disabled={
             isLoadingTaxonomy ||
-            selectedSubCategoryIds.length === 0 || // Disable if no subcategories selected
+            selectedSubCategoryIds.length === 0 ||
             updateUserPreferences.isPending
           }
         >
