@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.4';
+const SCHEMA_VERSION = '2.0.5';
 
 const userSchema = {
   validator: {
@@ -52,6 +52,35 @@ const userSchema = {
           description: 'User age',
           minimum: 0, // Optional: Add validation
         },
+        // --- Start: Add inferred demographic fields ---
+        inferredHasKids: {
+          bsonType: ['bool', 'null'],
+          description: 'Inferred: Does the user likely have children? (null if unknown)',
+        },
+        inferredRelationshipStatus: {
+          bsonType: ['string', 'null'],
+          description: 'Inferred: User relationship status (null if unknown)',
+          enum: ['single', 'relationship', 'married', null], // Example enum
+        },
+        // --- Start: Add NEW inferred fields ---
+        inferredEmploymentStatus: {
+          bsonType: ['string', 'null'],
+          description: 'Inferred: User employment status (null if unknown)',
+          enum: ['employed', 'unemployed', 'student', null], // Example enum
+        },
+        inferredEducationLevel: {
+          bsonType: ['string', 'null'],
+          description: 'Inferred: User education level (null if unknown)',
+          enum: ['high_school', 'bachelors', 'masters', 'doctorate', null], // Example enum
+        },
+        inferredAgeBracket: {
+          bsonType: ['string', 'null'],
+          description: 'Inferred: User age bracket if age not provided (null if unknown)',
+          // Example brackets - adjust as needed
+          enum: ['18-24', '25-34', '35-44', '45-54', '55-64', '65+', null],
+        },
+        // --- End: Add NEW inferred fields ---
+        // --- End: Add inferred demographic fields ---
         preferences: {
           bsonType: 'array',
           description: 'User interests and preferences',

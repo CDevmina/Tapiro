@@ -7,6 +7,7 @@ from app.utils.redis_util import invalidate_cache, CACHE_KEYS
 from typing import List, Dict, Any, Optional
 from app.services.taxonomyService import get_taxonomy_service
 from collections import defaultdict
+from app.services.demographicInference import run_inference_for_user # Import the inference runner
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,20 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
             "incomeBracket": user.get("incomeBracket"),
             "country": user.get("country"),
             "age": user.get("age"),
-            # Add inferred fields here later if needed
+            "inferredHasKids": user.get("inferredHasKids"),
+            "inferredRelationshipStatus": user.get("inferredRelationshipStatus"),
+            "inferredEmploymentStatus": user.get("inferredEmploymentStatus"),
+            "inferredEducationLevel": user.get("inferredEducationLevel"),
+            "inferredAgeBracket": user.get("inferredAgeBracket"),
         }
         logger.info(f"Fetched demographics for user {email}: {user_demographics}")
     else:
          logger.warning(f"Could not fetch demographics for user {email}")
+         # If user wasn't found initially, raise the error
+         if not user_id: # Only raise if we couldn't find by email either
+             raise HTTPException(status_code=404, detail="User not found")
+         # If we searched by ID but didn't find, maybe log and continue without demographics?
+         # Or try email fallback again here? For now, we assume user is found if ID is valid.
 
 
     # Get current preferences from the user object
@@ -105,21 +115,40 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     except Exception as e:
         logger.error(f"Failed to update userData status: {str(e)}")
     
-    # Invalidate user preferences cache using auth0Id
+    # --- Run Demographic Inference (After main processing) ---
+    # NOTE: Running this synchronously adds latency. Consider a background task later.
+    inference_updated_user = False
+    try:
+        inference_updated_user = await run_inference_for_user(str(user["_id"]), email, db)
+        if inference_updated_user:
+             logger.info(f"Demographic inference updated user document for {email}")
+             # Cache invalidation is handled within run_inference_for_user
+    except Exception as inference_error:
+        logger.error(f"Demographic inference failed for user {email}: {inference_error}", exc_info=True)
+    # --- End Demographic Inference ---
+
+
+    # Invalidate user preferences cache using auth0Id (if not already done by inference)
+    # This ensures caches are cleared even if inference didn't run or update
     if user.get("auth0Id"):
         auth0_id = user["auth0Id"]
-        await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
-        logger.info(f"Invalidated preferences cache for user {auth0_id}")
-        
-        # Invalidate store-specific caches for this user
-        if user.get("privacySettings", {}).get("optInStores"):
-            user_object_id = str(user["_id"])
-            for store_id in user["privacySettings"]["optInStores"]:
-                 await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_object_id}:{store_id}")
-            logger.info(f"Invalidated store-specific caches for user {auth0_id}")
+        # Check if inference already invalidated caches for this user
+        if not inference_updated_user:
+            await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
+            logger.info(f"Invalidated PREFERENCES cache for user {auth0_id} (post-processing)")
 
-    
+            if user.get("privacySettings", {}).get("optInStores"):
+                user_object_id = str(user["_id"])
+                for store_id in user["privacySettings"]["optInStores"]:
+                     await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_object_id}:{store_id}")
+                logger.info(f"Invalidated STORE_PREFERENCES caches for user {auth0_id} (post-processing)")
+        else:
+             logger.info(f"Skipping post-processing cache invalidation as inference already handled it for {auth0_id}")
+
+
     # Return updated preferences in the expected format
+    # Note: This returns preferences based on the state *before* inference ran in this cycle.
+    # The *next* call will use the newly inferred data.
     return UserPreferences(
         user_id=str(user["_id"]),
         preferences=[
@@ -129,7 +158,7 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
                 attributes=item.get("attributes")
             ) for item in normalized_preferences
         ],
-        updated_at=datetime.now()
+        updated_at=user.get("updatedAt", datetime.now()) # Use the latest update time
     )
 
 async def process_purchase_data(entries, preference_dict, taxonomy, demographics: Optional[Dict[str, Any]] = None):
@@ -146,6 +175,13 @@ async def process_purchase_data(entries, preference_dict, taxonomy, demographics
     age = demographics.get("age")
     income = demographics.get("incomeBracket")
     country = demographics.get("country")
+    # --- Add inferred data ---
+    has_kids = demographics.get("inferredHasKids") # Boolean or None
+    relationship_status = demographics.get("inferredRelationshipStatus") # String or None
+    # --- Add NEW inferred data ---
+    employment_status = demographics.get("inferredEmploymentStatus") # String or None
+    education_level = demographics.get("inferredEducationLevel") # String or None
+    age_bracket = demographics.get("inferredAgeBracket") # String or None
     # --- End Refined Demographic Usage ---
 
     # Count purchases, attributes, and track prices
@@ -182,14 +218,49 @@ async def process_purchase_data(entries, preference_dict, taxonomy, demographics
 
             # Apply demographic boosts (gender, age)
             if gender == "female" and category_name in ["Fashion", "Beauty", "Skincare", "Makeup"]:
-                boost_factor *= 1.1
+                boost_factor *= 1.1 # Boost common female-associated categories
             elif gender == "male" and category_name in ["Electronics", "Tools", "Laptops"]:
-                boost_factor *= 1.05
+                boost_factor *= 1.05 # Slightly boost common male-associated categories
             if age:
-                if 18 <= age <= 30 and category_name in ["Smartphones", "Wearables", "Audio", "Gaming"]: # Added Gaming
+                # Boost tech/gaming for younger adults
+                if 18 <= age <= 30 and category_name in ["Smartphones", "Wearables", "Audio", "Gaming"]:
                      boost_factor *= 1.05
+                # Boost health/home for older adults
                 elif age >= 50 and category_name in ["Health", "Home"]:
-                     boost_factor *= 1.08
+                     boost_factor *= 1.08 # Slightly higher boost for potential health needs
+
+            # --- Apply inferred demographic boosts ---
+            if has_kids is True and category_name in ["Toys", "Baby", "Kids Clothing"]: # Add relevant categories
+                boost_factor *= 1.15 # Stronger boost for likely parents in child-related categories
+                logger.debug(f"Applying 'has_kids' boost to category {category_name}")
+
+            if relationship_status == "married" and category_name in ["Home Goods", "Furniture", "Jewelry"]: # Example categories
+                 boost_factor *= 1.05 # Slight boost for categories related to shared living/gifting
+                 logger.debug(f"Applying 'married' boost to category {category_name}")
+
+            # --- Apply NEW inferred boosts (Examples) ---
+            if employment_status == "student" and category_name in ["Laptops", "Books", "Stationery", "Budget Food"]: # Add relevant categories
+                boost_factor *= 1.1 # Boost student-related items
+                logger.debug(f"Applying 'student' boost to category {category_name}")
+            if employment_status == "employed" and category_name in ["Business Wear", "Office Supplies", "Travel"]: # Add relevant categories
+                boost_factor *= 1.05 # Slight boost for work-related items
+                logger.debug(f"Applying 'employed' boost to category {category_name}")
+
+            if education_level in ["masters", "doctorate"] and category_name in ["Books", "Academic Journals", "Software"]: # Add relevant categories
+                boost_factor *= 1.08 # Speculative boost for academic/professional interests
+                logger.debug(f"Applying 'higher_education' boost to category {category_name}")
+
+            # Use inferred age bracket ONLY if actual age is missing
+            effective_age_info = age if age is not None else age_bracket
+            if effective_age_info:
+                 # Example using age bracket (less precise than actual age)
+                 if effective_age_info == "18-24" and category_name in ["Fast Fashion", "Gaming", "Streaming Services"]:
+                     boost_factor *= 1.05 # Boost categories popular with young adults
+                     logger.debug(f"Applying '18-24' boost to category {category_name}")
+                 elif effective_age_info == "65+" and category_name in ["Health", "Gardening", "Comfort Footwear"]:
+                     boost_factor *= 1.1 # Boost categories relevant to seniors
+                     logger.debug(f"Applying '65+' boost to category {category_name}")
+            # --- End NEW inferred boosts ---
 
             final_score = min(base_score * boost_factor, 1.0)
 
@@ -281,6 +352,33 @@ async def process_purchase_data(entries, preference_dict, taxonomy, demographics
                         #    if is_buying_cheap:
                         #        attribute_boost /= 1.2
 
+                        # --- Apply inferred attribute boosts ---
+                        if has_kids is True and attr_name == "size" and category_name == "Clothing" and value in ["kids", "toddler", "infant"]:
+                            attribute_boost *= 1.2 # Boost kids sizes if kids inferred
+                            logger.debug(f"Applying 'has_kids' boost to attribute {attr_name}={value}")
+
+                        # Example: Boost 'gift' attribute if relationship status is known?
+                        # if relationship_status in ["relationship", "married"] and attr_name == "purpose" and value == "gift":
+                        #    attribute_boost *= 1.1
+                        # --- End inferred attribute boosts ---
+
+                        # --- Apply NEW inferred attribute boosts (Examples) ---
+                        if employment_status == "student" and attr_name == "price_range" and value == "budget":
+                            attribute_boost *= 1.15 # Boost budget items for students
+                            logger.debug(f"Applying 'student' boost to attribute {attr_name}={value}")
+                        if employment_status == "student" and attr_name == "usage_type" and category_name == "Laptops" and value == "student":
+                            attribute_boost *= 1.1
+                            logger.debug(f"Applying 'student' boost to attribute {attr_name}={value}")
+
+                        if education_level in ["masters", "doctorate"] and attr_name == "genre" and category_name == "Books" and value in ["non_fiction", "history", "science"]:
+                            attribute_boost *= 1.1 # Boost non-fiction for higher education
+                            logger.debug(f"Applying 'higher_education' boost to attribute {attr_name}={value}")
+
+                        # Example using age bracket for attribute
+                        if age is None and age_bracket == "18-24" and attr_name == "brand" and category_name == "Fashion" and value in ["H&M", "Zara", "ASOS"]: # Example fast fashion brands
+                            attribute_boost *= 1.1
+                            logger.debug(f"Applying '18-24' boost to attribute {attr_name}={value}")
+                        # --- End NEW inferred attribute boosts ---
 
                         final_attribute_score = min(normalized_score * attribute_boost, 1.0)
                         # --- End Attribute Influence ---
@@ -302,6 +400,13 @@ async def process_search_data(entries, preference_dict, taxonomy, demographics: 
     demographics = demographics or {}
     gender = demographics.get("gender")
     age = demographics.get("age")
+    # --- Add inferred data ---
+    has_kids = demographics.get("inferredHasKids")
+    relationship_status = demographics.get("inferredRelationshipStatus")
+    # --- Add NEW inferred data ---
+    employment_status = demographics.get("inferredEmploymentStatus")
+    education_level = demographics.get("inferredEducationLevel")
+    age_bracket = demographics.get("inferredAgeBracket")
     # --- End Example ---
 
     for entry in entries:
@@ -340,7 +445,29 @@ async def process_search_data(entries, preference_dict, taxonomy, demographics: 
 
             if age and 18 <= age <= 30 and category_name in ["Smartphones", "Gaming"]: # Add Gaming if exists
                 relevance_boost *= 1.05
-            # --- End Demographic Boost ---
+
+            # --- Apply inferred boosts ---
+            if has_kids is True and category_name in ["Toys", "Baby", "Kids Clothing"]:
+                relevance_boost *= 1.15
+                logger.debug(f"Applying 'has_kids' boost to search relevance for {category_name}")
+
+            if relationship_status == "married" and category_name in ["Home Goods", "Furniture", "Jewelry"]:
+                 relevance_boost *= 1.05
+                 logger.debug(f"Applying 'married' boost to search relevance for {category_name}")
+
+            # --- Apply NEW inferred boosts (Examples) ---
+            if employment_status == "student" and category_name in ["Laptops", "Books", "Stationery"]:
+                relevance_boost *= 1.1
+            if education_level in ["masters", "doctorate"] and category_name in ["Books", "Academic Journals"]:
+                relevance_boost *= 1.08
+
+            effective_age_info = age if age is not None else age_bracket
+            if effective_age_info:
+                 if effective_age_info == "18-24" and category_name in ["Fast Fashion", "Gaming"]:
+                     relevance_boost *= 1.05
+                 elif effective_age_info == "65+" and category_name in ["Health", "Gardening"]:
+                     relevance_boost *= 1.1
+            # --- End NEW inferred boosts ---
 
             # Add boosted score to search relevance dict
             search_relevance[matched_category] += match_score * relevance_boost
@@ -372,6 +499,13 @@ async def process_with_embeddings(entries, data_type, preference_dict, taxonomy,
     demographics = demographics or {}
     gender = demographics.get("gender")
     age = demographics.get("age")
+    # --- Add inferred data ---
+    has_kids = demographics.get("inferredHasKids")
+    relationship_status = demographics.get("inferredRelationshipStatus")
+    # --- Add NEW inferred data ---
+    employment_status = demographics.get("inferredEmploymentStatus")
+    education_level = demographics.get("inferredEducationLevel")
+    age_bracket = demographics.get("inferredAgeBracket")
     # --- End Demographic Usage ---
 
     # For purchase data
@@ -396,6 +530,26 @@ async def process_with_embeddings(entries, data_type, preference_dict, taxonomy,
                     # Add other demographic boosts (age, etc.) here if desired
                     if age and age >= 50 and category_name == "Health":
                        boost_factor *= 1.08
+
+                    # --- Apply inferred boosts ---
+                    if has_kids is True and category_name in ["Toys", "Baby", "Kids Clothing"]:
+                        boost_factor *= 1.15
+                    if relationship_status == "married" and category_name in ["Home Goods", "Furniture", "Jewelry"]:
+                         boost_factor *= 1.05
+
+                    # --- Apply NEW inferred boosts (Examples) ---
+                    if employment_status == "student" and category_name in ["Laptops", "Books"]:
+                        boost_factor *= 1.1
+                    if education_level in ["masters", "doctorate"] and category_name in ["Books"]:
+                        boost_factor *= 1.08
+
+                    effective_age_info = age if age is not None else age_bracket
+                    if effective_age_info:
+                         if effective_age_info == "18-24" and category_name in ["Gaming"]:
+                             boost_factor *= 1.05
+                         elif effective_age_info == "65+" and category_name in ["Health"]:
+                             boost_factor *= 1.1
+                    # --- End NEW inferred boosts ---
 
                     final_score = min(score * boost_factor, 1.0)
                     # --- End Demographic Boost ---

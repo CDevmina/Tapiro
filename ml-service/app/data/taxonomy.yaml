@@ -145,6 +145,7 @@ categories:
           - gaming
           - creative
           - student
+          - professional
       - name: "screen_size"
         description: "Size of the display"
         values:
@@ -408,6 +409,20 @@ categories:
           - XL
           - XXL
           - XXXL
+          - kids_xs
+          - kids_s
+          - kids_m
+          - kids_l
+          - kids_xl
+          - toddler_2t
+          - toddler_3t
+          - toddler_4t
+          - infant_0-3m
+          - infant_3-6m
+          - infant_6-9m
+          - infant_9-12m
+          - infant_12-18m
+          - infant_18-24m
       - name: "material"
         description: "Fabric material"
         values:
@@ -442,6 +457,16 @@ categories:
           - party
           - sports
           - lounge
+      - name: "style"
+        description: "Fashion style"
+        values:
+          - fast_fashion
+          - business_casual
+          - formal_wear
+          - comfort
+          - streetwear
+          - vintage
+          - sustainable
 
   - id: "202"
     name: "Shoes"
@@ -468,7 +493,7 @@ categories:
           - unisex
           - kids
       - name: "size"
-        description: "US shoe size"
+        description: "US shoe size (Adult & Kids)"
         values:
           - "5"
           - "6"
@@ -480,6 +505,19 @@ categories:
           - "12"
           - "13"
           - "14"
+          - kids_1
+          - kids_2
+          - kids_3
+          - kids_4
+          - kids_5
+          - kids_6
+          - kids_7
+          - kids_8
+          - kids_9
+          - kids_10
+          - kids_11
+          - kids_12
+          - kids_13
       - name: "material"
         description: "Material type"
         values:
@@ -642,6 +680,52 @@ categories:
         values:
           - yes
           - no
+
+  - id: "303"
+    name: "Gardening"
+    parent_id: "300"
+    description: "Gardening tools, plants, and supplies"
+    attributes:
+      - name: "type"
+        values:
+          - tools
+          - seeds
+          - plants
+          - soil
+          - fertilizer
+          - pots_planters
+          - pest_control
+      - name: "plant_type"
+        values:
+          - flower
+          - vegetable
+          - herb
+          - shrub
+          - tree
+          - indoor
+
+  - id: "304"
+    name: "Tools & Home Improvement"
+    parent_id: "300"
+    description: "Hand tools, power tools, hardware, and improvement supplies"
+    attributes:
+      - name: "type"
+        values:
+          - hand_tool
+          - power_tool
+          - hardware
+          - plumbing
+          - electrical
+          - paint
+          - safety_gear
+      - name: "brand"
+        values:
+          - DeWalt
+          - Milwaukee
+          - Ryobi
+          - Craftsman
+          - Stanley
+          - Bosch
 
   # Beauty & Personal Care
   - id: "400"
@@ -834,6 +918,13 @@ categories:
           - self_help
           - cooking
           - business
+          - science
+          - technology
+          - academic
+          - textbook
+          - travel
+          - art
+          - poetry
       - name: "audience"
         description: "Target audience"
         values:
@@ -897,3 +988,445 @@ categories:
           - new_release
           - recent
           - classic
+
+  - id: "503"
+    name: "Streaming Services"
+    parent_id: "500"
+    description: "Digital streaming subscriptions for video and music"
+    attributes:
+      - name: "service_type"
+        values:
+          - video
+          - music
+          - gaming
+      - name: "provider"
+        values:
+          - Netflix
+          - Hulu
+          - Disney+
+          - Spotify
+          - Apple Music
+          - Xbox Game Pass
+
+  - id: "504"
+    name: "Academic Journals"
+    parent_id: "500"
+    description: "Scholarly publications and research articles"
+    attributes:
+      - name: "field"
+        values:
+          - science
+          - medicine
+          - engineering
+          - humanities
+          - social_sciences
+      - name: "format"
+        values:
+          - digital_subscription
+          - print
+          - individual_article
+
+  # Health & Wellness (Top Level)
+  - id: "600"
+    name: "Health & Wellness"
+    description: "Health, wellness, and medical products"
+    attributes:
+      - name: "price_range"
+        description: "Price tier"
+        values:
+          - budget
+          - mid_range
+          - premium
+      - name: "concern"
+        description: "Health concern addressed"
+        values:
+          - general_wellness
+          - pain_relief
+          - mobility
+          - sleep
+          - nutrition
+          - specific_condition
+
+  # Health Sub-categories
+  - id: "601"
+    name: "Vitamins & Supplements"
+    parent_id: "600"
+    description: "Dietary supplements and vitamins"
+    attributes:
+      - name: "type"
+        values:
+          - multivitamin
+          - vitamin_c
+          - vitamin_d
+          - protein
+          - herbal
+          - mineral
+      - name: "form"
+        values:
+          - capsule
+          - tablet
+          - powder
+          - liquid
+          - gummy
+
+  - id: "602"
+    name: "Personal Care"
+    parent_id: "600"
+    description: "Personal hygiene and care items (non-beauty focus)"
+    attributes:
+      - name: "type"
+        values:
+          - oral_care
+          - first_aid
+          - feminine_hygiene
+          - incontinence
+          - foot_care
+
+  - id: "603"
+    name: "Medical Supplies"
+    parent_id: "600"
+    description: "Medical equipment and supplies"
+    attributes:
+      - name: "type"
+        values:
+          - monitoring_device
+          - mobility_aid
+          - first_aid_kit
+          - diagnostic_test
+
+  - id: "604"
+    name: "Comfort Footwear"
+    parent_id: "600"
+    description: "Footwear designed for comfort and support"
+    attributes:
+      - name: "feature"
+        values:
+          - orthopedic
+          - arch_support
+          - wide_fit
+          - diabetic
+      - name: "gender"
+        values:
+          - women
+          - men
+          - unisex
+      - name: "size"
+        values:
+          - "7"
+          - "8"
+          - "9"
+          - "10"
+          - "11"
+          - "12"
+          - wide_7
+          - wide_8
+
+  # Toys & Baby (Top Level)
+  - id: "700"
+    name: "Toys & Games"
+    description: "Toys, games, and collectibles for all ages"
+    attributes:
+      - name: "age_range"
+        values:
+          - "0-1"
+          - "1-3"
+          - "3-5"
+          - "5-7"
+          - "8-11"
+          - "12+"
+          - adult
+      - name: "type"
+        values:
+          - action_figure
+          - board_game
+          - puzzle
+          - educational
+          - outdoor
+          - plush
+          - building_blocks
+          - video_game_related
+
+  # Toys & Baby Sub-categories
+  - id: "701"
+    name: "Baby Gear"
+    parent_id: "700"
+    description: "Strollers, car seats, feeding supplies, nursery items"
+    attributes:
+      - name: "type"
+        values:
+          - stroller
+          - car_seat
+          - high_chair
+          - baby_monitor
+          - crib
+          - feeding_bottle
+          - diapering
+      - name: "brand"
+        values:
+          - Graco
+          - Chicco
+          - Evenflo
+          - Fisher-Price
+          - Philips Avent
+
+  - id: "702"
+    name: "Kids Clothing"
+    parent_id: "200"
+    description: "Clothing specifically for children and babies"
+    attributes:
+      - name: "age_group"
+        values:
+          - baby
+          - toddler
+          - kids
+          - tween
+      - name: "gender"
+        values:
+          - boy
+          - girl
+          - unisex
+      - name: "size"
+        values:
+          - infant_0-3m
+          - infant_3-6m
+          - toddler_2t
+          - kids_s
+          - kids_m
+          - kids_l
+      - name: "type"
+        values:
+          - onesie
+          - t-shirt
+          - pants
+          - dress
+          - outerwear
+          - sleepwear
+
+  # Office & Business (Top Level)
+  - id: "800"
+    name: "Office Supplies"
+    description: "Stationery, office basics, and equipment"
+    attributes:
+      - name: "price_range"
+        values:
+          - budget
+          - standard
+          - premium
+      - name: "category"
+        values:
+          - writing
+          - paper
+          - organization
+          - desk_accessories
+          - office_electronics
+
+  # Office & Business Sub-categories
+  - id: "801"
+    name: "Stationery"
+    parent_id: "800"
+    description: "Pens, pencils, notebooks, paper, and related items"
+    attributes:
+      - name: "type"
+        values:
+          - pen
+          - pencil
+          - notebook
+          - paper
+          - envelope
+          - marker
+          - highlighter
+
+  - id: "802"
+    name: "Business Wear"
+    parent_id: "200"
+    description: "Formal and business-casual attire for professional settings"
+    attributes:
+      - name: "type"
+        values:
+          - suit
+          - blazer
+          - dress_shirt
+          - blouse
+          - trousers
+          - skirt
+          - dress_shoes
+      - name: "gender"
+        values:
+          - men
+          - women
+      - name: "occasion"
+        values:
+          - business_formal
+          - business_casual
+
+  # Entertainment & Hobbies (Top Level)
+  - id: "900"
+    name: "Gaming"
+    description: "Video games, consoles, and accessories"
+    attributes:
+      - name: "platform"
+        values:
+          - pc
+          - playstation
+          - xbox
+          - nintendo_switch
+          - mobile
+      - name: "genre"
+        values:
+          - action
+          - rpg
+          - strategy
+          - simulation
+          - sports
+          - puzzle
+          - indie
+      - name: "type"
+        values:
+          - console
+          - game
+          - accessory
+          - gaming_laptop
+          - gaming_pc_component
+
+  # Travel (Top Level)
+  - id: "1000"
+    name: "Travel"
+    description: "Luggage, travel accessories, and booking services"
+    attributes:
+      - name: "type"
+        values:
+          - luggage
+          - travel_accessories
+          - booking
+          - travel_gear
+      - name: "travel_style"
+        values:
+          - business
+          - leisure
+          - budget
+          - luxury
+          - adventure
+          - family
+
+  # Food & Grocery (Top Level)
+  - id: "1100"
+    name: "Grocery"
+    description: "Food and beverage items"
+    attributes:
+      - name: "category"
+        values:
+          - fresh_produce
+          - pantry_staples
+          - snacks
+          - beverages
+          - frozen_foods
+          - dairy
+          - meat_seafood
+      - name: "dietary_preference"
+        values:
+          - organic
+          - gluten_free
+          - vegan
+          - vegetarian
+          - keto
+
+  # Food & Grocery Sub-categories
+  - id: "1101"
+    name: "Budget Food"
+    parent_id: "1100"
+    description: "Value-focused food items and bulk goods"
+    attributes:
+      - name: "type"
+        values:
+          - canned_goods
+          - pasta_rice
+          - frozen_value
+          - store_brand
+
+  # Luxury & Gifting (Top Level)
+  - id: "1200"
+    name: "Jewelry & Watches"
+    description: "Fine and fashion jewelry, watches"
+    attributes:
+      - name: "type"
+        values:
+          - ring
+          - necklace
+          - bracelet
+          - earrings
+          - watch
+      - name: "material"
+        values:
+          - gold
+          - silver
+          - platinum
+          - diamond
+          - gemstone
+          - stainless_steel
+      - name: "price_range"
+        values:
+          - fashion
+          - mid_range
+          - fine
+          - luxury
+      - name: "gender"
+        values:
+          - women
+          - men
+          - unisex
+
+  - id: "1300"
+    name: "Gifts"
+    description: "Gift sets, special occasion items, and experiences"
+    attributes:
+      - name: "occasion"
+        values:
+          - birthday
+          - anniversary
+          - holiday
+          - wedding
+          - thank_you
+          - corporate
+      - name: "recipient"
+        values:
+          - for_her
+          - for_him
+          - for_kids
+          - for_couple
+          - for_pet
+      - name: "type"
+        values:
+          - gift_basket
+          - experience
+          - personalized_item
+          - novelty_gift
+
+  # Software (Top Level)
+  - id: "1400"
+    name: "Software"
+    description: "Applications, operating systems, and software tools"
+    attributes:
+      - name: "type"
+        values:
+          - productivity
+          - creative
+          - security
+          - utility
+          - operating_system
+          - business
+          - educational
+          - gaming
+      - name: "license"
+        values:
+          - subscription
+          - perpetual
+          - freeware
+          - open_source
+      - name: "platform"
+        values:
+          - windows
+          - macos
+          - linux
+          - web
+          - mobile_ios
+          - mobile_android
