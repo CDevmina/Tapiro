@@ -106,17 +106,8 @@ exports.updateUserProfile = async function (req, body) {
       updatedAt: new Date(),
     };
     // Update local DB username only if Auth0 update was successful (or not attempted)
-    if (body.username !== undefined) {
-      // Check for uniqueness before setting
-      const existingUser = await db.collection('users').findOne({ username: body.username, auth0Id: { $ne: auth0UserId } });
-      if (existingUser) {
-        return respondWithCode(409, { code: 409, message: 'Username already taken' });
-      }
-      updateData.username = body.username;
-    }
-    if (body.phone !== undefined) {
-      updateData.phone = body.phone;
-    }
+    if (body.username !== undefined) updateData.username = body.username;
+    if (body.phone !== undefined) updateData.phone = body.phone;
 
     // Only update allowed privacy settings
     if (body.privacySettings !== undefined) {
@@ -127,31 +118,17 @@ exports.updateUserProfile = async function (req, body) {
       if (body.privacySettings.anonymizeData !== undefined) {
         updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
       }
-      // Note: optInStores/optOutStores are managed via separate endpoints
+      // DO NOT update optInStores or optOutStores here
     }
 
-    if (body.dataAccess !== undefined) {
-      updateData.dataAccess = {};
-      if (body.dataAccess.allowedDomains !== undefined) {
-        updateData.dataAccess.allowedDomains = body.dataAccess.allowedDomains;
-      }
-    }
-
-    // --- ADDED: Handle providedDemographics ---
-    // Add providedDemographics to the update if present in the body
-    // The schema validation will ensure it has the correct structure
-    if (body.providedDemographics !== undefined) {
-      updateData.providedDemographics = body.providedDemographics;
-    }
-    // --- End Added ---
-
+    if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
 
     const result = await db
       .collection('users')
       .findOneAndUpdate(
         { auth0Id: auth0UserId },
         { $set: updateData },
-        { returnDocument: 'after', projection: { preferences: 0 } }, // Exclude preferences
+        { returnDocument: 'after', projection: { preferences: 0 } },
       );
 
     if (!result) {
@@ -179,10 +156,6 @@ exports.updateUserProfile = async function (req, body) {
   } catch (error) {
     // Catch errors not handled specifically above
     console.error('Update profile failed:', error);
-    // Check for specific MongoDB duplicate key errors (e.g., if email index exists)
-    if (error.code === 11000) {
-      return respondWithCode(409, { code: 409, message: 'Conflict: A field value is already in use.' });
-    }
     return respondWithCode(500, { code: 500, message: 'Internal server error during profile update' });
   }
 };
