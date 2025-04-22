@@ -102,29 +102,58 @@ exports.updateUserProfile = async function (req, body) {
     const updateData = {
       updatedAt: new Date(),
     };
+    let demographicsChanged = false; // Flag to track if demographics were updated
+
     // Update local DB username only if Auth0 update was successful (or not attempted)
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
-    // Add demographic fields to updateData if provided
-    if (body.gender !== undefined) updateData.gender = body.gender;
-    if (body.incomeBracket !== undefined) updateData.incomeBracket = body.incomeBracket;
-    if (body.country !== undefined) updateData.country = body.country;
-    if (body.age !== undefined) updateData.age = body.age;
+    // Add demographic fields to updateData if provided and track changes
+    if (body.gender !== undefined) {
+        updateData.gender = body.gender;
+        demographicsChanged = true;
+    }
+    if (body.incomeBracket !== undefined) {
+        updateData.incomeBracket = body.incomeBracket;
+        demographicsChanged = true;
+    }
+    if (body.country !== undefined) {
+        updateData.country = body.country;
+        demographicsChanged = true;
+    }
+    if (body.age !== undefined) {
+        updateData.age = body.age;
+        demographicsChanged = true;
+    }
 
     // Only update allowed privacy settings
+    let privacySettingsChanged = false; // Flag for privacy changes
     if (body.privacySettings !== undefined) {
       updateData.privacySettings = {};
       if (body.privacySettings.dataSharingConsent !== undefined) {
         updateData.privacySettings.dataSharingConsent = body.privacySettings.dataSharingConsent;
+        privacySettingsChanged = true;
       }
       if (body.privacySettings.anonymizeData !== undefined) {
         updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
+        privacySettingsChanged = true;
       }
       // DO NOT update optInStores or optOutStores here
     }
 
     if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
+
+    // Check if there's anything to update
+    if (Object.keys(updateData).length <= 1 && !demographicsChanged && !privacySettingsChanged) {
+        // Only updatedAt is set, nothing else changed
+        // Fetch current profile to return if needed, or return specific message
+        const currentUser = await db.collection('users').findOne(
+            { auth0Id: auth0UserId },
+            { projection: { preferences: 0 } }
+        );
+        return respondWithCode(200, currentUser || { message: "No changes detected." });
+    }
+
 
     const result = await db
       .collection('users')
@@ -141,18 +170,27 @@ exports.updateUserProfile = async function (req, body) {
 
     // --- Cache Invalidation & Update ---
     const cacheKey = `${CACHE_KEYS.USER_DATA}${auth0UserId}`;
-    await invalidateCache(cacheKey);
+    await invalidateCache(cacheKey); // Invalidate user data cache
 
-    // Invalidate store preferences if privacy settings changed
-    if (updateData.privacySettings && result.privacySettings?.optInStores) {
-       const userObjectId = result._id;
+    // Invalidate general preferences cache if demographics changed
+    if (demographicsChanged) {
+        await invalidateCache(`${CACHE_KEYS.PREFERENCES}${auth0UserId}`);
+        console.log(`Invalidated general preferences cache for ${auth0UserId} due to demographic update.`);
+    }
+
+    // Invalidate store-specific preferences if demographics or relevant privacy settings changed
+    // Also invalidate if the optInStores list exists (safer to clear on any profile update)
+    if ((demographicsChanged || privacySettingsChanged) && result.privacySettings?.optInStores) {
+       const userObjectId = result._id; // Use the _id from the updated result
+       console.log(`Invalidating store preferences for user ${userObjectId} due to update.`);
        for (const storeId of result.privacySettings.optInStores) {
-         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+         const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`;
+         await invalidateCache(storePrefCacheKey);
+         console.log(`Invalidated cache: ${storePrefCacheKey}`);
        }
     }
 
     // Update cache with the new data (without preferences)
-    // Note: This happens *after* invalidation, ensuring fresh data is set if needed immediately
     await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, result);
