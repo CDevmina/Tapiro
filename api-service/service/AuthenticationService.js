@@ -97,7 +97,7 @@ exports.registerUser = async function (req, body) {
     // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: userData.username,
+      username: userData.username || userData.nickname || userData.sub,
       email: userData.email,
       phone: userData.phone_number || null,
       gender: gender || null, // Add new fields, defaulting to null if not provided
