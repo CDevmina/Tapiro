@@ -41,7 +41,7 @@ export default function ApiDocsPage() {
         </p>
         {/* Add dark mode text color */}
         <h5 className="mt-3 mb-1 font-semibold text-gray-900 dark:text-white">
-          POST /v1/interactions
+          POST /interactions
         </h5>
         {/* Add dark mode text color */}
         <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
@@ -51,7 +51,7 @@ export default function ApiDocsPage() {
         {/* Adjusted pre/code dark mode styles */}
         <pre className="overflow-auto rounded bg-gray-100 p-4 dark:bg-gray-700">
           <code className="text-gray-800 dark:text-gray-300">
-            {`POST /v1/interactions
+            {`POST /interactions
 Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 X-API-Key: YOUR_STORE_API_KEY // Corrected Header
@@ -77,7 +77,7 @@ X-API-Key: YOUR_STORE_API_KEY // Corrected Header
         </pre>
         {/* Add dark mode text color */}
         <h5 className="mt-3 mb-1 font-semibold text-gray-900 dark:text-white">
-          POST /v1/users/data
+          POST /users/data
         </h5>
         {/* Add dark mode text color */}
         <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
@@ -86,7 +86,7 @@ X-API-Key: YOUR_STORE_API_KEY // Corrected Header
         {/* Adjusted pre/code dark mode styles */}
         <pre className="overflow-auto rounded bg-gray-100 p-4 dark:bg-gray-700">
           <code className="text-gray-800 dark:text-gray-300">
-            {`POST /v1/users/data HTTP/1.1
+            {`POST /users/data HTTP/1.1
 Host: api.tapiro.com
 Content-Type: application/json
 X-API-Key: YOUR_API_KEY  // Changed from Authorization: Bearer
