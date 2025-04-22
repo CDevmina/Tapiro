@@ -328,7 +328,7 @@ export default function UserDashboard() {
                   <Datepicker
                     icon={HiCalendar}
                     value={startDate ?? undefined}
-                    onSelectedDateChanged={(date) => setStartDate(date)}
+                    onChange={(date: Date | null) => setStartDate(date)}
                     maxDate={endDate || undefined}
                     className="w-full"
                     placeholder="Start Date"
@@ -336,7 +336,7 @@ export default function UserDashboard() {
                   <Datepicker
                     icon={HiCalendar}
                     value={endDate ?? undefined}
-                    onSelectedDateChanged={(date) => setEndDate(date)}
+                    onChange={(date: Date | null) => setEndDate(date)}
                     minDate={startDate || undefined}
                     className="w-full"
                     placeholder="End Date"
