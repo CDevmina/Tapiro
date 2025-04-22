@@ -83,6 +83,11 @@ export const cacheSettings = {
     staleTime: CACHE_TIMES.SHORT,
     gcTime: CACHE_TIMES.SHORT * 2,
   },
+  taxonomy: {
+    // <-- Add specific settings for taxonomy (cache longer)
+    staleTime: CACHE_TIMES.LONG,
+    gcTime: CACHE_TIMES.LONG * 2,
+  },
 };
 
 // Helper for optimistic updates
