@@ -31,9 +31,8 @@ module.exports.deleteUserProfile = function deleteUserProfile(req, res, next) {
     });
 };
 
-module.exports.getRecentUserData = function getRecentUserData(req, res, next, limit, page) {
-  // Pass query parameters to the service function
-  UserProfile.getRecentUserData(req, limit, page)
+module.exports.getRecentUserData = function getRecentUserData(req, res, next, limit, page, startDate, endDate, dataType, storeId, search) {
+  UserProfile.getRecentUserData(req, limit, page, startDate, endDate, dataType, storeId, search)
     .then((response) => {
       utils.writeJson(res, response);
     })

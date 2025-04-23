@@ -612,33 +612,83 @@ paths:
   /users/data/recent:
     get:
       tags: [User Management]
-      summary: Get Recent User Data Submissions
-      description: Retrieves a list of recent data submissions made about the authenticated user.
+      summary: Get User Activity Log
+      description: Retrieves a paginated list of user activity (data submissions, usage), filterable and searchable.
       operationId: getRecentUserData
       parameters:
         - name: limit
           in: query
-          description: Maximum number of records to return
+          description: Maximum number of entries per page.
           required: false
           schema:
             type: integer
-            default: 10
+            format: int32
+            default: 15
         - name: page
           in: query
-          description: Page number for pagination
+          description: Page number for pagination.
           required: false
           schema:
             type: integer
+            format: int32
             default: 1
+        - name: startDate
+          in: query
+          description: Filter activity from this date onwards (YYYY-MM-DD).
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter activity up to this date (YYYY-MM-DD).
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dataType
+          in: query
+          description: Filter by the type of data submission.
+          required: false
+          schema:
+            type: string
+            enum: [purchase, search]
+        - name: storeId
+          in: query
+          description: Filter activity related to a specific store ID.
+          required: false
+          schema:
+            type: string
+            format: objectId
+        - name: search
+          in: query
+          description: Search term for activity details (e.g., item name, search query).
+          required: false
+          schema:
+            type: string
       responses:
         "200":
-          description: Recent data submissions retrieved successfully
+          description: User activity log retrieved successfully.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RecentUserDataEntry"
+                type: object
+                properties:
+                  activity:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RecentUserDataEntry"
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      totalEntries:
+                        type: integer
+        "400":
+          $ref: "#/components/responses/BadRequestError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "500":
@@ -709,6 +759,64 @@ paths:
                   $ref: "#/components/schemas/StoreBasicInfo"
         "400":
           $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: StoreProfile
+
+  /stores:
+    get:
+      tags: [Store Management]
+      summary: List or Search Stores
+      description: Retrieves a paginated list of registered stores, optionally filtered by a search term. Intended for user discovery (e.g., finding stores to opt-in/out).
+      operationId: listStoresForUserDiscovery
+      parameters:
+        - name: search
+          in: query
+          description: Optional search term to filter stores by name.
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of stores to return per page.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+        - name: page
+          in: query
+          description: Page number for pagination.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+      responses:
+        "200":
+          description: A paginated list of stores.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stores:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StoreBasicInfo"
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      totalStores:
+                        type: integer
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "500":
@@ -978,7 +1086,7 @@ components:
       type: object
       required:
         - email
-        - dataType # Make dataType required
+        - dataType
         - entries
       properties:
         email:
@@ -995,11 +1103,11 @@ components:
             List of data entries. Each entry must conform to either the PurchaseEntry
             or SearchEntry schema, matching the top-level 'dataType'.
           items:
-            oneOf: # Use oneOf to specify possible entry types
+            oneOf:
               - $ref: "#/components/schemas/PurchaseEntry"
               - $ref: "#/components/schemas/SearchEntry"
             description: "An entry representing either a purchase event or a search event."
-          minItems: 1 # Require at least one entry
+          minItems: 1
         metadata:
           type: object
           description: Additional metadata about the collection event (e.g., source, device).
@@ -1017,7 +1125,7 @@ components:
             source: "web"
             deviceType: "desktop"
             sessionId: "abc-123-xyz-789"
-      example: # Example for a purchase submission
+      example:
         email: "user@example.com"
         dataType: "purchase"
         entries:
@@ -1049,10 +1157,10 @@ components:
       example:
         timestamp: "2024-05-15T14:30:00Z"
         items:
-          - $ref: "#/components/schemas/PurchaseItem/example" # Reference the example above
+          - $ref: "#/components/schemas/PurchaseItem/example"
           - sku: "ABC-789"
             name: "Running Shorts"
-            category: "201" # Clothing
+            category: "201"
             price: 39.95
             quantity: 1
             attributes:
@@ -1065,7 +1173,7 @@ components:
       type: object
       required:
         - name
-        - category # Making category required for better processing
+        - category
       properties:
         sku:
           type: string
@@ -1091,7 +1199,7 @@ components:
       example:
         sku: "XYZ-123"
         name: "Men's Cotton T-Shirt"
-        category: "201" # Example: Clothing ID
+        category: "201"
         price: 25.99
         quantity: 2
         attributes:
@@ -1141,7 +1249,7 @@ components:
       example:
         timestamp: "2024-05-15T10:15:00Z"
         query: "noise cancelling headphones"
-        category: "105" # Example: Audio ID
+        category: "105"
         results: 25
         clicked: ["Bose-QC45", "Sony-WH1000XM5"]
 
@@ -1167,59 +1275,33 @@ components:
           items:
             $ref: "#/components/schemas/PreferenceItem"
           description: User interest preferences with taxonomy categorization
+      required:
+        - preferences
 
     PreferenceItem:
       type: object
-      required:
-        - category
-        - score
       properties:
         category:
           type: string
-          description: Category ID or name (e.g., "101" or "smartphones")
+          description: The ID of the taxonomy category.
+          example: "102"
         score:
           type: number
           format: float
-          minimum: 0.0
-          maximum: 1.0
-          description: Preference score (0.0-1.0)
+          description: The user's interest score for this category (e.g., 0-1).
+          example: 0.85
         attributes:
           type: object
-          description: Category-specific attribute preferences
-          properties:
-            price_range:
-              type: object
-              properties:
-                budget:
-                  type: number
-                  format: float
-                mid_range:
-                  type: number
-                  format: float
-                premium:
-                  type: number
-                  format: float
-                luxury:
-                  type: number
-                  format: float
-            color:
-              $ref: "#/components/schemas/AttributeDistribution"
-            brand:
-              $ref: "#/components/schemas/AttributeDistribution"
-            material:
-              $ref: "#/components/schemas/AttributeDistribution"
-            style:
-              $ref: "#/components/schemas/AttributeDistribution"
-            room:
-              $ref: "#/components/schemas/AttributeDistribution"
-            size:
-              $ref: "#/components/schemas/AttributeDistribution"
-            feature:
-              $ref: "#/components/schemas/AttributeDistribution"
-            season:
-              $ref: "#/components/schemas/AttributeDistribution"
-            gender:
-              $ref: "#/components/schemas/AttributeDistribution"
+          description: Specific attribute preferences within this category (key-value pairs). Values should align with taxonomy definitions.
+          additionalProperties:
+            type: string
+          example:
+            brand: "Apple"
+            screen_size: "13-inch"
+            usage_type: "Work"
+      required:
+        - category
+        - score
 
     StoreUpdate:
       type: object
@@ -1432,25 +1514,66 @@ components:
       properties:
         _id:
           type: string
-          description: The unique ID of the userData entry.
-        storeId:
-          type: string
-          description: The ID of the store that submitted the data.
+          format: objectId
+          description: Unique identifier for the activity entry.
         dataType:
           type: string
           enum: [purchase, search]
-          description: The type of data submitted.
+          description: The type of data activity.
         timestamp:
           type: string
           format: date-time
-          description: When the data was submitted to Tapiro.
-        entryTimestamp:
+          description: Timestamp of the original event or submission.
+        storeId:
           type: string
-          format: date-time
-          description: The timestamp of the original event (e.g., purchase time).
+          format: objectId
+          description: ID of the store associated with the activity.
+        storeName:
+          type: string
+          description: Name of the store (looked up).
+          example: "Awesome Gadgets Inc."
         details:
           type: object
-          description: Simplified details (e.g., item count for purchase, query string for search)
+          description: Specific details based on the dataType.
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "Wireless Mouse"
+                  category:
+                    type: string
+                    description: Taxonomy category ID.
+                    example: "100"
+                  price:
+                    type: number
+                    format: float
+                    example: 25.99
+                  quantity:
+                    type: integer
+                    example: 1
+            totalAmount:
+              type: number
+              format: float
+              description: Total amount for the purchase event.
+              example: 25.99
+            searchTerm:
+              type: string
+              example: "best gaming laptop"
+            categorySearched:
+              type: string
+              description: Taxonomy category ID searched within, if applicable.
+              example: "102"
+      required:
+        - _id
+        - dataType
+        - timestamp
+        - storeId
+        - storeName
+        - details
 
     SpendingAnalytics:
       type: object
@@ -1459,7 +1582,7 @@ components:
         The structure might vary based on implementation (e.g., object keyed by month/year,
         or an array of objects each representing a time point).
       additionalProperties:
-        type: object # Example: { "YYYY-MM": { "Category1": 100, "Category2": 50 } }
+        type: object
         additionalProperties:
           type: number
           format: float

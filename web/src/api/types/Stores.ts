@@ -17,6 +17,7 @@ import {
   ApiKeyUsage,
   Error,
   GetApiKeyUsagePayload,
+  ListStoresForUserDiscoveryParams,
   LookupStoresParams,
   Store,
   StoreBasicInfo,
@@ -223,6 +224,49 @@ export class Stores<
   lookupStores = (query: LookupStoresParams, params: RequestParams = {}) =>
     this.request<StoreBasicInfo[], Error>({
       path: `/stores/lookup`,
+      method: "GET",
+      query: query,
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+ * @description Retrieves a paginated list of registered stores, optionally filtered by a search term. Intended for user discovery (e.g., finding stores to opt-in/out).
+ *
+ * @tags Store Management
+ * @name ListStoresForUserDiscovery
+ * @summary List or Search Stores
+ * @request GET:/stores
+ * @secure
+ * @response `200` `{
+    stores?: (StoreBasicInfo)[],
+    pagination?: {
+    currentPage?: number,
+    totalPages?: number,
+    totalStores?: number,
+
+},
+
+}` A paginated list of stores.
+ * @response `401` `Error`
+ * @response `500` `Error`
+ */
+  listStoresForUserDiscovery = (
+    query: ListStoresForUserDiscoveryParams,
+    params: RequestParams = {},
+  ) =>
+    this.request<
+      {
+        stores?: StoreBasicInfo[];
+        pagination?: {
+          currentPage?: number;
+          totalPages?: number;
+          totalStores?: number;
+        };
+      },
+      Error
+    >({
+      path: `/stores`,
       method: "GET",
       query: query,
       secure: true,

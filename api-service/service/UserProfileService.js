@@ -272,7 +272,7 @@ exports.deleteUserProfile = async function (req) {
  * Get Recent User Data Submissions
  * Retrieves a list of recent data submissions made about the authenticated user.
  */
-exports.getRecentUserData = async function (req, limit = 10, page = 1) {
+exports.getRecentUserData = async function (req, limit = 15, page = 1, startDate, endDate, dataType, storeId, search) { // <-- Add new params
   try {
     const db = getDB();
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
@@ -283,43 +283,144 @@ exports.getRecentUserData = async function (req, limit = 10, page = 1) {
       return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    const skip = (page - 1) * limit;
+    const numericLimit = parseInt(limit, 10) || 15;
+    const numericPage = parseInt(page, 10) || 1;
+    const skip = (numericPage - 1) * numericLimit;
 
-    // Query userData collection
-    const recentData = await db.collection('userData')
-      .find({ userId: user._id }) // Filter by the user's ObjectId
-      .sort({ timestamp: -1 }) // Sort by submission time descending
-      .skip(skip)
-      .limit(limit)
-      .project({ // Project only necessary fields for RecentUserDataEntry schema
-        _id: 1,
-        storeId: 1,
-        dataType: 1,
-        timestamp: 1, // Submission timestamp
-        entryTimestamp: '$entries.timestamp', // Assuming timestamp is within entries array
-        // Add simplified details if needed, e.g., item count or query string
-        // details: { $cond: { if: { $eq: ['$dataType', 'purchase'] }, then: { itemCount: { $size: '$entries.items' } }, else: '$entries.query' } }
-      })
-      .toArray();
+    // --- Build Match Query ---
+    const matchQuery = { userId: user._id };
 
-    // Simple transformation if needed (e.g., flatten entryTimestamp if it's an array)
-    const formattedData = recentData.map(entry => ({
-      ...entry,
-      // If entryTimestamp is an array due to projection, take the first element
-      entryTimestamp: Array.isArray(entry.entryTimestamp) ? entry.entryTimestamp[0] : entry.entryTimestamp,
-      // Add placeholder for details
-      details: {}
-    }));
+    // Date Range Filter
+    const dateMatch = {};
+    if (startDate) {
+      try {
+        dateMatch['$gte'] = new Date(startDate);
+      } catch (e) { console.warn('Invalid startDate:', startDate); }
+    }
+    if (endDate) {
+      try {
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1); // Include the whole end day
+        dateMatch['$lt'] = end;
+      } catch (e) { console.warn('Invalid endDate:', endDate); }
+    }
+    if (Object.keys(dateMatch).length > 0) {
+      // Apply date filter to the 'timestamp' field of the main document
+      // or potentially 'entries.timestamp' if querying nested entries directly
+      matchQuery.timestamp = dateMatch; // Adjust if timestamp is nested
+    }
 
+    // Data Type Filter
+    if (dataType && ['purchase', 'search'].includes(dataType)) {
+      matchQuery.dataType = dataType;
+    }
 
-    // Caching could be added here if this data is frequently accessed
-    // const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${page}:${limit}`;
-    // await setCache(cacheKey, JSON.stringify(formattedData), { EX: CACHE_TTL.SHORT }); // Example TTL
+    // Store ID Filter
+    if (storeId) {
+      try {
+        matchQuery.storeId = new ObjectId(storeId);
+      } catch (e) { console.warn('Invalid storeId format:', storeId); }
+    }
 
-    return respondWithCode(200, formattedData);
+    // Search Filter (Basic Example - requires text index for efficiency)
+    // Assumes text index exists on fields like 'entries.items.name', 'entries.searchTerm'
+    // db.collection('userData').createIndex({ "entries.items.name": "text", "entries.searchTerm": "text" })
+    if (search) {
+      matchQuery.$text = { $search: search };
+    }
+    // --- End Build Match Query ---
+
+    // --- Aggregation Pipeline ---
+    // We need aggregation to potentially lookup store names and format details
+    const pipeline = [
+      { $match: matchQuery },
+      { $sort: { timestamp: -1 } }, // Sort before skip/limit for correct pagination
+      { $skip: skip },
+      { $limit: numericLimit },
+      // Lookup Store Name
+      {
+        $lookup: {
+          from: 'stores',
+          localField: 'storeId',
+          foreignField: '_id',
+          as: 'storeInfo'
+        }
+      },
+      {
+        $unwind: { // Unwind the storeInfo array (should only be one match)
+          path: '$storeInfo',
+          preserveNullAndEmptyArrays: true // Keep entries even if store is deleted/not found
+        }
+      },
+      // Project and Format the Output
+      {
+        $project: {
+          _id: 1,
+          dataType: 1,
+          timestamp: 1,
+          storeId: { $toString: '$storeId' }, // Convert ObjectId to string
+          storeName: { $ifNull: ['$storeInfo.name', 'Unknown Store'] }, // Use looked-up name or default
+          details: { // Structure the details field
+            $switch: {
+              branches: [
+                {
+                  case: { $eq: ['$dataType', 'purchase'] },
+                  then: {
+                    // Assuming 'entries' is an array, take the first one for simplicity
+                    // Adjust if multiple entries per document is possible and needs handling
+                    items: { $ifNull: [{ $arrayElemAt: ['$entries.items', 0] }, []] }, // Example: take first entry's items
+                    totalAmount: { $ifNull: [{ $sum: '$entries.items.price' }, 0] } // Example: sum prices (needs refinement based on actual schema)
+                  }
+                },
+                {
+                  case: { $eq: ['$dataType', 'search'] },
+                  then: {
+                    searchTerm: { $ifNull: [{ $arrayElemAt: ['$entries.searchTerm', 0] }, null] }, // Example
+                    categorySearched: { $ifNull: [{ $arrayElemAt: ['$entries.category', 0] }, null] } // Example
+                  }
+                }
+              ],
+              default: {} // Default empty object for unknown types
+            }
+          }
+        }
+      }
+    ];
+
+    // Execute pipeline
+    const activityEntries = await db.collection('userData').aggregate(pipeline).toArray();
+
+    // Get total count matching the filter (without skip/limit) for pagination
+    // Need to run a separate count aggregation or query
+    const countPipeline = [
+        { $match: matchQuery },
+        { $count: "totalEntries" }
+    ];
+    const countResult = await db.collection('userData').aggregate(countPipeline).toArray();
+    const totalEntries = countResult.length > 0 ? countResult[0].totalEntries : 0;
+    const totalPages = Math.ceil(totalEntries / numericLimit);
+
+    const responsePayload = {
+      activity: activityEntries,
+      pagination: {
+        currentPage: numericPage,
+        totalPages: totalPages,
+        totalEntries: totalEntries,
+      },
+    };
+
+    // Caching could be added here, complex key needed due to filters/search
+    // const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${numericPage}:${numericLimit}:${startDate}:${endDate}:${dataType}:${storeId}:${search}`;
+    // await setCache(cacheKey, JSON.stringify(responsePayload), { EX: CACHE_TTL.SHORT });
+
+    return respondWithCode(200, responsePayload);
 
   } catch (error) {
     console.error('Get recent user data failed:', error);
+    // Handle potential invalid ObjectId errors during filtering
+    if (error.name === 'BSONTypeError') {
+        return respondWithCode(400, { code: 400, message: 'Invalid ID format provided for filtering.' });
+    }
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

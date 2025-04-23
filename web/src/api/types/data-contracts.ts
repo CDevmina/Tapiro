@@ -247,50 +247,26 @@ export interface UserPreferences {
 
 export interface UserPreferencesUpdate {
   /** User interest preferences with taxonomy categorization */
-  preferences?: PreferenceItem[];
+  preferences: PreferenceItem[];
 }
 
 export interface PreferenceItem {
-  /** Category ID or name (e.g., "101" or "smartphones") */
+  /**
+   * The ID of the taxonomy category.
+   * @example "102"
+   */
   category: string;
   /**
-   * Preference score (0.0-1.0)
+   * The user's interest score for this category (e.g., 0-1).
    * @format float
-   * @min 0
-   * @max 1
+   * @example 0.85
    */
   score: number;
-  /** Category-specific attribute preferences */
-  attributes?: {
-    price_range?: {
-      /** @format float */
-      budget?: number;
-      /** @format float */
-      mid_range?: number;
-      /** @format float */
-      premium?: number;
-      /** @format float */
-      luxury?: number;
-    };
-    /** Distribution of attribute values (0.0-1.0) */
-    color?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    brand?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    material?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    style?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    room?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    size?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    feature?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    season?: AttributeDistribution;
-    /** Distribution of attribute values (0.0-1.0) */
-    gender?: AttributeDistribution;
-  };
+  /**
+   * Specific attribute preferences within this category (key-value pairs). Values should align with taxonomy definitions.
+   * @example {"brand":"Apple","screen_size":"13-inch","usage_type":"Work"}
+   */
+  attributes?: Record<string, string>;
 }
 
 export interface StoreUpdate {
@@ -403,24 +379,60 @@ export interface Taxonomy {
 }
 
 export interface RecentUserDataEntry {
-  /** The unique ID of the userData entry. */
-  _id?: string;
-  /** The ID of the store that submitted the data. */
-  storeId?: string;
-  /** The type of data submitted. */
-  dataType?: "purchase" | "search";
   /**
-   * When the data was submitted to Tapiro.
+   * Unique identifier for the activity entry.
+   * @format objectId
+   */
+  _id: string;
+  /** The type of data activity. */
+  dataType: "purchase" | "search";
+  /**
+   * Timestamp of the original event or submission.
    * @format date-time
    */
-  timestamp?: string;
+  timestamp: string;
   /**
-   * The timestamp of the original event (e.g., purchase time).
-   * @format date-time
+   * ID of the store associated with the activity.
+   * @format objectId
    */
-  entryTimestamp?: string;
-  /** Simplified details (e.g., item count for purchase, query string for search) */
-  details?: object;
+  storeId: string;
+  /**
+   * Name of the store (looked up).
+   * @example "Awesome Gadgets Inc."
+   */
+  storeName: string;
+  /** Specific details based on the dataType. */
+  details: {
+    items?: {
+      /** @example "Wireless Mouse" */
+      name?: string;
+      /**
+       * Taxonomy category ID.
+       * @example "100"
+       */
+      category?: string;
+      /**
+       * @format float
+       * @example 25.99
+       */
+      price?: number;
+      /** @example 1 */
+      quantity?: number;
+    }[];
+    /**
+     * Total amount for the purchase event.
+     * @format float
+     * @example 25.99
+     */
+    totalAmount?: number;
+    /** @example "best gaming laptop" */
+    searchTerm?: string;
+    /**
+     * Taxonomy category ID searched within, if applicable.
+     * @example "102"
+     */
+    categorySearched?: string;
+  };
 }
 
 /**
@@ -465,15 +477,36 @@ export interface GetApiKeyUsagePayload {
 
 export interface GetRecentUserDataParams {
   /**
-   * Maximum number of records to return
-   * @default 10
+   * Maximum number of entries per page.
+   * @format int32
+   * @default 15
    */
   limit?: number;
   /**
-   * Page number for pagination
+   * Page number for pagination.
+   * @format int32
    * @default 1
    */
   page?: number;
+  /**
+   * Filter activity from this date onwards (YYYY-MM-DD).
+   * @format date
+   */
+  startDate?: string;
+  /**
+   * Filter activity up to this date (YYYY-MM-DD).
+   * @format date
+   */
+  endDate?: string;
+  /** Filter by the type of data submission. */
+  dataType?: "purchase" | "search";
+  /**
+   * Filter activity related to a specific store ID.
+   * @format objectId
+   */
+  storeId?: string;
+  /** Search term for activity details (e.g., item name, search query). */
+  search?: string;
 }
 
 export interface GetSpendingAnalyticsParams {
@@ -492,4 +525,21 @@ export interface GetSpendingAnalyticsParams {
 export interface LookupStoresParams {
   /** Comma-separated list of store IDs to lookup. */
   ids: string;
+}
+
+export interface ListStoresForUserDiscoveryParams {
+  /** Optional search term to filter stores by name. */
+  search?: string;
+  /**
+   * Maximum number of stores to return per page.
+   * @format int32
+   * @default 20
+   */
+  limit?: number;
+  /**
+   * Page number for pagination.
+   * @format int32
+   * @default 1
+   */
+  page?: number;
 }

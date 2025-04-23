@@ -10,41 +10,35 @@ const TaxonomyService = require('../service/TaxonomyService'); // Import Taxonom
 
 exports.getUserOwnPreferences = async function (req) {
   try {
-    // Get user data from middleware
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-
     const db = getDB();
-
-    // Check cache first - standardized cache key
     const cacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+
+    // Cache check remains the same conceptually, but ensure cached data includes attributes if needed by frontend
     const cachedPreferences = await getCache(cacheKey);
     if (cachedPreferences) {
-      // Ensure privacySettings are not included in the cached response being returned
-      const prefs = JSON.parse(cachedPreferences);
-      delete prefs.privacySettings;
-      return respondWithCode(200, prefs);
+      // Assuming cache stores the full preference structure including attributes
+      return respondWithCode(200, JSON.parse(cachedPreferences));
     }
 
-    // Find user in database, only selecting necessary fields
+    // Fetch user, including the full preferences array (with attributes)
     const user = await db.collection('users').findOne(
         { auth0Id: userData.sub },
-        { projection: { _id: 1, preferences: 1, updatedAt: 1 } } // Select only needed fields
+        // Ensure 'preferences' field is projected correctly, including nested 'attributes'
+        { projection: { _id: 1, preferences: 1, updatedAt: 1 } }
     );
     if (!user) {
       return respondWithCode(404, { code: 404, message: 'User not found' });
     }
 
-    // Prepare the response object without privacySettings
+    // Prepare response - includes attributes now
     const preferencesResponse = {
       userId: user._id.toString(),
-      preferences: user.preferences || [],
-      // REMOVED privacySettings
+      preferences: user.preferences || [], // This now includes attributes if stored
       updatedAt: user.updatedAt || new Date(),
     };
 
-    // Cache the preferences result (without privacySettings) with specific TTL
-    // Note: Caching the minimal response. If optimistic updates need privacySettings,
-    // they might need to fetch the full user profile or adjust logic.
+    // Cache the full response (including attributes)
     await setCache(cacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferencesResponse);
@@ -128,94 +122,114 @@ exports.updateUserPreferences = async function (req, body) {
     }
 
     let validatedPreferences = [];
-    if (body.preferences) {
-      // --- Validation ---
-      if (!Array.isArray(body.preferences)) {
-        return respondWithCode(400, { code: 400, message: 'Preferences must be an array.' });
-      }
-
-      // Fetch taxonomy for validation
-      let taxonomyDoc;
-      try {
-        // Use the service function to get taxonomy (handles caching)
-        const taxonomyResponse = await TaxonomyService.getTaxonomyCategories();
-        if (taxonomyResponse.code !== 200) {
-          throw new Error('Failed to fetch taxonomy for validation');
-        }
-        taxonomyDoc = taxonomyResponse.payload; // Assuming payload contains the taxonomy doc
-      } catch (taxError) {
-        console.error("Taxonomy fetch error during preference update:", taxError);
-        return respondWithCode(500, { code: 500, message: 'Could not load taxonomy for validation.' });
-      }
-
-      const validCategoryIds = new Set(taxonomyDoc?.data?.categories?.map(cat => cat.id) || []);
-
-      for (const pref of body.preferences) {
-        // Basic structure validation
-        if (typeof pref.category !== 'string' || typeof pref.score !== 'number' || pref.score < 0 || pref.score > 1) {
-          return respondWithCode(400, { code: 400, message: `Invalid preference item format or score range: ${JSON.stringify(pref)}` });
-        }
-        // Attributes validation (if present, must be a non-null object)
-        if (pref.attributes !== undefined && (typeof pref.attributes !== 'object' || pref.attributes === null || Array.isArray(pref.attributes))) {
-           return respondWithCode(400, { code: 400, message: `Invalid 'attributes' format for category ${pref.category}. Must be an object.` });
-        }
-        // Taxonomy validation
-        if (!validCategoryIds.has(pref.category)) {
-          return respondWithCode(400, { code: 400, message: `Invalid category ID in preferences: ${pref.category}` });
-        }
-        validatedPreferences.push(pref); // Add valid preference
-      }
-      // --- End Validation ---
-
-    } else {
-      // If body.preferences is explicitly null or undefined, maybe clear preferences?
-      // Or return an error if preferences are required for update.
-      // Current behavior: If body.preferences is missing/null, validatedPreferences remains []
-      // which will effectively clear preferences in the $set below.
-      // If you require preferences, add:
-      // return respondWithCode(400, { code: 400, message: 'Preferences array is required for update.' });
+    if (!body.preferences || !Array.isArray(body.preferences)) {
+         return respondWithCode(400, { code: 400, message: 'Preferences array is required and must be an array.' });
     }
 
-    // Log the data being sent to the database for debugging
-    console.log('Attempting to update preferences with:', JSON.stringify(validatedPreferences, null, 2));
+    // --- Validation against Taxonomy ---
+    let taxonomyDoc;
+    try {
+      // Use the TaxonomyService to get the current taxonomy data
+      taxonomyDoc = await TaxonomyService.getLatestTaxonomy(); // Assuming this function exists and returns the structure
+      if (!taxonomyDoc || !taxonomyDoc.data || !taxonomyDoc.data.categories) {
+        throw new Error('Taxonomy data is unavailable for validation.');
+      }
+    } catch (taxError) {
+      console.error("Failed to load taxonomy for validation:", taxError);
+      return respondWithCode(500, { code: 500, message: 'Internal error: Could not load taxonomy for validation.' });
+    }
+
+    const categoryMap = new Map(taxonomyDoc.data.categories.map(cat => [cat.id, cat]));
+    const validationErrors = [];
+
+    for (const pref of body.preferences) {
+      if (!pref || typeof pref !== 'object') {
+        validationErrors.push(`Invalid preference item format: ${JSON.stringify(pref)}`);
+        continue;
+      }
+      if (!pref.category || typeof pref.category !== 'string') {
+        validationErrors.push(`Preference item missing or invalid category ID: ${JSON.stringify(pref)}`);
+        continue;
+      }
+      if (pref.score == null || typeof pref.score !== 'number' || pref.score < 0 || pref.score > 1) {
+         validationErrors.push(`Preference item for category ${pref.category} has invalid score: ${pref.score}`);
+         continue;
+      }
+
+      const categoryDefinition = categoryMap.get(pref.category);
+      if (!categoryDefinition) {
+        validationErrors.push(`Invalid category ID used in preference: ${pref.category}`);
+        continue;
+      }
+
+      const validAttributes = new Set(categoryDefinition.attributes?.map(attr => attr.name) || []);
+      const validatedAttributes = {};
+
+      if (pref.attributes && typeof pref.attributes === 'object') {
+        for (const attrKey in pref.attributes) {
+          if (!validAttributes.has(attrKey)) {
+            validationErrors.push(`Invalid attribute '${attrKey}' for category ${pref.category} (${categoryDefinition.name}). Valid attributes are: ${Array.from(validAttributes).join(', ')}`);
+          } else {
+            // Basic validation: ensure value is a string (can be enhanced)
+            if (typeof pref.attributes[attrKey] !== 'string') {
+                 validationErrors.push(`Attribute '${attrKey}' for category ${pref.category} must have a string value.`);
+            } else {
+                validatedAttributes[attrKey] = pref.attributes[attrKey];
+            }
+          }
+        }
+      }
+       // Only add if no validation errors for this specific preference item occurred during attribute check
+       if (!validationErrors.some(err => err.includes(`category ${pref.category}`))) {
+           validatedPreferences.push({
+               category: pref.category,
+               score: pref.score,
+               // Only include attributes if they exist and passed validation
+               ...(Object.keys(validatedAttributes).length > 0 && { attributes: validatedAttributes }),
+           });
+       }
+    }
+
+    if (validationErrors.length > 0) {
+        console.warn('Preference validation failed:', validationErrors);
+        return respondWithCode(400, { code: 400, message: 'Invalid preference data provided.', details: validationErrors });
+    }
+    // --- End Validation ---
+
 
     // Update preferences in the database using the validated list
     const updateResult = await db.collection('users').updateOne(
       { _id: user._id },
       {
         $set: {
-          preferences: validatedPreferences, // Use the validated array
+          preferences: validatedPreferences, // Use the validated array (includes attributes)
           updatedAt: new Date(),
         },
       },
     );
 
-    // Fetch the updated user data to get the latest timestamp and preferences
-    // No need to fetch again if we trust the update, but it confirms the write
-    const updatedUser = await db.collection('users').findOne(
-        { _id: user._id },
-        { projection: { preferences: 1, updatedAt: 1 } }
-    );
+    // Fetch updated user data to return and cache
+     const updatedUser = await db.collection('users').findOne(
+         { _id: user._id },
+         { projection: { preferences: 1, updatedAt: 1 } }
+     );
 
-    // Clear related caches
+    // Clear relevant caches
     const userCacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
     await invalidateCache(userCacheKey);
-
-    // Clear store-specific preference caches as preferences changed
+    // Invalidate store-specific caches if needed (logic remains similar)
     if (user.privacySettings?.optInStores) {
       for (const storeId of user.privacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
       }
     }
 
-    // Return updated preferences object
+    // Prepare and cache the response (now includes attributes)
     const preferencesResponse = {
       userId: user._id.toString(),
-      preferences: updatedUser.preferences || [], // Use actual updated preferences
-      updatedAt: updatedUser.updatedAt, // Use the actual updated timestamp
+      preferences: updatedUser.preferences || [],
+      updatedAt: updatedUser.updatedAt,
     };
-
-    // Update the cache with the new minimal response
     await setCache(userCacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
 
     return respondWithCode(200, preferencesResponse);
