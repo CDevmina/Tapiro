@@ -206,7 +206,7 @@ export default function UserDashboard() {
     data: recentActivity,
     isLoading: activityLoading,
     error: activityError,
-  } = useRecentUserData(3);
+  } = useRecentUserData({ limit: 3 });
   const {
     data: spendingData,
     isLoading: spendingLoading,
