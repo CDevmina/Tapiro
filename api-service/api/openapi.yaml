@@ -793,14 +793,6 @@ components:
               items:
                 type: string
               description: List of store IDs user has opted out from
-        dataAccess:
-          type: object
-          properties:
-            allowedDomains:
-              type: array
-              items:
-                type: string
-              description: List of allowed domains for data access
         createdAt:
           type: string
           format: date-time
@@ -943,14 +935,6 @@ components:
               items:
                 type: string
                 description: List of store IDs the user has opted out of sharing data with
-        dataAccess:
-          type: object
-          properties:
-            allowedDomains:
-              type: array
-              items:
-                type: string
-                description: List of domains allowed to access user data via API keys
         gender:
           type: string
           nullable: true

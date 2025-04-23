@@ -59,10 +59,6 @@ export interface User {
     /** List of store IDs user has opted out from */
     optOutStores?: string[];
   };
-  dataAccess?: {
-    /** List of allowed domains for data access */
-    allowedDomains?: string[];
-  };
   /** @format date-time */
   createdAt?: string;
   /** @format date-time */
@@ -128,9 +124,6 @@ export interface UserUpdate {
     optInStores?: string[];
     optOutStores?: string[];
   };
-  dataAccess?: {
-    allowedDomains?: string[];
-  };
   /** User gender identity */
   gender?: string | null;
   /** User income bracket category */
@@ -155,67 +148,92 @@ export interface ApiKey {
   status?: "active" | "revoked";
 }
 
+/** @example {"email":"user@example.com","dataType":"purchase","entries":[{"$ref":"#/components/schemas/PurchaseEntry/example"}],"metadata":{"source":"web","deviceType":"desktop","sessionId":"abc-123-xyz-789"}} */
 export interface UserData {
-  /** User's email address */
+  /**
+   * User's email address (used as identifier for API key auth). Must match a registered Tapiro user.
+   * @format email
+   */
   email: string;
-  /** Type of data being submitted */
+  /** Specifies the type of data contained in the 'entries' array. */
   dataType: "purchase" | "search";
-  /** Array of data entries */
+  /**
+   * List of data entries. Each entry must conform to either the PurchaseEntry or SearchEntry schema, matching the top-level 'dataType'.
+   * @minItems 1
+   */
   entries: (PurchaseEntry | SearchEntry)[];
-  /** Additional information about the collection event */
+  /**
+   * Additional metadata about the collection event (e.g., source, device).
+   * @example {"source":"web","deviceType":"desktop","sessionId":"abc-123-xyz-789"}
+   */
   metadata?: {
-    /** Optional user ID if known */
-    userId?: string;
-    /** Source of the data (web, mobile, pos, etc) */
+    /** Source of the data (e.g., 'web', 'mobile_app', 'pos'). */
     source?: string;
-    /** Type of device used */
+    /** Type of device used (e.g., 'desktop', 'mobile', 'tablet'). */
     deviceType?: string;
-    /** Unique identifier for the user session */
+    /** Identifier for the user's session. */
     sessionId?: string;
   };
 }
 
+/** @example {"timestamp":"2024-05-15T14:30:00Z","items":[{"$ref":"#/components/schemas/PurchaseItem/example"},{"sku":"ABC-789","name":"Running Shorts","category":"201","price":39.95,"quantity":1,"attributes":{"color":"black","size":"M","material":"polyester"}}],"totalValue":91.93} */
 export interface PurchaseEntry {
-  /** @format date-time */
+  /**
+   * ISO 8601 timestamp of when the purchase occurred.
+   * @format date-time
+   */
   timestamp: string;
+  /** List of items included in the purchase. */
   items: PurchaseItem[];
-  /** @format float */
-  totalAmount?: number;
+  /**
+   * Optional total value of the purchase event.
+   * @format float
+   */
+  totalValue?: number;
 }
 
+/** @example {"sku":"XYZ-123","name":"Men's Cotton T-Shirt","category":"201","price":25.99,"quantity":2,"attributes":{"color":"navy","size":"M","material":"cotton"}} */
 export interface PurchaseItem {
+  /** Stock Keeping Unit or unique product identifier. */
   sku?: string;
+  /** Name of the purchased item. */
   name: string;
-  /** Category ID (e.g., "101") or name (e.g., "smartphones") */
+  /** Category ID or name matching the Tapiro taxonomy (e.g., "101" or "Smartphones"). Providing the most specific category ID is recommended. */
   category: string;
-  /** @default 1 */
-  quantity?: number;
-  /** @format float */
+  /**
+   * Price of a single unit of the item.
+   * @format float
+   */
   price?: number;
-  /** Category-specific attributes */
+  /**
+   * Number of units purchased.
+   * @default 1
+   */
+  quantity?: number;
+  /** Key-value pairs representing product attributes based on the taxonomy. Keys should be attribute names (e.g., "color", "size", "brand") and values should be the specific attribute value (e.g., "blue", "large", "Acme"). */
   attributes?: ItemAttributes;
 }
 
-/** Category-specific attributes */
-export interface ItemAttributes {
-  price_range?: "budget" | "mid_range" | "premium" | "luxury";
-  brand?: string;
-  color?: string;
-  material?: string;
-  style?: string;
-  room?: string;
-  size?: string;
-  feature?: string;
-  season?: string;
-  gender?: string;
-}
+/**
+ * Key-value pairs representing product attributes based on the taxonomy. Keys should be attribute names (e.g., "color", "size", "brand") and values should be the specific attribute value (e.g., "blue", "large", "Acme").
+ * @example {"color":"blue","size":"L","material":"cotton"}
+ */
+export type ItemAttributes = Record<string, string>;
 
+/** @example {"timestamp":"2024-05-15T10:15:00Z","query":"noise cancelling headphones","category":"105","results":25,"clicked":["Bose-QC45","Sony-WH1000XM5"]} */
 export interface SearchEntry {
-  /** @format date-time */
+  /**
+   * ISO 8601 timestamp of when the search occurred.
+   * @format date-time
+   */
   timestamp: string;
+  /** The search query string entered by the user. */
   query: string;
+  /** Optional category context provided during the search (e.g., user was browsing 'Electronics'). Should match a Tapiro taxonomy ID or name. */
   category?: string;
+  /** Optional number of results returned for the search query. */
   results?: number;
+  /** Optional list of product IDs or SKUs clicked from the search results. */
   clicked?: string[];
 }
 

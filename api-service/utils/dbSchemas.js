@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.7'; // Incremented version
+const SCHEMA_VERSION = '2.0.8'; // Incremented version
 
 const userSchema = {
   validator: {
@@ -121,12 +121,6 @@ const userSchema = {
             anonymizeData: { bsonType: 'bool' },
             optInStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
             optOutStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
-          },
-        },
-        dataAccess: {
-          bsonType: 'object',
-          properties: {
-            allowedDomains: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
           },
         },
         createdAt: { bsonType: 'date' },

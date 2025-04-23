@@ -153,14 +153,6 @@ exports.updateUserProfile = async function (req, body) {
       // DO NOT update optInStores or optOutStores here
     }
 
-    // Update dataAccess using dot notation if necessary, or as a whole object
-    if (body.dataAccess !== undefined && body.dataAccess.allowedDomains !== undefined) {
-       updateData['dataAccess.allowedDomains'] = body.dataAccess.allowedDomains;
-    } else if (body.dataAccess !== undefined) {
-       // If updating the whole object (less common for partial updates)
-       // updateData.dataAccess = body.dataAccess;
-    }
-
 
     // Check if there's anything to update (excluding updatedAt)
     const updateKeys = Object.keys(updateData).filter(key => key !== 'updatedAt');

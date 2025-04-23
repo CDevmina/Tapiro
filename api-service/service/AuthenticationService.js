@@ -111,9 +111,6 @@ exports.registerUser = async function (req, body) {
         optInStores: [],
         optOutStores: [],
       },
-      dataAccess: {
-        allowedDomains: [],
-      },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
