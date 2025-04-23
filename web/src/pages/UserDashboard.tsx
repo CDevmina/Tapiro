@@ -127,7 +127,7 @@ export default function UserDashboard() {
     data: recentActivity,
     isLoading: activityLoading,
     error: activityError,
-  } = useRecentUserData(5);
+  } = useRecentUserData(3); // <-- Changed limit from 5 to 3
   const {
     data: spendingData,
     isLoading: spendingLoading,
@@ -282,30 +282,34 @@ export default function UserDashboard() {
                   No recent activity found.
                 </p>
               ) : (
-                <Timeline>
-                  {recentActivity.map((activity: RecentUserDataEntry) => (
-                    <TimelineItem key={activity._id}>
-                      <TimelinePoint icon={HiClock} />
-                      <TimelineContent>
-                        <TimelineTime>
-                          {formatDate(activity.timestamp)}
-                        </TimelineTime>
-                        <TimelineTitle className="text-base">
-                          {activity.dataType === "purchase"
-                            ? "Purchase Data Submitted"
-                            : "Search Data Submitted"}
-                        </TimelineTitle>
-                        <TimelineBody className="text-sm text-gray-600 dark:text-gray-400">
-                          From:{" "}
-                          {activity.storeId
-                            ? storeNameMap.get(activity.storeId) ||
-                              `Store ID: ${activity.storeId}`
-                            : "Unknown Store"}
-                        </TimelineBody>
-                      </TimelineContent>
-                    </TimelineItem>
-                  ))}
-                </Timeline>
+                <div className="p-4">
+                  <Timeline>
+                    {recentActivity.map(
+                      (
+                        activity: RecentUserDataEntry, // No change needed here, map will iterate over 3 items max
+                      ) => (
+                        <TimelineItem key={activity._id}>
+                          <TimelinePoint icon={HiClock} />
+                          <TimelineContent>
+                            <TimelineTime>
+                              {formatDate(activity.timestamp)}
+                            </TimelineTime>
+                            <TimelineTitle>
+                              {activity.dataType === "purchase"
+                                ? "Purchase"
+                                : "Search"}{" "}
+                              from{" "}
+                              {storeNameMap.get(activity.storeId) ||
+                                "Unknown Store"}
+                            </TimelineTitle>
+                            {/* Add more details if needed */}
+                            {/* <TimelineBody>Details about the activity...</TimelineBody> */}
+                          </TimelineContent>
+                        </TimelineItem>
+                      ),
+                    )}
+                  </Timeline>
+                </div>
               )}
             </div>
             <Link

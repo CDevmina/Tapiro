@@ -34,13 +34,15 @@ The request body must be a JSON object conforming to the `UserData` schema:
         {
           "sku": "XYZ-123",
           "name": "Men's Cotton T-Shirt",
-          "category": "201",
+          "category": "201", // Must match a category ID or name from the Taxonomy
           "price": 25.99,
           "quantity": 2,
           "attributes": {
-            "color": "navy",
-            "size": "M",
-            "material": "cotton"
+            // <-- Optional: Key-value pairs based on Taxonomy for the category
+            "color": "navy", // Example: Value for the 'color' attribute
+            "size": "M", // Example: Value for the 'size' attribute
+            "material": "cotton" // Example: Value for the 'material' attribute
+            // Add other relevant attributes defined in the taxonomy for category "201"
           }
         },
         {

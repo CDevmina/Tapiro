@@ -147,6 +147,21 @@ class TaxonomyService:
         return self._name_to_id_map.get(category_name.lower())
     # --- End Optional: Add get_category_id method ---
 
+    # +++ Add get_category_details method +++
+    def get_category_details(self, category_id: str) -> Optional[TaxonomyCategory]:
+        """Get the full TaxonomyCategory object by its ID."""
+        if not self.taxonomy:
+            logger.warning("Taxonomy not loaded, cannot get category details.")
+            return None
+        # Find the category in the list
+        for category in self.taxonomy.categories:
+            if category.id == category_id:
+                return category
+        logger.warning(f"Category ID '{category_id}' not found in taxonomy.")
+        return None
+    # +++ End Add get_category_details method +++
+
+
     def validate_preferences(self, preferences):
         """Validate preference data against taxonomy"""
         if not self.taxonomy:

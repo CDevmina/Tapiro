@@ -5,11 +5,16 @@ from fastapi import HTTPException
 from bson import ObjectId
 from app.utils.redis_util import invalidate_cache, CACHE_KEYS
 from typing import List, Dict, Any, Optional
-from app.services.taxonomyService import get_taxonomy_service
+from app.services.taxonomyService import TaxonomyService, get_taxonomy_service # Updated import
 from collections import defaultdict
 from app.services.demographicInference import run_inference_for_user # Import the inference runner
+from sentence_transformers import util # Import sentence-transformers utility for similarity
+import numpy as np # Import numpy
 
 logger = logging.getLogger(__name__)
+
+# --- Configuration ---
+ATTRIBUTE_SIMILARITY_THRESHOLD = 0.55 # Configurable threshold for matching attribute values
 
 async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     """Process user data and update their preferences"""
@@ -219,16 +224,15 @@ async def mark_processing_failed(db, email: str):
     except Exception as e:
         logger.error(f"Failed to mark userData as failed for {email}: {str(e)}")
 
-async def process_purchase_data(entries, preference_dict, taxonomy, demographics: Optional[Dict[str, Any]] = None):
+async def process_purchase_data(entries, preference_dict, taxonomy: TaxonomyService, demographics: Optional[Dict[str, Any]] = None):
     """Process purchase data using rule-based system, considering demographics and buying patterns"""
     category_counts = defaultdict(int)
-    # Store attribute counts AND total price/item count per category for override logic
     attribute_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     category_price_totals = defaultdict(float)
     category_item_counts = defaultdict(int)
 
-    # --- Refined Demographic Usage ---
-    demographics = demographics or {} # Ensure demographics is a dict
+    # --- Demographic Usage (remains the same) ---
+    demographics = demographics or {}
     gender = demographics.get("gender")
     age = demographics.get("age")
     income = demographics.get("incomeBracket")
@@ -245,34 +249,108 @@ async def process_purchase_data(entries, preference_dict, taxonomy, demographics
     # Count purchases, attributes, and track prices
     for entry in entries:
         for item in entry.get("items", []):
-            category = item.get("category")
-            if not category:
+            category_input = item.get("category") # Can be ID or Name
+            item_name = item.get("name")
+            quantity = item.get("quantity", 1)
+            price = item.get("price")
+            provided_attributes = item.get("attributes") # Attributes from the store
+
+            if not category_input or not item_name:
+                logger.warning(f"Skipping item due to missing category or name: {item}")
                 continue
 
-            quantity = item.get("quantity", 1)
-            price = item.get("price") # Get item price
+            # --- Resolve Category ID ---
+            category_id = None
+            if taxonomy.taxonomy: # Check if taxonomy is loaded
+                # Try direct ID lookup first
+                if category_input in taxonomy._id_to_name_map:
+                    category_id = category_input
+                else:
+                    # Try name lookup (case-insensitive)
+                    category_id = taxonomy.get_category_id(category_input)
 
-            # Increment category count
-            category_counts[category] += quantity
+            if not category_id:
+                logger.warning(f"Could not resolve category '{category_input}' for item '{item_name}'. Skipping attribute processing for this item.")
+                # Decide if you still want to count the category score even if attributes can't be processed
+                # For now, we skip attribute processing but might still count category later if needed
+                continue # Skip attribute part if category is unresolved
+            # --- End Resolve Category ID ---
 
-            # Track price for override logic
-            if price is not None and price > 0: # Only consider valid prices
-                category_price_totals[category] += price * quantity
-                category_item_counts[category] += quantity
 
-            # Process attributes
-            if "attributes" in item:
-                for attr_name, attr_value in item["attributes"].items():
-                    attribute_counts[category][attr_name][attr_value] += quantity
+            # --- Hybrid Attribute Logic ---
+            final_attributes = None
+            is_valid_provided = False
 
-    # Update preference scores (Category level)
+            # 1. Check if store provided valid attributes
+            if provided_attributes and isinstance(provided_attributes, dict):
+                try:
+                    # Basic validation: Check if keys exist in taxonomy for this category
+                    category_details = taxonomy.get_category_details(category_id)
+                    if category_details and category_details.attributes:
+                        valid_attr_names = {attr.name for attr in category_details.attributes}
+                        # Check if all provided keys are valid attribute names for the category
+                        is_valid_provided = all(key in valid_attr_names for key in provided_attributes.keys())
+                        if is_valid_provided:
+                            final_attributes = provided_attributes
+                            logger.debug(f"Using valid store-provided attributes for item: {item_name}")
+                        else:
+                            invalid_keys = [key for key in provided_attributes.keys() if key not in valid_attr_names]
+                            logger.warning(f"Invalid attribute keys provided by store for item '{item_name}' in category '{category_id}': {invalid_keys}. Falling back to AI.")
+                    else:
+                         logger.warning(f"No attributes defined in taxonomy for category '{category_id}', cannot validate provided attributes for '{item_name}'. Falling back to AI.")
+                         is_valid_provided = False # Cannot validate
+
+                except Exception as val_err:
+                    logger.warning(f"Error validating provided attributes for {item_name}: {val_err}. Falling back to AI.")
+                    is_valid_provided = False
+
+            # 2. Fallback to AI extraction if needed
+            if not final_attributes:
+                logger.debug(f"Attempting AI attribute extraction for item: {item_name}")
+                try:
+                    # Call the AI extraction function using the embedding model
+                    extracted_attributes = await extract_attributes_with_similarity(
+                        item_name, category_id, taxonomy # Pass taxonomy service
+                    )
+                    if extracted_attributes:
+                         final_attributes = extracted_attributes
+                         logger.info(f"Successfully extracted attributes via AI for '{item_name}': {final_attributes}") # Log success
+                    else:
+                         logger.debug(f"AI could not extract attributes for {item_name}")
+                except Exception as ai_err:
+                    logger.error(f"AI attribute extraction failed for {item_name}: {ai_err}", exc_info=True)
+                    final_attributes = None # Ensure it's None on failure
+
+            # --- End Hybrid Attribute Logic ---
+
+            # --- Update Category Counts (Moved here to ensure category_id is valid) ---
+            category_counts[category_id] += quantity
+            if price is not None:
+                category_price_totals[category_id] += price * quantity
+            category_item_counts[category_id] += quantity
+            # --- End Update Category Counts ---
+
+
+            # --- Attribute Scoring (Using final_attributes) ---
+            if final_attributes:
+                for attr_name, attr_value in final_attributes.items():
+                    # Ensure attr_value is a string (as expected from store or AI extraction)
+                    if isinstance(attr_value, str):
+                        value_str = attr_value.lower() # Normalize to lower case
+                        attribute_counts[category_id][attr_name][value_str] += quantity
+                    else:
+                        logger.warning(f"Skipping attribute scoring for non-string value: {attr_name}={attr_value} in item '{item_name}'")
+            # --- End Attribute Scoring ---
+
+
+    # --- Update preference scores (Category level - remains the same) ---
     total_items_overall = sum(category_counts.values())
     if total_items_overall > 0:
-        for category, count in category_counts.items():
+        for category_id, count in category_counts.items():
             # --- Category Score Calculation (remains largely the same) ---
             base_score = min(count / (total_items_overall * 0.5), 1.0)
             boost_factor = 1.0
-            category_name = taxonomy.get_category_name(category)
+            category_name = taxonomy.get_category_name(category_id)
 
             # Apply demographic boosts (gender, age)
             if gender == "female" and category_name in ["Fashion", "Beauty", "Skincare", "Makeup"]:
@@ -323,132 +401,49 @@ async def process_purchase_data(entries, preference_dict, taxonomy, demographics
             final_score = min(base_score * boost_factor, 1.0)
 
             # Update category score in preference_dict (using EMA)
-            if category not in preference_dict:
-                preference_dict[category] = {
-                    "category": category,
+            if category_id not in preference_dict:
+                preference_dict[category_id] = {
+                    "category": category_id,
                     "score": final_score,
                     "attributes": {}
                 }
             else:
                 alpha = 0.3
-                old_score = preference_dict[category]["score"]
-                preference_dict[category]["score"] = alpha * final_score + (1 - alpha) * old_score
+                old_score = preference_dict[category_id]["score"]
+                preference_dict[category_id]["score"] = alpha * final_score + (1 - alpha) * old_score
             # --- End Category Score Calculation ---
 
 
-            # --- Process Attributes for this Category ---
-            if category in attribute_counts:
-                # Calculate average price for this category in this batch (for override)
-                avg_price_in_batch = (category_price_totals[category] / category_item_counts[category]) \
-                                     if category_item_counts[category] > 0 else 0
+    # --- Update preference scores (Attribute level - Adjusted) ---
+    for category_id, attrs in attribute_counts.items():
+        if category_id in preference_dict: # Ensure category exists
+            if "attributes" not in preference_dict[category_id] or preference_dict[category_id]["attributes"] is None:
+                 preference_dict[category_id]["attributes"] = {} # Initialize if missing
 
-                # Define a 'low price threshold' (EXAMPLE - needs tuning per category)
-                # This is highly dependent on your product mix and taxonomy.
-                # You might fetch these thresholds from config or taxonomy definition.
-                low_price_thresholds = {
-                    "Laptops": 700,
-                    "Smartphones": 400,
-                    "Clothing": 30,
-                    "Shoes": 40,
-                    # ... add more categories
-                }
-                is_buying_cheap = avg_price_in_batch > 0 and \
-                                  avg_price_in_batch < low_price_thresholds.get(category_name, float('inf'))
+            for attr_name, values in attrs.items():
+                if attr_name not in preference_dict[category_id]["attributes"]:
+                     preference_dict[category_id]["attributes"][attr_name] = {} # Initialize specific attribute dict
 
-                if is_buying_cheap:
-                    logger.info(f"User buying pattern override triggered for category '{category_name}' (Avg Price: {avg_price_in_batch:.2f})")
+                total_attr_count = sum(values.values())
+                if total_attr_count > 0:
+                    current_attr_prefs = preference_dict[category_id]["attributes"][attr_name]
+                    # Decay existing scores slightly
+                    for val, score in current_attr_prefs.items():
+                        current_attr_prefs[val] = max(0.0, score * 0.9) # Decay factor
 
+                    # Add new scores based on counts
+                    for value_str, count in values.items():
+                        new_score_contribution = (count / total_attr_count) * 0.5 # Contribution weight
+                        current_score = current_attr_prefs.get(value_str, 0.0)
+                        current_attr_prefs[value_str] = min(1.0, current_score + new_score_contribution)
 
-                for attr_name, attr_values in attribute_counts[category].items():
-                    attr_total = sum(attr_values.values())
-                    if "attributes" not in preference_dict[category]:
-                        preference_dict[category]["attributes"] = {}
-                    if attr_name not in preference_dict[category]["attributes"]:
-                        preference_dict[category]["attributes"][attr_name] = {}
+                    # Normalize scores within the attribute so they sum roughly to 1 (optional but good practice)
+                    total_score = sum(current_attr_prefs.values())
+                    if total_score > 0:
+                        for val in current_attr_prefs:
+                            current_attr_prefs[val] /= total_score
+    # --- End Update preference scores (Attribute level) ---
 
-                    for value, value_count in attr_values.items():
-                        normalized_score = value_count / attr_total
-                        attribute_boost = 1.0
-
-                        # --- Apply Demographic Influence (with potential override) ---
-
-                        # 1. Income influence on price_range
-                        if attr_name == "price_range" and income:
-                            if income in ['100k-200k', '>200k']:
-                                if value in ['premium', 'luxury']:
-                                    attribute_boost *= 1.2 # Stronger boost
-                                    # OVERRIDE: If buying cheap, negate the high-income boost
-                                    if is_buying_cheap:
-                                        attribute_boost /= 1.3 # Reduce significantly
-                                elif value in ['budget', 'mid_range']:
-                                     # If high income but buying cheap, slightly boost lower ranges
-                                     if is_buying_cheap:
-                                         attribute_boost *= 1.1
-
-                            elif income in ['<25k', '25k-50k']:
-                                if value in ['budget', 'mid_range']:
-                                    attribute_boost *= 1.15
-                                # If low income but buying expensive (less likely override needed, but possible)
-                                # elif value in ['premium', 'luxury'] and not is_buying_cheap:
-                                #    attribute_boost *= 0.9 # Slightly penalize?
-
-                        # 2. Gender influence on color (example)
-                        if category_name == "Fashion" and attr_name == "color" and gender:
-                             if gender == "female" and value in ["pink", "purple", "rose_gold"]: attribute_boost *= 1.1
-                             elif gender == "male" and value in ["navy", "gray", "black"]: attribute_boost *= 1.05
-
-                        # 3. Age influence on brand (example)
-                        if category_name == "Electronics" and attr_name == "brand" and age:
-                            if age <= 25 and value in ["Apple", "Beats", "Razer"]: attribute_boost *= 1.05
-                            elif age >= 45 and value in ["Sony", "Bose", "Dell"]: attribute_boost *= 1.05
-
-                        # 4. Income influence on brand (example - add luxury brands)
-                        # luxury_brands = ["Gucci", "Prada", "Rolex", "Le Creuset", "All-Clad"] # Example
-                        # if attr_name == "brand" and income in ['100k-200k', '>200k'] and value in luxury_brands:
-                        #    attribute_boost *= 1.1
-                        #    # OVERRIDE: If buying cheap, negate boost for luxury brands
-                        #    if is_buying_cheap:
-                        #        attribute_boost /= 1.2
-
-                        # --- Apply inferred attribute boosts ---
-                        if has_kids is True and attr_name == "size" and category_name == "Clothing" and value in ["kids", "toddler", "infant"]:
-                            attribute_boost *= 1.2 # Boost kids sizes if kids inferred
-                            logger.debug(f"Applying 'has_kids' boost to attribute {attr_name}={value}")
-
-                        # Example: Boost 'gift' attribute if relationship status is known?
-                        # if relationship_status in ["relationship", "married"] and attr_name == "purpose" and value == "gift":
-                        #    attribute_boost *= 1.1
-                        # --- End inferred attribute boosts ---
-
-                        # --- Apply NEW inferred attribute boosts (Examples) ---
-                        if employment_status == "student" and attr_name == "price_range" and value == "budget":
-                            attribute_boost *= 1.15 # Boost budget items for students
-                            logger.debug(f"Applying 'student' boost to attribute {attr_name}={value}")
-                        if employment_status == "student" and attr_name == "usage_type" and category_name == "Laptops" and value == "student":
-                            attribute_boost *= 1.1
-                            logger.debug(f"Applying 'student' boost to attribute {attr_name}={value}")
-
-                        if education_level in ["masters", "doctorate"] and attr_name == "genre" and category_name == "Books" and value in ["non_fiction", "history", "science"]:
-                            attribute_boost *= 1.1 # Boost non-fiction for higher education
-                            logger.debug(f"Applying 'higher_education' boost to attribute {attr_name}={value}")
-
-                        # Example using age bracket for attribute
-                        if age is None and age_bracket == "18-24" and attr_name == "brand" and category_name == "Fashion" and value in ["H&M", "Zara", "ASOS"]: # Example fast fashion brands
-                            attribute_boost *= 1.1
-                            logger.debug(f"Applying '18-24' boost to attribute {attr_name}={value}")
-                        # --- End NEW inferred attribute boosts ---
-
-                        final_attribute_score = min(normalized_score * attribute_boost, 1.0)
-                        # --- End Attribute Influence ---
-
-                        # Update attribute score using EMA
-                        alpha_attr = 0.3 # Use same alpha or different one for attributes
-                        if value in preference_dict[category]["attributes"][attr_name]:
-                            old_value = preference_dict[category]["attributes"][attr_name][value]
-                            preference_dict[category]["attributes"][attr_name][value] = \
-                                alpha_attr * final_attribute_score + (1 - alpha_attr) * old_value
-                        else:
-                            preference_dict[category]["attributes"][attr_name][value] = final_attribute_score
 
 async def process_search_data(entries, preference_dict, taxonomy, demographics: Optional[Dict[str, Any]] = None):
     """Process search data using embedding model, considering demographics"""
@@ -657,3 +652,84 @@ async def normalize_categories(preferences, taxonomy):
         normalized.append(pref)
     
     return normalized
+
+async def extract_attributes_with_similarity(item_name: str, category_id: str, taxonomy_service: TaxonomyService) -> Optional[Dict[str, str]]:
+    """
+    Uses the semantic embedding model to extract attributes for an item by comparing
+    the item name to potential attribute values defined in the taxonomy.
+    Returns a dictionary like {"color": "blue", "size": "M"} or None.
+    """
+    if not taxonomy_service.embedding_model:
+        logger.warning("AI Extraction: Embedding model not available in TaxonomyService.")
+        return None
+
+    logger.debug(f"AI Extraction: Processing '{item_name}' in category '{category_id}'")
+    extracted = {}
+
+    # 1. Get category details and expected attributes/values
+    category_details = taxonomy_service.get_category_details(category_id)
+    if not category_details or not category_details.attributes:
+        logger.debug(f"AI Extraction: No attributes defined in taxonomy for category {category_id}")
+        return None
+
+    # Prepare list of attributes and their potential values for this category
+    attributes_to_check = []
+    for attr in category_details.attributes:
+        if attr.values: # Only consider attributes with defined values
+            attributes_to_check.append({"name": attr.name, "values": attr.values})
+
+    if not attributes_to_check:
+        logger.debug(f"AI Extraction: No attributes with values defined for category {category_id}")
+        return None
+
+    logger.debug(f"AI Extraction: Expected attributes for {category_id}: {[a['name'] for a in attributes_to_check]}")
+
+    try:
+        # 2. Generate embedding for the item name
+        item_embedding = taxonomy_service.embedding_model.encode(item_name.lower(), convert_to_tensor=True)
+
+        # 3. Iterate through attributes and their values
+        for attribute_info in attributes_to_check:
+            attr_name = attribute_info["name"]
+            possible_values = attribute_info["values"]
+
+            if not possible_values:
+                continue
+
+            # Generate embeddings for all possible values of this attribute
+            value_embeddings = taxonomy_service.embedding_model.encode([v.lower() for v in possible_values], convert_to_tensor=True)
+
+            # Calculate cosine similarities between item name and all values
+            # Use pytorch_cos_sim for efficiency
+            similarities = util.pytorch_cos_sim(item_embedding, value_embeddings)[0] # Get the first row (item vs all values)
+
+            # Find the value with the highest similarity
+            best_match_idx = similarities.argmax().item() # Get index of max value
+            highest_similarity = similarities[best_match_idx].item() # Get the max similarity score
+
+            logger.debug(f"AI Extraction: Attribute '{attr_name}', Best match: '{possible_values[best_match_idx]}', Score: {highest_similarity:.4f}")
+
+            # 4. Check against threshold and store if match is strong enough
+            if highest_similarity >= ATTRIBUTE_SIMILARITY_THRESHOLD:
+                best_match_value = possible_values[best_match_idx]
+                # Simple conflict resolution: If we already extracted a value for this attribute,
+                # only overwrite if the new score is significantly higher (e.g., > 0.1 difference).
+                # A more complex approach could consider multiple high-scoring values.
+                if attr_name in extracted:
+                     # We need the previous score to compare - this simple approach just takes the first good match.
+                     # For improvement, store scores alongside values during iteration.
+                     logger.debug(f"AI Extraction: Attribute '{attr_name}' already extracted ('{extracted[attr_name]}'). Keeping first match above threshold.")
+                else:
+                    extracted[attr_name] = best_match_value
+                    logger.debug(f"AI Extraction: Extracted '{attr_name}' = '{best_match_value}' (Score: {highest_similarity:.4f})")
+
+
+    except Exception as e:
+        logger.error(f"AI Extraction: Error during embedding/similarity calculation for '{item_name}': {e}", exc_info=True)
+        return None
+
+    if not extracted:
+        logger.debug(f"AI Extraction: No attributes met threshold for '{item_name}'")
+        return None
+
+    return extracted
