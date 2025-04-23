@@ -574,46 +574,71 @@ export default function UserDashboard() {
 
           {/* --- Data Sharing Card --- */}
           <Card className="col-span-1 flex flex-col">
+            {" "}
+            {/* Ensure flex-col */}
             <div className="flex-grow">
+              {" "}
+              {/* Content takes available space */}
               <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
                 <HiOutlineShare className="mr-2 h-5 w-5" />
                 Data Sharing
               </h3>
-              {consentError || storesError ? (
+              {/* Specific Loading State for this Card */}
+              {consentLoading || storesLoading ? (
+                <div className="flex h-full min-h-[100px] items-center justify-center py-4">
+                  {" "}
+                  {/* Center spinner, add min-height */}
+                  <Spinner size="md" />
+                </div>
+              ) : consentError || storesError ? (
                 <Alert color="failure" icon={HiInformationCircle}>
                   Could not load sharing status.
                 </Alert>
               ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">
-                  You are not currently sharing data with any stores.
-                </p>
+                <div className="flex h-full min-h-[100px] items-center justify-center">
+                  {" "}
+                  {/* Center empty state, add min-height */}
+                  <p className="text-center text-gray-500 dark:text-gray-400">
+                    You are not currently sharing data with any stores.
+                  </p>
+                </div>
               ) : (
                 <>
-                  <p className="mb-3 text-gray-600 dark:text-gray-400">
+                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                     You are sharing data with{" "}
-                    {consentLists?.optInStores?.length} store(s):
+                    <span className="font-semibold text-gray-800 dark:text-white">
+                      {consentLists?.optInStores?.length}
+                    </span>{" "}
+                    store(s):
                   </p>
-                  <List unstyled className="space-y-1">
+                  {/* Use a slightly more styled list */}
+                  <List
+                    unstyled
+                    className="mb-4 max-h-40 space-y-2 overflow-y-auto pr-2"
+                  >
+                    {" "}
+                    {/* Add max-height and scroll */}
                     {consentLists?.optInStores?.slice(0, 5).map((storeId) => (
                       <ListItem
                         key={storeId}
-                        className="text-gray-700 dark:text-gray-300"
+                        className="rounded-md bg-gray-50 px-3 py-1 text-sm text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                       >
                         {storeNameMap.get(storeId) || `Store ID: ${storeId}`}
                       </ListItem>
                     ))}
                     {(consentLists?.optInStores?.length ?? 0) > 5 && (
-                      <ListItem className="text-gray-500 dark:text-gray-400">
-                        ... and more
+                      <ListItem className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        ... and {consentLists!.optInStores!.length - 5} more
                       </ListItem>
                     )}
                   </List>
                 </>
               )}
             </div>
+            {/* Link stays at the bottom */}
             <Link
               to="/profile/user/sharing"
-              className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
+              className="mt-auto inline-flex items-center self-start pt-2 text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Use mt-auto and pt-2
             >
               Manage Sharing Settings <HiArrowRight className="ml-1 h-4 w-4" />
             </Link>
