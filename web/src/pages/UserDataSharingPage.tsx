@@ -135,7 +135,8 @@ const UserDataSharingPage: React.FC = () => {
                   </span>
                   <Button
                     size="xs"
-                    color="warning"
+                    color="red" // Changed from warning to red
+                    outline // Added outline prop
                     onClick={() => handleOptOut(storeId)}
                     disabled={isMutating}
                   >
@@ -180,7 +181,8 @@ const UserDataSharingPage: React.FC = () => {
                   </span>
                   <Button
                     size="xs"
-                    color="success"
+                    color="green" // Changed from success to green
+                    outline // Added outline prop
                     onClick={() => handleOptIn(storeId)}
                     disabled={isMutating}
                   >
@@ -253,7 +255,8 @@ const UserDataSharingPage: React.FC = () => {
                   {/* Only show Opt-In button for search results */}
                   <Button
                     size="xs"
-                    color="success"
+                    color="green" // Changed from success to green
+                    outline // Added outline prop
                     onClick={() => handleOptIn(store.storeId)}
                     disabled={isMutating} // Disable if any mutation is happening
                   >
