@@ -40,3 +40,13 @@ module.exports.lookupStores = function lookupStores(req, res, next, ids) {
       utils.writeJson(res, response);
     });
 };
+
+module.exports.getStoreUsers = function getStoreUsers(req, res, next) {
+  StoreProfile.getStoreUsers(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

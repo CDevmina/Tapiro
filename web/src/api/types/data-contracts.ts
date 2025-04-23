@@ -509,3 +509,16 @@ export interface LookupStoresParams {
   /** Comma-separated list of store IDs to lookup. */
   ids: string;
 }
+
+export interface SearchStoresParams {
+  /**
+   * The search term to look for in store names.
+   * @minLength 2
+   */
+  query: string;
+  /**
+   * Maximum number of results to return.
+   * @default 10
+   */
+  limit?: number;
+}

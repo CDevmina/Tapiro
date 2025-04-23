@@ -166,3 +166,40 @@ exports.lookupStores = async function (req, ids) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
+/**
+ * Search Stores
+ * Searches for stores by name.
+ */
+exports.searchStores = async function (req, query, limit = 10) {
+  try {
+    if (!query || query.length < 2) { // Basic validation
+      return respondWithCode(400, { code: 400, message: 'Search query must be at least 2 characters long.' });
+    }
+
+    const db = getDB();
+    const regex = new RegExp(query, 'i'); // Case-insensitive search
+
+    // Consider adding a text index on the 'name' field in the 'stores' collection for performance
+    // db.collection('stores').createIndex({ name: "text" });
+    // Then use: { $text: { $search: query } } instead of regex for better performance
+
+    const stores = await db.collection('stores')
+      .find({ name: regex }) // Using regex for simplicity here
+      .limit(parseInt(limit)) // Ensure limit is an integer
+      .project({ _id: 1, name: 1 }) // Project only ID and name
+      .toArray();
+
+    // Format the response to match StoreBasicInfo schema
+    const formattedStores = stores.map(store => ({
+      storeId: store._id.toString(), // Convert ObjectId back to string
+      name: store.name
+    }));
+
+    return respondWithCode(200, formattedStores);
+
+  } catch (error) {
+    console.error('Search stores failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error during store search' });
+  }
+};

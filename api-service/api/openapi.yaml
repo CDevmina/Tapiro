@@ -752,6 +752,46 @@ paths:
         - oauth2: [user:read]
       x-swagger-router-controller: StoreProfile
 
+  /stores/search:
+    get:
+      tags: [Store Management]
+      summary: Search Stores
+      description: Searches for stores by name. Requires authentication.
+      operationId: searchStores
+      parameters:
+        - name: query
+          in: query
+          description: The search term to look for in store names.
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          description: Maximum number of results to return.
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Stores matching the query retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StoreBasicInfo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: StoreProfile
+
 components:
   schemas:
     AttributeDistribution:
