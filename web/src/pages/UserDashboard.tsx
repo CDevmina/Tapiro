@@ -749,7 +749,6 @@ export default function UserDashboard() {
                 </div>
               </div>
             </div>
-            {/* Removed the single link at the bottom, added links within sections */}
           </Card>
         </div>
       </div>
