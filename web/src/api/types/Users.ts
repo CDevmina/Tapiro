@@ -291,42 +291,22 @@ export class Users<
       ...params,
     });
   /**
- * @description Retrieves a paginated list of user activity (data submissions, usage), filterable and searchable.
- *
- * @tags User Management
- * @name GetRecentUserData
- * @summary Get User Activity Log
- * @request GET:/users/data/recent
- * @secure
- * @response `200` `{
-    activity?: (RecentUserDataEntry)[],
-    pagination?: {
-    currentPage?: number,
-    totalPages?: number,
-    totalEntries?: number,
-
-},
-
-}` User activity log retrieved successfully.
- * @response `400` `Error`
- * @response `401` `Error`
- * @response `500` `Error`
- */
+   * @description Retrieves a list of recent data submissions made about the authenticated user.
+   *
+   * @tags User Management
+   * @name GetRecentUserData
+   * @summary Get Recent User Data Submissions
+   * @request GET:/users/data/recent
+   * @secure
+   * @response `200` `(RecentUserDataEntry)[]` Recent data submissions retrieved successfully
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
   getRecentUserData = (
     query: GetRecentUserDataParams,
     params: RequestParams = {},
   ) =>
-    this.request<
-      {
-        activity?: RecentUserDataEntry[];
-        pagination?: {
-          currentPage?: number;
-          totalPages?: number;
-          totalEntries?: number;
-        };
-      },
-      Error
-    >({
+    this.request<RecentUserDataEntry[], Error>({
       path: `/users/data/recent`,
       method: "GET",
       query: query,
