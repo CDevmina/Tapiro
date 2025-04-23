@@ -30,3 +30,24 @@ module.exports.deleteUserProfile = function deleteUserProfile(req, res, next) {
       utils.writeJson(res, response);
     });
 };
+
+module.exports.getRecentUserData = function getRecentUserData(req, res, next, limit, page) {
+  // Pass query parameters to the service function
+  UserProfile.getRecentUserData(req, limit, page)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.getSpendingAnalytics = function getSpendingAnalytics(req, res, next) {
+  UserProfile.getSpendingAnalytics(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

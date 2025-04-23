@@ -3,8 +3,8 @@ const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
-// Import the new function
-const { updateUserMetadata, updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
+const {updateUserPhone, updateAuth0Username, deleteAuth0User } = require('../utils/auth0Util');
+const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
 
 /**
  * Get User Profile
@@ -76,11 +76,8 @@ exports.updateUserProfile = async function (req, body) {
     if (body.username) {
       try {
         await updateAuth0Username(auth0UserId, body.username);
-        // Optionally: Update nickname in metadata as well if desired
-        // await updateUserMetadata(auth0UserId, { nickname: body.username });
+        await updateUserMetadata(auth0UserId, { nickname: body.username });
       } catch (auth0Error) {
-        // If Auth0 update fails (e.g., username exists in Auth0 connection), return an error
-        // You might want to check the specific error type from auth0Error
         console.error(`Auth0 username update failed for ${auth0UserId}:`, auth0Error);
         return respondWithCode(409, { // Use 409 Conflict or appropriate code
           code: 409,
@@ -105,23 +102,70 @@ exports.updateUserProfile = async function (req, body) {
     const updateData = {
       updatedAt: new Date(),
     };
-    // Update local DB username only if Auth0 update was successful (or not attempted)
+    let demographicsChanged = false; // Flag to track if demographics were updated
+
+    // Update local DB username and phone
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
+    // --- Update Demographic Data ---
+    // Use dot notation to set fields within the demographicData object
+    if (body.gender !== undefined) {
+        updateData['demographicData.gender'] = body.gender;
+        demographicsChanged = true;
+    }
+    if (body.incomeBracket !== undefined) {
+        updateData['demographicData.incomeBracket'] = body.incomeBracket;
+        demographicsChanged = true;
+    }
+    if (body.country !== undefined) {
+        updateData['demographicData.country'] = body.country;
+        demographicsChanged = true;
+    }
+    if (body.age !== undefined) {
+        // Ensure age is null or an integer
+        const ageValue = body.age === null ? null : parseInt(body.age);
+        if (ageValue === null || !isNaN(ageValue)) {
+             updateData['demographicData.age'] = ageValue;
+             demographicsChanged = true;
+             // If age is being set, clear the inferred age bracket
+             updateData['demographicData.inferredAgeBracket'] = null;
+        } else {
+            console.warn(`Invalid age value provided for user ${auth0UserId}: ${body.age}`);
+            // Optionally return a 400 error here
+        }
+    }
+    // --- End Update Demographic Data ---
+
+
     // Only update allowed privacy settings
+    let privacySettingsChanged = false; // Flag for privacy changes
     if (body.privacySettings !== undefined) {
-      updateData.privacySettings = {};
+      // Use dot notation for nested privacy settings updates
       if (body.privacySettings.dataSharingConsent !== undefined) {
-        updateData.privacySettings.dataSharingConsent = body.privacySettings.dataSharingConsent;
+        updateData['privacySettings.dataSharingConsent'] = body.privacySettings.dataSharingConsent;
+        privacySettingsChanged = true;
       }
       if (body.privacySettings.anonymizeData !== undefined) {
-        updateData.privacySettings.anonymizeData = body.privacySettings.anonymizeData;
+        updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
+        privacySettingsChanged = true;
       }
       // DO NOT update optInStores or optOutStores here
     }
 
-    if (body.dataAccess !== undefined) updateData.dataAccess = body.dataAccess;
+
+    // Check if there's anything to update (excluding updatedAt)
+    const updateKeys = Object.keys(updateData).filter(key => key !== 'updatedAt');
+    if (updateKeys.length === 0) {
+        // Nothing changed
+        const currentUser = await db.collection('users').findOne(
+            { auth0Id: auth0UserId },
+            { projection: { preferences: 0 } }
+        );
+        return respondWithCode(200, currentUser || { message: "No changes detected." });
+    }
+
+    console.log(`Updating user ${auth0UserId} with data:`, updateData);
 
     const result = await db
       .collection('users')
@@ -132,30 +176,39 @@ exports.updateUserProfile = async function (req, body) {
       );
 
     if (!result) {
-      // This case might occur if the user was deleted between checks
       return respondWithCode(404, { code: 404, message: 'User not found during final update' });
     }
 
     // --- Cache Invalidation & Update ---
     const cacheKey = `${CACHE_KEYS.USER_DATA}${auth0UserId}`;
-    await invalidateCache(cacheKey);
+    await invalidateCache(cacheKey); // Invalidate user data cache
 
-    // Invalidate store preferences if privacy settings changed
-    if (updateData.privacySettings && result.privacySettings?.optInStores) {
-       const userObjectId = result._id;
-       for (const storeId of result.privacySettings.optInStores) {
-         await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+    // Invalidate general preferences cache if demographics changed
+    if (demographicsChanged) {
+        await invalidateCache(`${CACHE_KEYS.PREFERENCES}${auth0UserId}`);
+        console.log(`Invalidated general preferences cache for ${auth0UserId} due to demographic update.`);
+    }
+
+    // Invalidate store-specific preferences if demographics or relevant privacy settings changed
+    // Also invalidate if the optInStores list exists (safer to clear on any profile update)
+    const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
+    if ((demographicsChanged || privacySettingsChanged) && updatedUserDoc.privacySettings?.optInStores) {
+       const userObjectId = updatedUserDoc._id; // Use the _id from the updated result
+       console.log(`Invalidating store preferences for user ${userObjectId} due to update.`);
+       for (const storeId of updatedUserDoc.privacySettings.optInStores) {
+         const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`;
+         await invalidateCache(storePrefCacheKey);
+         console.log(`Invalidated cache: ${storePrefCacheKey}`);
        }
     }
 
     // Update cache with the new data (without preferences)
-    // Note: This happens *after* invalidation, ensuring fresh data is set if needed immediately
-    await setCache(cacheKey, JSON.stringify(result), { EX: CACHE_TTL.USER_DATA });
+    await setCache(cacheKey, JSON.stringify(updatedUserDoc), { EX: CACHE_TTL.USER_DATA });
 
-    return respondWithCode(200, result);
+    return respondWithCode(200, updatedUserDoc);
   } catch (error) {
-    // Catch errors not handled specifically above
     console.error('Update profile failed:', error);
+    // Check for specific MongoDB errors if needed (e.g., validation errors)
     return respondWithCode(500, { code: 500, message: 'Internal server error during profile update' });
   }
 };
@@ -211,6 +264,198 @@ exports.deleteUserProfile = async function (req) {
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get Recent User Data Submissions
+ * Retrieves a list of recent data submissions made about the authenticated user.
+ */
+exports.getRecentUserData = async function (req, limit = 10, page = 1) {
+  try {
+    const db = getDB();
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // Find user to get their internal _id
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found' });
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Query userData collection
+    const recentData = await db.collection('userData')
+      .find({ userId: user._id }) // Filter by the user's ObjectId
+      .sort({ timestamp: -1 }) // Sort by submission time descending
+      .skip(skip)
+      .limit(limit)
+      .project({ // Project only necessary fields for RecentUserDataEntry schema
+        _id: 1,
+        storeId: 1,
+        dataType: 1,
+        timestamp: 1, // Submission timestamp
+        entryTimestamp: '$entries.timestamp', // Assuming timestamp is within entries array
+        // Add simplified details if needed, e.g., item count or query string
+        // details: { $cond: { if: { $eq: ['$dataType', 'purchase'] }, then: { itemCount: { $size: '$entries.items' } }, else: '$entries.query' } }
+      })
+      .toArray();
+
+    // Simple transformation if needed (e.g., flatten entryTimestamp if it's an array)
+    const formattedData = recentData.map(entry => ({
+      ...entry,
+      // If entryTimestamp is an array due to projection, take the first element
+      entryTimestamp: Array.isArray(entry.entryTimestamp) ? entry.entryTimestamp[0] : entry.entryTimestamp,
+      // Add placeholder for details
+      details: {}
+    }));
+
+
+    // Caching could be added here if this data is frequently accessed
+    // const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${page}:${limit}`;
+    // await setCache(cacheKey, JSON.stringify(formattedData), { EX: CACHE_TTL.SHORT }); // Example TTL
+
+    return respondWithCode(200, formattedData);
+
+  } catch (error) {
+    console.error('Get recent user data failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Get User Spending Analytics
+ * Retrieves aggregated spending data categorized by taxonomy for the authenticated user.
+ */
+exports.getSpendingAnalytics = async function (req) {
+  try {
+    const db = getDB();
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // --- Date Range Handling ---
+    const { startDate, endDate } = req.query;
+    const dateMatch = {};
+    if (startDate) {
+      try {
+        dateMatch['$gte'] = new Date(startDate);
+      } catch (e) {
+        console.warn('Invalid startDate format:', startDate);
+      }
+    }
+    if (endDate) {
+      try {
+        // Add 1 day to endDate to include the whole day
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1);
+        dateMatch['$lt'] = end;
+      } catch (e) {
+        console.warn('Invalid endDate format:', endDate);
+      }
+    }
+    const hasDateFilter = Object.keys(dateMatch).length > 0;
+    // --- End Date Range Handling ---
+
+
+    // Find user to get their internal _id
+    const user = await db.collection('users').findOne({ auth0Id: userData.sub }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found' });
+    }
+
+    // Fetch the taxonomy once (remains the same)
+    const taxonomyDoc = await db.collection('taxonomy').findOne({ current: true });
+    const categoryMap = (taxonomyDoc && taxonomyDoc.data && taxonomyDoc.data.categories)
+      ? taxonomyDoc.data.categories.reduce((map, cat) => {
+          map[cat.id] = cat.name; // Assuming category ID is used in items
+          map[cat.name] = cat.name; // Allow matching by name too, just in case
+          return map;
+        }, {})
+      : {};
+
+    const pipeline = [
+      // Match user and data type
+      { $match: { userId: user._id, dataType: 'purchase' } },
+      // Unwind entries array
+      { $unwind: '$entries' },
+      // --- Add Date Filtering Stage ---
+      ...(hasDateFilter ? [{ $match: { 'entries.timestamp': dateMatch } }] : []),
+      // Unwind items array
+      { $unwind: '$entries.items' },
+      // --- Group by Month and Category ---
+      {
+        $group: {
+          _id: {
+            // Group by year-month and category
+            yearMonth: { $dateToString: { format: "%Y-%m", date: "$entries.timestamp" } },
+            category: '$entries.items.category' // Use the category field from item
+          },
+          // Calculate total spent for this category in this month
+          monthlyTotal: {
+            $sum: {
+              $cond: {
+                 if: { $and: [
+                   { $isNumber: '$entries.items.price' },
+                   { $isNumber: '$entries.items.quantity' }
+                 ]},
+                 then: { $multiply: ['$entries.items.price', '$entries.items.quantity'] },
+                 // Handle cases where quantity might be missing but price exists
+                 else: { $cond: { if: { $isNumber: '$entries.items.price' }, then: '$entries.items.price', else: 0 } }
+              }
+            }
+          }
+        }
+      },
+      // --- Group by Month to structure categories ---
+      {
+        $group: {
+          _id: '$_id.yearMonth', // Group by month string (e.g., "2025-01")
+          categories: {
+            $push: { // Create an array of category-spend pairs for the month
+              k: { $ifNull: [ { $toString: '$_id.category' }, "Unknown" ] }, // Category name (or ID as string)
+              v: '$monthlyTotal'
+            }
+          }
+        }
+      },
+      // --- Convert categories array to object and sort ---
+      {
+        $project: {
+          _id: 0, // Exclude the default _id
+          month: '$_id', // Rename _id to month
+          spending: { $arrayToObject: '$categories' } // Convert [{k: "Cat1", v: 100}, ...] to { "Cat1": 100, ... }
+        }
+      },
+      // Sort by month ascending
+      { $sort: { month: 1 } }
+    ];
+
+    const results = await db.collection('userData').aggregate(pipeline).toArray();
+
+    // --- Map category IDs/names to proper names from taxonomy ---
+    const spendingAnalytics = results.map(monthlyData => {
+      const mappedSpending = {};
+      for (const categoryKey in monthlyData.spending) {
+        const categoryName = categoryMap[categoryKey] || categoryKey; // Use mapped name or original key
+        mappedSpending[categoryName] = monthlyData.spending[categoryKey];
+      }
+      return {
+        month: monthlyData.month,
+        spending: mappedSpending
+      };
+    });
+    // --- End Mapping ---
+
+
+    // Caching could be added here, considering date range in the key
+    // const cacheKey = `${CACHE_KEYS.USER_SPENDING_ANALYTICS}${user._id}:${startDate || 'all'}:${endDate || 'all'}`;
+    // await setCache(cacheKey, JSON.stringify(spendingAnalytics), { EX: CACHE_TTL.MEDIUM });
+
+    // Return the array structure: [{ month: "YYYY-MM", spending: { "Category1": 100, ... } }, ...]
+    return respondWithCode(200, spendingAnalytics);
+
+  } catch (error) {
+    console.error('Get spending analytics failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

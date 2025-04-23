@@ -4,6 +4,7 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { deleteAuth0User } = require('../utils/auth0Util');
+const { ObjectId } = require('mongodb'); // Import ObjectId
 
 /**
  * Get Store Profile
@@ -114,6 +115,54 @@ exports.deleteStoreProfile = async function (req) {
     return respondWithCode(204);
   } catch (error) {
     console.error('Delete store profile failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Lookup Store Details
+ * Retrieves basic details (like name) for a list of store IDs.
+ */
+exports.lookupStores = async function (req, ids) {
+  try {
+    if (!ids) {
+      return respondWithCode(400, { code: 400, message: 'Missing required query parameter: ids' });
+    }
+
+    const storeIds = ids.split(',');
+
+    // Optional: Validate if IDs are in ObjectId format if needed
+    // const validObjectIds = storeIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+    // if (validObjectIds.length !== storeIds.length) {
+    //   return respondWithCode(400, { code: 400, message: 'One or more invalid store ID formats provided.' });
+    // }
+
+    const db = getDB();
+
+    const stores = await db.collection('stores')
+      .find({ _id: { $in: storeIds.map(id => new ObjectId(id)) } }) // Use ObjectId for lookup if IDs are ObjectIds
+      // If store IDs are stored as strings in optIn/optOut lists, use:
+      // .find({ _id: { $in: storeIds } })
+      .project({ _id: 1, name: 1 }) // Project only ID and name
+      .toArray();
+
+    // Format the response to match StoreBasicInfo schema
+    const formattedStores = stores.map(store => ({
+      storeId: store._id.toString(), // Convert ObjectId back to string
+      name: store.name
+    }));
+
+    // Caching could be considered if lookups for the same set of IDs are common,
+    // but the cache key generation might be complex.
+
+    return respondWithCode(200, formattedStores);
+
+  } catch (error) {
+    console.error('Lookup stores failed:', error);
+    // Handle potential ObjectId format errors if validation is strict
+    if (error.message.includes('Argument passed in must be a single String')) {
+       return respondWithCode(400, { code: 400, message: 'Invalid store ID format provided.' });
+    }
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };

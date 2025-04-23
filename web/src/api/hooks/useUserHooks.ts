@@ -5,6 +5,11 @@ import {
   UserPreferencesUpdate,
   UserUpdate,
   User,
+  RecentUserDataEntry,
+  // SpendingAnalytics, // <-- Remove old type if not used elsewhere
+  StoreConsentList,
+  MonthlySpendingAnalytics, // <-- Import new type
+  GetSpendingAnalyticsParams, // <-- Import params type
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -92,8 +97,10 @@ export function useOptInToStore() {
       if (context?.queryKey) {
         queryClient.invalidateQueries({ queryKey: context.queryKey });
       }
-      // Also invalidate preferences cache as opt-in/out might affect derived data?
-      // queryClient.invalidateQueries({ queryKey: cacheKeys.users.preferences() });
+      // Also invalidate the consent list cache
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.storeConsent(),
+      });
     },
   });
 }
@@ -127,8 +134,10 @@ export function useOptOutFromStore() {
       if (context?.queryKey) {
         queryClient.invalidateQueries({ queryKey: context.queryKey });
       }
-      // Also invalidate preferences cache as opt-in/out might affect derived data?
-      // queryClient.invalidateQueries({ queryKey: cacheKeys.users.preferences() });
+      // Also invalidate the consent list cache
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.storeConsent(),
+      });
     },
   });
 }
@@ -145,5 +154,66 @@ export function useDeleteUserProfile() {
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
+  });
+}
+
+// --- New Hooks ---
+
+export function useRecentUserData(limit: number = 10, page: number = 1) {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  return useQuery<RecentUserDataEntry[], Error>({
+    // Expect an array
+    queryKey: cacheKeys.users.recentData(limit, page),
+    queryFn: () =>
+      apiClients.users
+        .getRecentUserData({ limit, page })
+        .then((res) => res.data),
+    enabled: isAuthenticated && !authLoading && clientsReady,
+    // Add specific cache settings if needed, otherwise defaults apply
+    // ...cacheSettings.recentData, // Example
+    // Replace keepPreviousData with placeholderData for TanStack Query v5+
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useSpendingAnalytics(
+  params?: GetSpendingAnalyticsParams, // Accept optional params
+) {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Destructure params for queryKey dependency, provide defaults
+  const { startDate, endDate } = params || {};
+
+  return useQuery<MonthlySpendingAnalytics, Error>({
+    // <-- Use new response type
+    // Update queryKey to include dates for unique caching
+    queryKey: cacheKeys.users.spendingAnalytics(startDate, endDate),
+    queryFn: () =>
+      // Pass params to the API call
+      apiClients.users
+        .getSpendingAnalytics({ startDate, endDate })
+        .then((res) => res.data),
+    enabled: isAuthenticated && !authLoading && clientsReady,
+    // Add specific cache settings if needed
+    // ...cacheSettings.analytics, // Example
+    placeholderData: (previousData) => previousData, // Keep placeholderData for smoother transitions
+  });
+}
+
+export function useStoreConsentLists() {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  return useQuery<StoreConsentList, Error>({
+    // Expect StoreConsentList type
+    queryKey: cacheKeys.users.storeConsent(),
+    queryFn: () =>
+      apiClients.users.getStoreConsentLists().then((res) => res.data),
+    enabled: isAuthenticated && !authLoading && clientsReady,
+    // Add specific cache settings if needed
+    // ...cacheSettings.consent, // Example
   });
 }

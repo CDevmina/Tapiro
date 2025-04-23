@@ -8,6 +8,8 @@ import {
   ModalBody,
   ModalFooter,
   Popover, // <-- Import Popover
+  Select, // <-- Import Select
+  TextInput, // <-- Import TextInput
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -17,6 +19,25 @@ interface UserRegistrationFormProps {
   onSubmit: (userData: UserCreate) => void;
   isLoading: boolean;
 }
+
+// Define options for selects
+const genderOptions = [
+  { value: "", label: "Select Gender (Optional)" },
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "non-binary", label: "Non-binary" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const incomeOptions = [
+  { value: "", label: "Select Income Bracket (Optional)" },
+  { value: "<25k", label: "< $25,000" },
+  { value: "25k-50k", label: "$25,000 - $49,999" },
+  { value: "50k-100k", label: "$50,000 - $99,999" },
+  { value: "100k-200k", label: "$100,000 - $199,999" },
+  { value: ">200k", label: "> $200,000" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
 
 export function UserRegistrationForm({
   onSubmit,
@@ -28,6 +49,12 @@ export function UserRegistrationForm({
   const [showConsentModal, setShowConsentModal] = useState(false);
   // State to track if consent has been explicitly accepted via the modal
   const [consentAccepted, setConsentAccepted] = useState(false);
+
+  // Add state for demographic fields
+  const [gender, setGender] = useState<string | null>(null);
+  const [incomeBracket, setIncomeBracket] = useState<string | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
+  const [age, setAge] = useState<number | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +70,11 @@ export function UserRegistrationForm({
       // Use the state variable linked to the checkbox
       dataSharingConsent: dataSharingConsent,
       preferences: [], // We can leave this empty for now
+      // Add demographic data, ensuring null if empty string or invalid number
+      gender: gender || null,
+      incomeBracket: incomeBracket || null,
+      country: country || null,
+      age: age !== null && !isNaN(age) ? Number(age) : null,
     };
 
     onSubmit(userData);
@@ -76,6 +108,79 @@ export function UserRegistrationForm({
         <h3 className="text-center text-xl font-medium text-gray-900 dark:text-white">
           Complete User Registration
         </h3>
+
+        {/* Demographic Information Section */}
+        <div className="space-y-4 rounded border border-gray-200 p-4 dark:border-gray-600">
+          <h4 className="text-md mb-3 font-medium text-gray-800 dark:text-gray-200">
+            Demographic Information (Optional)
+          </h4>
+          {/* Gender Select */}
+          <div>
+            <Label htmlFor="gender">Gender</Label>
+            <Select
+              id="gender"
+              value={gender ?? ""}
+              onChange={(e) =>
+                setGender(e.target.value ? e.target.value : null)
+              }
+              className="mt-1"
+            >
+              {genderOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {/* Income Bracket Select */}
+          <div>
+            <Label htmlFor="incomeBracket">Income Bracket</Label>
+            <Select
+              id="incomeBracket"
+              value={incomeBracket ?? ""}
+              onChange={(e) =>
+                setIncomeBracket(e.target.value ? e.target.value : null)
+              }
+              className="mt-1"
+            >
+              {incomeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {/* Country Input */}
+          <div>
+            <Label htmlFor="country">Country (ISO Code)"</Label>
+            <TextInput
+              id="country"
+              placeholder="e.g., US, CA, GB"
+              value={country ?? ""}
+              onChange={(e) =>
+                setCountry(e.target.value ? e.target.value.toUpperCase() : null)
+              }
+              maxLength={2} // ISO 3166-1 alpha-2
+              className="mt-1"
+            />
+          </div>
+          {/* Age Input */}
+          <div>
+            <Label htmlFor="age">Age</Label>
+            <TextInput
+              id="age"
+              type="number"
+              placeholder="e.g., 30"
+              value={age ?? ""}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setAge(isNaN(val) ? null : val);
+              }}
+              min="0"
+              className="mt-1"
+            />
+          </div>
+        </div>
 
         {/* Consent Section */}
         <div className="flex flex-col space-y-2 rounded border border-gray-200 p-4 dark:border-gray-600">

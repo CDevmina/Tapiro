@@ -28,6 +28,27 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
+  /**
+   * User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
+   * @example "female"
+   */
+  gender?: string | null;
+  /**
+   * User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
+   * @example "50k-100k"
+   */
+  incomeBracket?: string | null;
+  /**
+   * User country of residence (ISO 3166-1 alpha-2 code)
+   * @example "US"
+   */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   * @example 35
+   */
+  age?: number | null;
   privacySettings: {
     /** @default false */
     dataSharingConsent?: boolean;
@@ -37,10 +58,6 @@ export interface User {
     optInStores?: string[];
     /** List of store IDs user has opted out from */
     optOutStores?: string[];
-  };
-  dataAccess?: {
-    /** List of allowed domains for data access */
-    allowedDomains?: string[];
   };
   /** @format date-time */
   createdAt?: string;
@@ -71,6 +88,17 @@ export interface UserCreate {
   preferences?: PreferenceItem[];
   /** User's consent for data sharing */
   dataSharingConsent: boolean;
+  /** User gender identity */
+  gender?: string | null;
+  /** User income bracket category */
+  incomeBracket?: string | null;
+  /** User country of residence (ISO 3166-1 alpha-2 code) */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   */
+  age?: number | null;
 }
 
 export interface StoreCreate {
@@ -96,9 +124,17 @@ export interface UserUpdate {
     optInStores?: string[];
     optOutStores?: string[];
   };
-  dataAccess?: {
-    allowedDomains?: string[];
-  };
+  /** User gender identity */
+  gender?: string | null;
+  /** User income bracket category */
+  incomeBracket?: string | null;
+  /** User country of residence (ISO 3166-1 alpha-2 code) */
+  country?: string | null;
+  /**
+   * User age
+   * @format int32
+   */
+  age?: number | null;
 }
 
 export interface ApiKey {
@@ -112,67 +148,92 @@ export interface ApiKey {
   status?: "active" | "revoked";
 }
 
+/** @example {"email":"user@example.com","dataType":"purchase","entries":[{"$ref":"#/components/schemas/PurchaseEntry/example"}],"metadata":{"source":"web","deviceType":"desktop","sessionId":"abc-123-xyz-789"}} */
 export interface UserData {
-  /** User's email address */
+  /**
+   * User's email address (used as identifier for API key auth). Must match a registered Tapiro user.
+   * @format email
+   */
   email: string;
-  /** Type of data being submitted */
+  /** Specifies the type of data contained in the 'entries' array. */
   dataType: "purchase" | "search";
-  /** Array of data entries */
+  /**
+   * List of data entries. Each entry must conform to either the PurchaseEntry or SearchEntry schema, matching the top-level 'dataType'.
+   * @minItems 1
+   */
   entries: (PurchaseEntry | SearchEntry)[];
-  /** Additional information about the collection event */
+  /**
+   * Additional metadata about the collection event (e.g., source, device).
+   * @example {"source":"web","deviceType":"desktop","sessionId":"abc-123-xyz-789"}
+   */
   metadata?: {
-    /** Optional user ID if known */
-    userId?: string;
-    /** Source of the data (web, mobile, pos, etc) */
+    /** Source of the data (e.g., 'web', 'mobile_app', 'pos'). */
     source?: string;
-    /** Type of device used */
+    /** Type of device used (e.g., 'desktop', 'mobile', 'tablet'). */
     deviceType?: string;
-    /** Unique identifier for the user session */
+    /** Identifier for the user's session. */
     sessionId?: string;
   };
 }
 
+/** @example {"timestamp":"2024-05-15T14:30:00Z","items":[{"$ref":"#/components/schemas/PurchaseItem/example"},{"sku":"ABC-789","name":"Running Shorts","category":"201","price":39.95,"quantity":1,"attributes":{"color":"black","size":"M","material":"polyester"}}],"totalValue":91.93} */
 export interface PurchaseEntry {
-  /** @format date-time */
+  /**
+   * ISO 8601 timestamp of when the purchase occurred.
+   * @format date-time
+   */
   timestamp: string;
+  /** List of items included in the purchase. */
   items: PurchaseItem[];
-  /** @format float */
-  totalAmount?: number;
+  /**
+   * Optional total value of the purchase event.
+   * @format float
+   */
+  totalValue?: number;
 }
 
+/** @example {"sku":"XYZ-123","name":"Men's Cotton T-Shirt","category":"201","price":25.99,"quantity":2,"attributes":{"color":"navy","size":"M","material":"cotton"}} */
 export interface PurchaseItem {
+  /** Stock Keeping Unit or unique product identifier. */
   sku?: string;
+  /** Name of the purchased item. */
   name: string;
-  /** Category ID (e.g., "101") or name (e.g., "smartphones") */
+  /** Category ID or name matching the Tapiro taxonomy (e.g., "101" or "Smartphones"). Providing the most specific category ID is recommended. */
   category: string;
-  /** @default 1 */
-  quantity?: number;
-  /** @format float */
+  /**
+   * Price of a single unit of the item.
+   * @format float
+   */
   price?: number;
-  /** Category-specific attributes */
+  /**
+   * Number of units purchased.
+   * @default 1
+   */
+  quantity?: number;
+  /** Key-value pairs representing product attributes based on the taxonomy. Keys should be attribute names (e.g., "color", "size", "brand") and values should be the specific attribute value (e.g., "blue", "large", "Acme"). */
   attributes?: ItemAttributes;
 }
 
-/** Category-specific attributes */
-export interface ItemAttributes {
-  price_range?: "budget" | "mid_range" | "premium" | "luxury";
-  brand?: string;
-  color?: string;
-  material?: string;
-  style?: string;
-  room?: string;
-  size?: string;
-  feature?: string;
-  season?: string;
-  gender?: string;
-}
+/**
+ * Key-value pairs representing product attributes based on the taxonomy. Keys should be attribute names (e.g., "color", "size", "brand") and values should be the specific attribute value (e.g., "blue", "large", "Acme").
+ * @example {"color":"blue","size":"L","material":"cotton"}
+ */
+export type ItemAttributes = Record<string, string>;
 
+/** @example {"timestamp":"2024-05-15T10:15:00Z","query":"noise cancelling headphones","category":"105","results":25,"clicked":["Bose-QC45","Sony-WH1000XM5"]} */
 export interface SearchEntry {
-  /** @format date-time */
+  /**
+   * ISO 8601 timestamp of when the search occurred.
+   * @format date-time
+   */
   timestamp: string;
+  /** The search query string entered by the user. */
   query: string;
+  /** Optional category context provided during the search (e.g., user was browsing 'Electronics'). Should match a Tapiro taxonomy ID or name. */
   category?: string;
+  /** Optional number of results returned for the search query. */
   results?: number;
+  /** Optional list of product IDs or SKUs clicked from the search results. */
   clicked?: string[];
 }
 
@@ -263,6 +324,13 @@ export interface ApiKeyUsage {
   }[];
 }
 
+export interface StoreConsentList {
+  /** List of store IDs the user has opted into. */
+  optInStores?: string[];
+  /** List of store IDs the user has opted out of. */
+  optOutStores?: string[];
+}
+
 export interface HealthStatus {
   /** Overall health status of the Health */
   status?: "healthy" | "degraded" | "unhealthy";
@@ -310,6 +378,78 @@ export interface UserMetadataResponse {
   };
 }
 
+/** Attribute within a taxonomy category */
+export interface TaxonomyAttribute {
+  name: string;
+  values: string[];
+  description?: string | null;
+}
+
+/** Category within a taxonomy system */
+export interface TaxonomyCategory {
+  id: string;
+  name: string;
+  parent_id?: string | null;
+  description?: string | null;
+  /** @default [] */
+  attributes?: TaxonomyAttribute[];
+}
+
+/** Complete taxonomy definition with categories and version */
+export interface Taxonomy {
+  _id?: string;
+  categories: TaxonomyCategory[];
+  version: string;
+}
+
+export interface RecentUserDataEntry {
+  /** The unique ID of the userData entry. */
+  _id?: string;
+  /** The ID of the store that submitted the data. */
+  storeId?: string;
+  /** The type of data submitted. */
+  dataType?: "purchase" | "search";
+  /**
+   * When the data was submitted to Tapiro.
+   * @format date-time
+   */
+  timestamp?: string;
+  /**
+   * The timestamp of the original event (e.g., purchase time).
+   * @format date-time
+   */
+  entryTimestamp?: string;
+  /** Simplified details (e.g., item count for purchase, query string for search) */
+  details?: object;
+}
+
+/**
+ * Aggregated spending data per category over time. The structure might vary based on implementation (e.g., object keyed by month/year, or an array of objects each representing a time point).
+ * @example {"2025-01":{"Electronics":1299.99,"Clothing":150.5},"2025-02":{"Clothing":100,"Home":85}}
+ */
+export type SpendingAnalytics = Record<string, Record<string, number>>;
+
+export interface StoreBasicInfo {
+  /** The unique ID of the store. */
+  storeId: string;
+  /** The name of the store. */
+  name: string;
+}
+
+/** @example {"month":"2024-01","spending":{"Electronics":1299.99,"Clothing":150.5}} */
+export interface MonthlySpendingItem {
+  /**
+   * The month of the spending data (e.g., "2024-01").
+   * @format date
+   */
+  month: string;
+  /** An object mapping category names to the total amount spent in that category for the month. */
+  spending: Record<string, number>;
+}
+
+/** An array of monthly spending breakdowns. */
+export type MonthlySpendingAnalytics = MonthlySpendingItem[];
+
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data
@@ -321,4 +461,35 @@ export interface GetApiKeyUsagePayload {
    * @format date
    */
   endDate?: string;
+}
+
+export interface GetRecentUserDataParams {
+  /**
+   * Maximum number of records to return
+   * @default 10
+   */
+  limit?: number;
+  /**
+   * Page number for pagination
+   * @default 1
+   */
+  page?: number;
+}
+
+export interface GetSpendingAnalyticsParams {
+  /**
+   * Filter results from this date onwards (YYYY-MM-DD).
+   * @format date
+   */
+  startDate?: string;
+  /**
+   * Filter results up to this date (YYYY-MM-DD).
+   * @format date
+   */
+  endDate?: string;
+}
+
+export interface LookupStoresParams {
+  /** Comma-separated list of store IDs to lookup. */
+  ids: string;
 }

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings } from "../utils/cache";
-import { HealthStatus, PingStatus } from "../types/data-contracts";
+import { HealthStatus, PingStatus, Error } from "../types/data-contracts";
 
 export function useHealthCheck() {
   // Destructure apiClients first, then get health from it

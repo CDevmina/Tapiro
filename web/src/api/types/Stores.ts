@@ -17,7 +17,9 @@ import {
   ApiKeyUsage,
   Error,
   GetApiKeyUsagePayload,
+  LookupStoresParams,
   Store,
+  StoreBasicInfo,
   StoreCreate,
   StoreUpdate,
 } from "./data-contracts";
@@ -202,6 +204,28 @@ export class Stores<
       body: data,
       secure: true,
       type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Retrieves basic details (like name) for a list of store IDs.
+   *
+   * @tags Store Management
+   * @name LookupStores
+   * @summary Lookup Store Details
+   * @request GET:/stores/lookup
+   * @secure
+   * @response `200` `(StoreBasicInfo)[]` Store details retrieved successfully.
+   * @response `400` `Error`
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  lookupStores = (query: LookupStoresParams, params: RequestParams = {}) =>
+    this.request<StoreBasicInfo[], Error>({
+      path: `/stores/lookup`,
+      method: "GET",
+      query: query,
+      secure: true,
       format: "json",
       ...params,
     });

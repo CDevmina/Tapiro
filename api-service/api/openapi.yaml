@@ -21,6 +21,8 @@ tags:
     description: Health and uptime monitoring
   - name: Admin
     description: Administrative operations for managing taxonomy and keyword mappings
+  - name: Taxonomy
+    description: Operations related to the product/interest taxonomy
 servers:
   - url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/TAPIRO/1.0.0
     description: SwaggerHub API Auto Mocking
@@ -390,6 +392,29 @@ paths:
         - oauth2: [user:write]
       x-swagger-router-controller: PreferenceManagement
 
+  /users/preferences/store-consent:
+    get:
+      tags: [Preference Management]
+      summary: Get user's store opt-in/out lists
+      description: Retrieves the lists of store IDs the user has explicitly opted into or opted out of sharing data with.
+      operationId: getStoreConsentLists
+      responses:
+        "200":
+          description: Successfully retrieved store consent lists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreConsentList"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read] # Requires user read scope
+      x-swagger-router-controller: PreferenceManagement
+
   /stores/api-keys:
     post:
       tags: [Store Management]
@@ -561,6 +586,137 @@ paths:
           $ref: "#/components/responses/InternalServerError"
       x-swagger-router-controller: Authentication
 
+  /taxonomy/categories:
+    get:
+      tags: [Taxonomy]
+      summary: Get Taxonomy Categories
+      description: Retrieves the full taxonomy structure from the database.
+      operationId: getTaxonomyCategories
+      responses:
+        "200":
+          description: Successfully retrieved the taxonomy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Taxonomy"
+        "404":
+          description: Taxonomy data not found in the database.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Taxonomy
+
+  /users/data/recent:
+    get:
+      tags: [User Management]
+      summary: Get Recent User Data Submissions
+      description: Retrieves a list of recent data submissions made about the authenticated user.
+      operationId: getRecentUserData
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Recent data submissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecentUserDataEntry"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
+
+  /users/analytics/spending:
+    get:
+      tags: [User Management]
+      summary: Get User Spending Analytics
+      description: Retrieves aggregated spending data by category and month for the authenticated user.
+      operationId: getSpendingAnalytics
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter results from this date onwards (YYYY-MM-DD).
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter results up to this date (YYYY-MM-DD).
+      responses:
+        "200":
+          description: Spending analytics retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlySpendingAnalytics"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: UserProfile
+
+  /stores/lookup:
+    get:
+      tags: [Store Management]
+      summary: Lookup Store Details
+      description: Retrieves basic details (like name) for a list of store IDs.
+      operationId: lookupStores
+      parameters:
+        - name: ids
+          in: query
+          description: Comma-separated list of store IDs to lookup.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Store details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StoreBasicInfo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: StoreProfile
+
 components:
   schemas:
     AttributeDistribution:
@@ -597,6 +753,27 @@ components:
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
+          example: "female"
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
+          example: "50k-100k"
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+          example: "US"
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
+          example: 35
         privacySettings:
           type: object
           properties:
@@ -616,14 +793,6 @@ components:
               items:
                 type: string
               description: List of store IDs user has opted out from
-        dataAccess:
-          type: object
-          properties:
-            allowedDomains:
-              type: array
-              items:
-                type: string
-              description: List of allowed domains for data access
         createdAt:
           type: string
           format: date-time
@@ -693,6 +862,23 @@ components:
         dataSharingConsent:
           type: boolean
           description: User's consent for data sharing
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
 
     StoreCreate:
       type: object
@@ -749,14 +935,23 @@ components:
               items:
                 type: string
                 description: List of store IDs the user has opted out of sharing data with
-        dataAccess:
-          type: object
-          properties:
-            allowedDomains:
-              type: array
-              items:
-                type: string
-                description: List of domains allowed to access user data via API keys
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (ISO 3166-1 alpha-2 code)
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
 
     ApiKey:
       type: object
@@ -783,39 +978,54 @@ components:
       type: object
       required:
         - email
-        - dataType
+        - dataType # Make dataType required
         - entries
       properties:
         email:
           type: string
-          description: User's email address
+          format: email
+          description: User's email address (used as identifier for API key auth). Must match a registered Tapiro user.
         dataType:
           type: string
           enum: [purchase, search]
-          description: Type of data being submitted
+          description: Specifies the type of data contained in the 'entries' array.
         entries:
           type: array
-          description: Array of data entries
+          description: >
+            List of data entries. Each entry must conform to either the PurchaseEntry
+            or SearchEntry schema, matching the top-level 'dataType'.
           items:
-            oneOf:
+            oneOf: # Use oneOf to specify possible entry types
               - $ref: "#/components/schemas/PurchaseEntry"
               - $ref: "#/components/schemas/SearchEntry"
+            description: "An entry representing either a purchase event or a search event."
+          minItems: 1 # Require at least one entry
         metadata:
           type: object
-          description: Additional information about the collection event
+          description: Additional metadata about the collection event (e.g., source, device).
           properties:
-            userId:
-              type: string
-              description: Optional user ID if known
             source:
               type: string
-              description: Source of the data (web, mobile, pos, etc)
+              description: Source of the data (e.g., 'web', 'mobile_app', 'pos').
             deviceType:
               type: string
-              description: Type of device used
+              description: Type of device used (e.g., 'desktop', 'mobile', 'tablet').
             sessionId:
               type: string
-              description: Unique identifier for the user session
+              description: Identifier for the user's session.
+          example:
+            source: "web"
+            deviceType: "desktop"
+            sessionId: "abc-123-xyz-789"
+      example: # Example for a purchase submission
+        email: "user@example.com"
+        dataType: "purchase"
+        entries:
+          - $ref: "#/components/schemas/PurchaseEntry/example"
+        metadata:
+          source: "web"
+          deviceType: "desktop"
+          sessionId: "abc-123-xyz-789"
 
     PurchaseEntry:
       type: object
@@ -826,62 +1036,81 @@ components:
         timestamp:
           type: string
           format: date-time
+          description: ISO 8601 timestamp of when the purchase occurred.
         items:
           type: array
+          description: List of items included in the purchase.
           items:
             $ref: "#/components/schemas/PurchaseItem"
-        totalAmount:
+        totalValue:
           type: number
           format: float
+          description: Optional total value of the purchase event.
+      example:
+        timestamp: "2024-05-15T14:30:00Z"
+        items:
+          - $ref: "#/components/schemas/PurchaseItem/example" # Reference the example above
+          - sku: "ABC-789"
+            name: "Running Shorts"
+            category: "201" # Clothing
+            price: 39.95
+            quantity: 1
+            attributes:
+              color: "black"
+              size: "M"
+              material: "polyester"
+        totalValue: 91.93
 
     PurchaseItem:
       type: object
       required:
         - name
-        - category
+        - category # Making category required for better processing
       properties:
         sku:
           type: string
+          description: Stock Keeping Unit or unique product identifier.
         name:
           type: string
+          description: Name of the purchased item.
         category:
           type: string
-          description: Category ID (e.g., "101") or name (e.g., "smartphones")
-        quantity:
-          type: integer
-          default: 1
+          description: >
+            Category ID or name matching the Tapiro taxonomy (e.g., "101" or "Smartphones").
+            Providing the most specific category ID is recommended.
         price:
           type: number
           format: float
+          description: Price of a single unit of the item.
+        quantity:
+          type: integer
+          description: Number of units purchased.
+          default: 1
         attributes:
           $ref: "#/components/schemas/ItemAttributes"
+      example:
+        sku: "XYZ-123"
+        name: "Men's Cotton T-Shirt"
+        category: "201" # Example: Clothing ID
+        price: 25.99
+        quantity: 2
+        attributes:
+          color: "navy"
+          size: "M"
+          material: "cotton"
 
     ItemAttributes:
       type: object
-      description: Category-specific attributes
-      properties:
-        price_range:
-          type: string
-          enum: [budget, mid_range, premium, luxury]
-        brand:
-          type: string
-        color:
-          type: string
-        material:
-          type: string
-        style:
-          type: string
-        room:
-          type: string
-        size:
-          type: string
-        feature:
-          type: string
-        season:
-          type: string
-        gender:
-          type: string
-      additionalProperties: false
+      description: >
+        Key-value pairs representing product attributes based on the taxonomy.
+        Keys should be attribute names (e.g., "color", "size", "brand") and
+        values should be the specific attribute value (e.g., "blue", "large", "Acme").
+      additionalProperties:
+        type: string
+      example:
+        color: "blue"
+        size: "L"
+        material: "cotton"
 
     SearchEntry:
       type: object
@@ -892,16 +1121,29 @@ components:
         timestamp:
           type: string
           format: date-time
+          description: ISO 8601 timestamp of when the search occurred.
         query:
           type: string
+          description: The search query string entered by the user.
         category:
           type: string
+          description: >
+            Optional category context provided during the search (e.g., user was browsing 'Electronics').
+            Should match a Tapiro taxonomy ID or name.
         results:
           type: integer
+          description: Optional number of results returned for the search query.
         clicked:
           type: array
+          description: Optional list of product IDs or SKUs clicked from the search results.
           items:
             type: string
+      example:
+        timestamp: "2024-05-15T10:15:00Z"
+        query: "noise cancelling headphones"
+        category: "105" # Example: Audio ID
+        results: 25
+        clicked: ["Bose-QC45", "Sony-WH1000XM5"]
 
     UserPreferences:
       type: object
@@ -1042,6 +1284,20 @@ components:
               count:
                 type: integer
 
+    StoreConsentList:
+      type: object
+      properties:
+        optInStores:
+          type: array
+          items:
+            type: string
+          description: List of store IDs the user has opted into.
+        optOutStores:
+          type: array
+          items:
+            type: string
+          description: List of store IDs the user has opted out of.
+
     HealthStatus:
       type: object
       properties:
@@ -1113,6 +1369,142 @@ components:
               type: boolean
               description: Whether registration process is complete
           description: User metadata from Auth0
+
+    TaxonomyAttribute:
+      type: object
+      description: Attribute within a taxonomy category
+      required:
+        - name
+        - values
+      properties:
+        name:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          nullable: true
+
+    TaxonomyCategory:
+      type: object
+      description: Category within a taxonomy system
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        parent_id:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        attributes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaxonomyAttribute"
+          default: []
+
+    Taxonomy:
+      type: object
+      description: Complete taxonomy definition with categories and version
+      required:
+        - categories
+        - version
+      properties:
+        _id:
+          type: string
+          readOnly: true
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaxonomyCategory"
+        version:
+          type: string
+
+    RecentUserDataEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: The unique ID of the userData entry.
+        storeId:
+          type: string
+          description: The ID of the store that submitted the data.
+        dataType:
+          type: string
+          enum: [purchase, search]
+          description: The type of data submitted.
+        timestamp:
+          type: string
+          format: date-time
+          description: When the data was submitted to Tapiro.
+        entryTimestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the original event (e.g., purchase time).
+        details:
+          type: object
+          description: Simplified details (e.g., item count for purchase, query string for search)
+
+    SpendingAnalytics:
+      type: object
+      description: >
+        Aggregated spending data per category over time.
+        The structure might vary based on implementation (e.g., object keyed by month/year,
+        or an array of objects each representing a time point).
+      additionalProperties:
+        type: object # Example: { "YYYY-MM": { "Category1": 100, "Category2": 50 } }
+        additionalProperties:
+          type: number
+          format: float
+      example:
+        "2025-01": { "Electronics": 1299.99, "Clothing": 150.5 }
+        "2025-02": { "Clothing": 100, "Home": 85 }
+
+    StoreBasicInfo:
+      type: object
+      properties:
+        storeId:
+          type: string
+          description: The unique ID of the store.
+        name:
+          type: string
+          description: The name of the store.
+      required:
+        - storeId
+        - name
+
+    MonthlySpendingItem:
+      type: object
+      properties:
+        month:
+          type: string
+          format: date
+          description: The month of the spending data (e.g., "2024-01").
+        spending:
+          type: object
+          description: An object mapping category names to the total amount spent in that category for the month.
+          additionalProperties:
+            type: number
+            format: float
+      required:
+        - month
+        - spending
+      example:
+        month: "2024-01"
+        spending: { "Electronics": 1299.99, "Clothing": 150.50 }
+
+    MonthlySpendingAnalytics:
+      type: array
+      description: An array of monthly spending breakdowns.
+      items:
+        $ref: "#/components/schemas/MonthlySpendingItem"
 
   responses:
     BadRequestError:

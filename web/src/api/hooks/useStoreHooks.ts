@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
-import { cacheKeys, cacheSettings } from "../utils/cache";
-import { ApiKeyCreate, StoreUpdate } from "../types/data-contracts";
+import { cacheKeys, cacheSettings, CACHE_TIMES } from "../utils/cache"; // <-- Import CACHE_TIMES
+import {
+  ApiKeyCreate,
+  StoreUpdate,
+  StoreBasicInfo, // <-- Import StoreBasicInfo
+} from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
 export function useStoreProfile() {
@@ -83,6 +87,35 @@ export function useApiKeyUsage(keyId: string) {
     // Update enabled check, keeping !!keyId
     enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.apiKeys,
+  });
+}
+
+// --- New Hook ---
+
+// Hook to lookup multiple stores by their IDs
+export function useLookupStores(storeIds: string[]) {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Filter out empty IDs and join for the query key and API call
+  const validIds = storeIds.filter((id) => id);
+  const idsQueryParam = validIds.join(",");
+
+  return useQuery<StoreBasicInfo[], Error>({
+    // Expect an array of StoreBasicInfo
+    // Include the sorted list of valid IDs in the query key
+    queryKey: cacheKeys.stores.lookup(validIds.sort()),
+    queryFn: () =>
+      // Pass the comma-separated string of IDs to the API client method
+      apiClients.stores
+        .lookupStores({ ids: idsQueryParam })
+        .then((res) => res.data),
+    // Only enable if there are valid IDs and the client is ready
+    enabled:
+      validIds.length > 0 && isAuthenticated && !authLoading && clientsReady,
+    // Cache settings can be specific or default
+    staleTime: CACHE_TIMES.LONG, // Store names don't change often
+    gcTime: CACHE_TIMES.LONG * 2,
   });
 }
 

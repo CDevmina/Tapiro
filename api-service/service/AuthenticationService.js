@@ -13,7 +13,15 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    const { preferences, dataSharingConsent } = body;
+    // Destructure new demographic fields
+    const {
+      preferences,
+      dataSharingConsent,
+      gender,
+      incomeBracket,
+      country,
+      age,
+    } = body;
 
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
@@ -89,18 +97,19 @@ exports.registerUser = async function (req, body) {
     // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: userData.username,
+      username: userData.username || userData.nickname || userData.sub,
       email: userData.email,
       phone: userData.phone_number || null,
+      gender: gender || null, // Add new fields, defaulting to null if not provided
+      incomeBracket: incomeBracket || null,
+      country: country || null,
+      age: age || null,
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,
         anonymizeData: false,
         optInStores: [],
         optOutStores: [],
-      },
-      dataAccess: {
-        allowedDomains: [],
       },
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -117,6 +126,7 @@ exports.registerUser = async function (req, body) {
     });
 
     // Also cache user preferences
+    // Note: Demographic data is NOT typically included in the preferences cache
     const cachePreferences = {
       userId: user._id.toString(),
       preferences: user.preferences || [], // Fixed: consistent naming

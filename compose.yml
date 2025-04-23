@@ -29,6 +29,7 @@ services:
       - AUTH0_M2M_CLIENT_SECRET=${AUTH0_M2M_CLIENT_SECRET}
       - AI_SERVICE_URL=http://ml-service:8000/api
       - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
     ports:
       - "3000:3000"
     depends_on:
