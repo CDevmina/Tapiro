@@ -10,7 +10,6 @@ import {
   TimelineContent,
   TimelineTime,
   TimelineTitle,
-  TimelineBody,
   ListItem,
   Datepicker,
   Button,
@@ -299,8 +298,10 @@ export default function UserDashboard() {
                                 ? "Purchase"
                                 : "Search"}{" "}
                               from{" "}
-                              {storeNameMap.get(activity.storeId) ||
-                                "Unknown Store"}
+                              {activity.storeId
+                                ? storeNameMap.get(activity.storeId) ||
+                                  `Store ID: ${activity.storeId}`
+                                : "Unknown Store"}
                             </TimelineTitle>
                             {/* Add more details if needed */}
                             {/* <TimelineBody>Details about the activity...</TimelineBody> */}
