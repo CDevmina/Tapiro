@@ -1,59 +1,55 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react"; // Removed ReactElement
 import {
-  Modal,
   Button,
   Card,
-  Spinner,
+  Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
-  Badge,
+  Spinner,
 } from "flowbite-react";
-import {
-  PreferenceItem,
-  TaxonomyCategory,
-} from "../../api/types/data-contracts";
 import {
   HiChevronDown,
   HiChevronUp,
-  // Import icons for categories
-  HiOutlineDesktopComputer, // Electronics
-  HiOutlineShoppingBag, // Fashion
-  HiOutlineHome, // Home & Garden (covers Home)
-  HiOutlineSparkles, // Beauty & Personal Care (covers Beauty)
-  HiOutlineBookOpen, // Media (Books, Movies, etc.)
-  HiOutlineHeart, // Health & Wellness
-  HiOutlinePuzzle, // Toys & Games
-  HiOutlineBriefcase, // Office Supplies
-  HiOutlineKey, // Gaming (Changed from HiOutlineKey)
-  HiOutlineGlobeAlt, // Travel
-  HiOutlineShoppingCart, // Grocery
-  HiOutlineGift, // Jewelry & Watches, Gifts
-  HiOutlineCode, // Software
-  HiQuestionMarkCircle, // Default
+  HiOutlineDesktopComputer,
+  HiOutlineShoppingBag,
+  HiOutlineHome,
+  HiOutlineSparkles,
+  HiOutlineBookOpen,
+  HiOutlineHeart,
+  HiOutlinePuzzle,
+  HiOutlineBriefcase,
+  HiOutlineKey,
+  HiOutlineGlobeAlt,
+  HiOutlineShoppingCart,
+  HiOutlineGift,
+  HiOutlineCode,
+  HiQuestionMarkCircle,
 } from "react-icons/hi";
 import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
 import { useUpdateUserPreferences } from "../../api/hooks/useUserHooks";
-import ErrorDisplay from "../common/ErrorDisplay";
+import {
+  PreferenceItem,
+  // Removed TaxonomyCategory
+} from "../../api/types/data-contracts";
+import ErrorDisplay from "../common/ErrorDisplay"; // Assuming ErrorDisplay exists
 
-// --- Icon Mapping ---
+// --- Icon Mapping (Keep as is) ---
 const categoryIcons: { [key: string]: React.ElementType } = {
   Electronics: HiOutlineDesktopComputer,
   Fashion: HiOutlineShoppingBag,
-  Home: HiOutlineHome, // Covers Home & Garden, Tools, Furniture etc.
+  Home: HiOutlineHome,
   Beauty: HiOutlineSparkles,
   Media: HiOutlineBookOpen,
   "Health & Wellness": HiOutlineHeart,
   "Toys & Games": HiOutlinePuzzle,
   "Office Supplies": HiOutlineBriefcase,
-  Gaming: HiOutlineKey, // Corrected Icon
+  Gaming: HiOutlineKey,
   Travel: HiOutlineGlobeAlt,
   Grocery: HiOutlineShoppingCart,
-  "Jewelry & Watches": HiOutlineGift, // Covers Jewelry
+  "Jewelry & Watches": HiOutlineGift,
   Gifts: HiOutlineGift,
   Software: HiOutlineCode,
-  // Add mappings for other new top-level categories if needed
-  // If a category doesn't have a specific icon, it will use DefaultIcon
 };
 const DefaultIcon = HiQuestionMarkCircle;
 // --- End Icon Mapping ---
@@ -61,6 +57,13 @@ const DefaultIcon = HiQuestionMarkCircle;
 interface InterestFormModalProps {
   show: boolean;
   onClose: () => void;
+}
+
+// --- State for selected attribute values ---
+interface SelectedAttributeValue {
+  categoryId: string;
+  attributeName: string;
+  value: string;
 }
 
 export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
@@ -71,11 +74,14 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
   } = useTaxonomy();
   const updateUserPreferences = useUpdateUserPreferences();
 
-  const [selectedSubCategoryIds, setSelectedSubCategoryIds] = useState<
-    string[]
+  // --- Updated State ---
+  const [selectedAttributeValues, setSelectedAttributeValues] = useState<
+    SelectedAttributeValue[]
   >([]);
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
+  // --- End Updated State ---
 
+  // --- Top Level Categories (Keep as is) ---
   const topLevelCategories = useMemo(() => {
     return (
       taxonomyData?.categories
@@ -84,23 +90,9 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
     );
   }, [taxonomyData]);
 
-  const subCategoriesMap = useMemo(() => {
-    const map = new Map<string, TaxonomyCategory[]>();
-    if (taxonomyData?.categories) {
-      for (const category of taxonomyData.categories) {
-        if (category.parent_id) {
-          const children = map.get(category.parent_id) || [];
-          children.push(category);
-          map.set(
-            category.parent_id,
-            children.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-      }
-    }
-    return map;
-  }, [taxonomyData]);
+  // --- Category Map Removed (was unused) ---
 
+  // --- Handlers ---
   const handleExpandCategory = (categoryId: string) => {
     setExpandedCategoryIds((prev) =>
       prev.includes(categoryId)
@@ -109,34 +101,115 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
     );
   };
 
-  const handleSelectSubCategory = (subCategoryId: string) => {
-    setSelectedSubCategoryIds((prev) =>
-      prev.includes(subCategoryId)
-        ? prev.filter((id) => id !== subCategoryId)
-        : [...prev, subCategoryId],
-    );
+  // --- New Handler for Attribute Value Selection ---
+  const handleSelectAttributeValue = (
+    categoryId: string,
+    attributeName: string,
+    value: string,
+  ) => {
+    setSelectedAttributeValues((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) =>
+          item.categoryId === categoryId &&
+          item.attributeName === attributeName &&
+          item.value === value,
+      );
+      if (existingIndex > -1) {
+        // Remove if already selected
+        return prev.filter((_, index) => index !== existingIndex);
+      } else {
+        // Add if not selected
+        return [...prev, { categoryId, attributeName, value }];
+      }
+    });
   };
+  // --- End New Handler ---
 
+  // --- Updated handleSubmit ---
   const handleSubmit = async () => {
-    const preferences: PreferenceItem[] = selectedSubCategoryIds.map((id) => ({
-      category: id,
-      score: 1.0,
-    }));
+    const groupedPreferences = new Map<string, PreferenceItem>();
+
+    selectedAttributeValues.forEach(({ categoryId, attributeName, value }) => {
+      // Initialize preference for the category if not present
+      if (!groupedPreferences.has(categoryId)) {
+        groupedPreferences.set(categoryId, {
+          category: categoryId,
+          score: 1.0, // Assign a base score for selecting the category
+          attributes: {}, // Initialize attributes object
+        });
+      }
+
+      const pref = groupedPreferences.get(categoryId)!;
+
+      // Ensure attributes object exists (it should from the initialization above)
+      if (!pref.attributes) {
+        pref.attributes = {};
+      }
+
+      // --- Type Assertion for Dynamic Attribute Access ---
+      // Cast attributes to allow indexing by any string key
+      const attributesMap = pref.attributes as Record<
+        string,
+        Record<string, number>
+      >;
+      // --- End Type Assertion ---
+
+      // Ensure the specific attribute object (value map) exists
+      let attributeValueMap = attributesMap[attributeName]; // Use the casted map
+      if (!attributeValueMap) {
+        attributeValueMap = {};
+        attributesMap[attributeName] = attributeValueMap; // Use the casted map
+      }
+
+      // Assign score to the specific attribute value
+      attributeValueMap[value] = 1.0; // Assign score to the inner map
+    });
+
+    const preferencesPayload: PreferenceItem[] = Array.from(
+      groupedPreferences.values(),
+    );
+
+    if (preferencesPayload.length === 0) {
+      console.warn("No preferences selected.");
+      // Optionally show a message to the user or simply close
+      onClose(); // Close if nothing selected, or handle differently
+      return;
+    }
 
     try {
-      await updateUserPreferences.mutateAsync({ preferences });
-      onClose();
+      await updateUserPreferences.mutateAsync({
+        preferences: preferencesPayload,
+      });
+      onClose(); // Close modal on success
     } catch (err) {
       console.error("Failed to save preferences:", err);
+      // Optionally display an error message to the user
     }
   };
+  // --- End Updated handleSubmit ---
 
+  // --- useEffect for Error Handling (Keep as is) ---
   useEffect(() => {
     if (taxonomyError) {
       console.error("Taxonomy failed to load, closing interest modal.");
       onClose();
     }
   }, [taxonomyError, onClose]);
+
+  // --- Check if a specific attribute value is selected ---
+  const isAttributeValueSelected = (
+    categoryId: string,
+    attributeName: string,
+    value: string,
+  ): boolean => {
+    return selectedAttributeValues.some(
+      (item) =>
+        item.categoryId === categoryId &&
+        item.attributeName === attributeName &&
+        item.value === value,
+    );
+  };
+  // --- End Check ---
 
   return (
     <Modal show={show} size="4xl" popup onClose={onClose}>
@@ -162,14 +235,16 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
             <div className="space-y-4">
               <p className="text-gray-600 dark:text-gray-400">
                 Select topics to personalize your experience. Click a main topic
-                to see more options. Choose at least one specific interest.
+                to refine your interests by selecting specific features. Choose
+                at least one feature.
               </p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                {/* --- Render Top Level Categories --- */}
                 {topLevelCategories.map((category) => {
                   const isExpanded = expandedCategoryIds.includes(category.id);
-                  const subCategories = subCategoriesMap.get(category.id) || [];
-                  const hasSubCategories = subCategories.length > 0;
-                  // --- Ensure icon mapping uses the correct category name ---
+                  // Get attributes directly from the category object
+                  const attributes = category.attributes || [];
+                  const hasAttributes = attributes.length > 0;
                   const IconComponent =
                     categoryIcons[category.name] || DefaultIcon;
 
@@ -177,19 +252,15 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                     <div key={category.id} className="flex flex-col">
                       <Card
                         onClick={
-                          hasSubCategories
+                          hasAttributes
                             ? () => handleExpandCategory(category.id)
-                            : undefined
+                            : undefined // No action if no attributes
                         }
-                        className={`h-full cursor-pointer transition-all duration-150 ${isExpanded ? "ring-2 ring-blue-500 dark:ring-blue-400" : "hover:bg-gray-50 dark:hover:bg-gray-600"}`}
+                        className={`h-full transition-all duration-150 ${hasAttributes ? "cursor-pointer" : "cursor-default"} ${isExpanded ? "ring-2 ring-blue-500 dark:ring-blue-400" : hasAttributes ? "hover:bg-gray-50 dark:hover:bg-gray-600" : ""}`}
                       >
-                        {/* --- Centering Content --- */}
-                        {/* The flex container with items-center should center the content horizontally */}
+                        {/* Card Content (Icon, Title, Description) - Keep as is */}
                         <div className="flex h-full flex-col items-center justify-between p-3 text-center">
-                          {/* Content Block (Icon, Title, Description) */}
                           <div className="flex flex-col items-center">
-                            {" "}
-                            {/* Ensure this inner div also centers its items */}
                             <IconComponent className="mb-2 h-8 w-8 text-blue-600 dark:text-blue-500" />
                             <h5 className="text-md font-semibold text-gray-900 dark:text-white">
                               {category.name}
@@ -200,8 +271,8 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                               </p>
                             )}
                           </div>
-                          {/* Chevron Block */}
-                          {hasSubCategories && (
+                          {/* Chevron or Placeholder */}
+                          {hasAttributes && (
                             <div className="mt-2">
                               {isExpanded ? (
                                 <HiChevronUp className="h-5 w-5 text-gray-500" />
@@ -210,38 +281,52 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
                               )}
                             </div>
                           )}
-                          {!hasSubCategories && (
-                            <div className="mt-2 h-5 w-5"></div> // Placeholder for alignment
+                          {!hasAttributes && (
+                            <div className="mt-2 h-5 w-5"></div> // Placeholder
                           )}
                         </div>
-                        {/* --- End Centering Content --- */}
                       </Card>
 
-                      {isExpanded && hasSubCategories && (
-                        <div className="mt-2 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
-                          <h6 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Refine '{category.name}'
-                          </h6>
-                          <div className="flex flex-wrap gap-2">
-                            {subCategories.map((subCat) => {
-                              const isSelected =
-                                selectedSubCategoryIds.includes(subCat.id);
-                              return (
-                                <Badge
-                                  key={subCat.id}
-                                  color={isSelected ? "info" : "gray"}
-                                  onClick={() =>
-                                    handleSelectSubCategory(subCat.id)
-                                  }
-                                  className="cursor-pointer px-2 py-1 text-sm"
-                                >
-                                  {subCat.name}
-                                </Badge>
-                              );
-                            })}
-                          </div>
+                      {/* --- Render Attributes and Values when Expanded --- */}
+                      {isExpanded && hasAttributes && (
+                        <div className="mt-2 space-y-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
+                          {attributes.map((attribute) => (
+                            <div key={attribute.name}>
+                              <h6 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {attribute.description || attribute.name}{" "}
+                                {/* Use description or name */}
+                              </h6>
+                              <div className="flex flex-wrap gap-2">
+                                {(attribute.values || []).map((value) => {
+                                  const isSelected = isAttributeValueSelected(
+                                    category.id,
+                                    attribute.name,
+                                    value,
+                                  );
+                                  return (
+                                    <Button
+                                      key={value}
+                                      size="xs"
+                                      color={isSelected ? "blue" : "light"}
+                                      onClick={() =>
+                                        handleSelectAttributeValue(
+                                          category.id,
+                                          attribute.name,
+                                          value,
+                                        )
+                                      }
+                                      className="transition-colors duration-150"
+                                    >
+                                      {value}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
+                      {/* --- End Attribute Rendering --- */}
                     </div>
                   );
                 })}
@@ -254,7 +339,7 @@ export function InterestFormModal({ show, onClose }: InterestFormModalProps) {
           onClick={handleSubmit}
           disabled={
             isLoadingTaxonomy ||
-            selectedSubCategoryIds.length === 0 ||
+            selectedAttributeValues.length === 0 || // Disable if nothing selected
             updateUserPreferences.isPending
           }
         >
