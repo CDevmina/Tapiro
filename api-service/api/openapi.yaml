@@ -613,7 +613,7 @@ paths:
     get:
       tags: [User Management]
       summary: Get Recent User Data Submissions
-      description: Retrieves a list of recent data submissions made about the authenticated user.
+      description: Retrieves a list of recent data submissions made about the authenticated user, with optional filtering and searching.
       operationId: getRecentUserData
       parameters:
         - name: limit
@@ -630,9 +630,42 @@ paths:
           schema:
             type: integer
             default: 1
+        - name: dataType
+          in: query
+          description: Filter by data type (purchase or search)
+          required: false
+          schema:
+            type: string
+            enum: [purchase, search]
+        - name: storeId
+          in: query
+          description: Filter by store ID
+          required: false
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Filter by start date (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter by end date (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: searchTerm
+          in: query
+          description: Search term for entries (e.g., item name, search query)
+          required: false
+          schema:
+            type: string
       responses:
         "200":
-          description: Recent data submissions retrieved successfully
+          description: Recent user data retrieved successfully.
           content:
             application/json:
               schema:
@@ -641,6 +674,8 @@ paths:
                   $ref: "#/components/schemas/RecentUserDataEntry"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "500":
           $ref: "#/components/responses/InternalServerError"
       security:
@@ -701,6 +736,46 @@ paths:
       responses:
         "200":
           description: Store details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StoreBasicInfo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - oauth2: [user:read]
+      x-swagger-router-controller: StoreProfile
+
+  /stores/search:
+    get:
+      tags: [Store Management]
+      summary: Search Stores
+      description: Searches for stores by name. Requires authentication.
+      operationId: searchStores
+      parameters:
+        - name: query
+          in: query
+          description: The search term to look for in store names.
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          description: Maximum number of results to return.
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Stores matching the query retrieved successfully.
           content:
             application/json:
               schema:

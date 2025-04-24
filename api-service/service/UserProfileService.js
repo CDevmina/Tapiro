@@ -272,7 +272,7 @@ exports.deleteUserProfile = async function (req) {
  * Get Recent User Data Submissions
  * Retrieves a list of recent data submissions made about the authenticated user.
  */
-exports.getRecentUserData = async function (req, limit = 10, page = 1) {
+exports.getRecentUserData = async function (req, limit = 10, page = 1, dataType, storeId, startDate, endDate, searchTerm) { // Add new params
   try {
     const db = getDB();
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
@@ -285,36 +285,95 @@ exports.getRecentUserData = async function (req, limit = 10, page = 1) {
 
     const skip = (page - 1) * limit;
 
-    // Query userData collection
+    // --- Build the MongoDB query dynamically ---
+    const matchQuery = { userId: user._id };
+
+    if (dataType) {
+      matchQuery.dataType = dataType;
+    }
+    if (storeId) {
+      // Validate storeId format if necessary before querying
+      try {
+        matchQuery.storeId = new ObjectId(storeId);
+      } catch (e) {
+         console.warn(`Invalid storeId format provided: ${storeId}`);
+         // Decide how to handle: return empty, error, or ignore filter
+         return respondWithCode(400, { code: 400, message: 'Invalid store ID format provided.' });
+      }
+    }
+
+    // Date range filtering on the main document timestamp
+    const dateFilter = {};
+    if (startDate) {
+      try {
+        dateFilter.$gte = new Date(startDate);
+      } catch (e) { console.warn('Invalid startDate format:', startDate); }
+    }
+    if (endDate) {
+      try {
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1); // Include the whole end day
+        dateFilter.$lt = end;
+      } catch (e) { console.warn('Invalid endDate format:', endDate); }
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      matchQuery.timestamp = dateFilter;
+    }
+
+    // Search term filtering within entries (simple regex example)
+    // NOTE: For better performance on large datasets, consider a text index
+    // on 'entries.items.name', 'entries.items.category', 'entries.query', etc.
+    if (searchTerm) {
+      const regex = new RegExp(searchTerm, 'i'); // Case-insensitive regex
+      matchQuery.$or = [
+        { 'entries.items.name': regex },
+        { 'entries.items.category': regex },
+        { 'entries.query': regex },
+        // Add other fields within entries to search if needed
+      ];
+    }
+    // --- End Query Building ---
+
+    // Query userData collection with the built query
     const recentData = await db.collection('userData')
-      .find({ userId: user._id }) // Filter by the user's ObjectId
+      .find(matchQuery) // Use the dynamic query
       .sort({ timestamp: -1 }) // Sort by submission time descending
       .skip(skip)
       .limit(limit)
-      .project({ // Project only necessary fields for RecentUserDataEntry schema
+      .project({ // Expand projection to include details needed for display
         _id: 1,
         storeId: 1,
         dataType: 1,
         timestamp: 1, // Submission timestamp
-        entryTimestamp: '$entries.timestamp', // Assuming timestamp is within entries array
-        // Add simplified details if needed, e.g., item count or query string
-        // details: { $cond: { if: { $eq: ['$dataType', 'purchase'] }, then: { itemCount: { $size: '$entries.items' } }, else: '$entries.query' } }
+        entries: 1, // Include the full entries array for now
+        // Alternatively, project specific fields from entries if known:
+        // 'entries.timestamp': 1,
+        // 'entries.query': 1,
+        // 'entries.items.name': 1,
+        // 'entries.items.price': 1,
+        // 'entries.items.quantity': 1,
+        // 'entries.items.category': 1,
       })
       .toArray();
 
-    // Simple transformation if needed (e.g., flatten entryTimestamp if it's an array)
+    // Simple transformation (can be enhanced on frontend)
     const formattedData = recentData.map(entry => ({
-      ...entry,
-      // If entryTimestamp is an array due to projection, take the first element
-      entryTimestamp: Array.isArray(entry.entryTimestamp) ? entry.entryTimestamp[0] : entry.entryTimestamp,
-      // Add placeholder for details
-      details: {}
+      _id: entry._id.toString(), // Convert ObjectId to string
+      storeId: entry.storeId.toString(), // Convert ObjectId to string
+      dataType: entry.dataType,
+      timestamp: entry.timestamp,
+      // Process entries for simpler display structure if needed here,
+      // or handle it on the frontend. Example:
+      details: entry.entries.map(e => ({
+         timestamp: e.timestamp,
+         ...(entry.dataType === 'purchase' && { items: e.items }),
+         ...(entry.dataType === 'search' && { query: e.query, results: e.results }),
+      })),
     }));
 
-
-    // Caching could be added here if this data is frequently accessed
-    // const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${page}:${limit}`;
-    // await setCache(cacheKey, JSON.stringify(formattedData), { EX: CACHE_TTL.SHORT }); // Example TTL
+    // Caching: Consider if caching is appropriate with dynamic filters.
+    // If cached, the cache key MUST include all filter parameters.
+    // Example: const cacheKey = `${CACHE_KEYS.USER_RECENT_DATA}${user._id}:${page}:${limit}:${dataType || 'all'}:${storeId || 'all'}:${startDate || 'all'}:${endDate || 'all'}:${searchTerm || ''}`;
 
     return respondWithCode(200, formattedData);
 

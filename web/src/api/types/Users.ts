@@ -291,15 +291,16 @@ export class Users<
       ...params,
     });
   /**
-   * @description Retrieves a list of recent data submissions made about the authenticated user.
+   * @description Retrieves a list of recent data submissions made about the authenticated user, with optional filtering and searching.
    *
    * @tags User Management
    * @name GetRecentUserData
    * @summary Get Recent User Data Submissions
    * @request GET:/users/data/recent
    * @secure
-   * @response `200` `(RecentUserDataEntry)[]` Recent data submissions retrieved successfully
+   * @response `200` `(RecentUserDataEntry)[]` Recent user data retrieved successfully.
    * @response `401` `Error`
+   * @response `404` `Error`
    * @response `500` `Error`
    */
   getRecentUserData = (

@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
-import { User } from "../types/data-contracts";
+// Import GetRecentUserDataParams if not already imported
+import { User, GetRecentUserDataParams } from "../types/data-contracts";
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {
@@ -26,10 +27,21 @@ export const cacheKeys = {
     all: ["users"],
     profile: () => [...cacheKeys.users.all, "profile"],
     preferences: () => [...cacheKeys.users.all, "preferences"],
-    recentData: (limit: number, page: number) => [
+    // Update recentData to accept GetRecentUserDataParams
+    recentData: (params: GetRecentUserDataParams = {}) => [
+      // Default to empty object
       ...cacheKeys.users.all,
       "recentData",
-      { limit, page },
+      // Create a stable object key based on params
+      {
+        limit: params.limit ?? 10, // Default limit
+        page: params.page ?? 1, // Default page
+        dataType: params.dataType ?? "all",
+        storeId: params.storeId ?? "all",
+        startDate: params.startDate ?? "all",
+        endDate: params.endDate ?? "all",
+        searchTerm: params.searchTerm ?? "",
+      },
     ],
     // Update spendingAnalytics to accept optional dates
     spendingAnalytics: (startDate?: string, endDate?: string) => [

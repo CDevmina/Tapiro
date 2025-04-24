@@ -474,6 +474,22 @@ export interface GetRecentUserDataParams {
    * @default 1
    */
   page?: number;
+  /** Filter by data type (purchase or search) */
+  dataType?: "purchase" | "search";
+  /** Filter by store ID */
+  storeId?: string;
+  /**
+   * Filter by start date (ISO 8601 format YYYY-MM-DD)
+   * @format date
+   */
+  startDate?: string;
+  /**
+   * Filter by end date (ISO 8601 format YYYY-MM-DD)
+   * @format date
+   */
+  endDate?: string;
+  /** Search term for entries (e.g., item name, search query) */
+  searchTerm?: string;
 }
 
 export interface GetSpendingAnalyticsParams {
@@ -492,4 +508,17 @@ export interface GetSpendingAnalyticsParams {
 export interface LookupStoresParams {
   /** Comma-separated list of store IDs to lookup. */
   ids: string;
+}
+
+export interface SearchStoresParams {
+  /**
+   * The search term to look for in store names.
+   * @minLength 2
+   */
+  query: string;
+  /**
+   * Maximum number of results to return.
+   * @default 10
+   */
+  limit?: number;
 }

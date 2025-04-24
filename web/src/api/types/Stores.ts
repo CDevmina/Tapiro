@@ -18,6 +18,7 @@ import {
   Error,
   GetApiKeyUsagePayload,
   LookupStoresParams,
+  SearchStoresParams,
   Store,
   StoreBasicInfo,
   StoreCreate,
@@ -223,6 +224,28 @@ export class Stores<
   lookupStores = (query: LookupStoresParams, params: RequestParams = {}) =>
     this.request<StoreBasicInfo[], Error>({
       path: `/stores/lookup`,
+      method: "GET",
+      query: query,
+      secure: true,
+      format: "json",
+      ...params,
+    });
+  /**
+   * @description Searches for stores by name. Requires authentication.
+   *
+   * @tags Store Management
+   * @name SearchStores
+   * @summary Search Stores
+   * @request GET:/stores/search
+   * @secure
+   * @response `200` `(StoreBasicInfo)[]` Stores matching the query retrieved successfully.
+   * @response `400` `Error`
+   * @response `401` `Error`
+   * @response `500` `Error`
+   */
+  searchStores = (query: SearchStoresParams, params: RequestParams = {}) =>
+    this.request<StoreBasicInfo[], Error>({
+      path: `/stores/search`,
       method: "GET",
       query: query,
       secure: true,

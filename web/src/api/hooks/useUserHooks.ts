@@ -6,10 +6,10 @@ import {
   UserUpdate,
   User,
   RecentUserDataEntry,
-  // SpendingAnalytics, // <-- Remove old type if not used elsewhere
   StoreConsentList,
-  MonthlySpendingAnalytics, // <-- Import new type
-  GetSpendingAnalyticsParams, // <-- Import params type
+  MonthlySpendingAnalytics,
+  GetSpendingAnalyticsParams,
+  GetRecentUserDataParams, // <-- Import params type for recent data
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -159,21 +159,22 @@ export function useDeleteUserProfile() {
 
 // --- New Hooks ---
 
-export function useRecentUserData(limit: number = 10, page: number = 1) {
+// Update useRecentUserData to accept GetRecentUserDataParams
+export function useRecentUserData(params?: GetRecentUserDataParams) {
   const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
+  // Use the params object directly for the queryKey
+  const queryParams = params || {}; // Ensure params is an object
+
   return useQuery<RecentUserDataEntry[], Error>({
-    // Expect an array
-    queryKey: cacheKeys.users.recentData(limit, page),
+    queryKey: cacheKeys.users.recentData(queryParams), // Pass the params object
     queryFn: () =>
+      // Pass the params object to the API call
       apiClients.users
-        .getRecentUserData({ limit, page })
+        .getRecentUserData(queryParams) // Pass the whole object
         .then((res) => res.data),
     enabled: isAuthenticated && !authLoading && clientsReady,
-    // Add specific cache settings if needed, otherwise defaults apply
-    // ...cacheSettings.recentData, // Example
-    // Replace keepPreviousData with placeholderData for TanStack Query v5+
     placeholderData: (previousData) => previousData,
   });
 }

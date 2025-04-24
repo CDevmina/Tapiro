@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
-import { cacheKeys, cacheSettings, CACHE_TIMES } from "../utils/cache"; // <-- Import CACHE_TIMES
+import { cacheKeys, cacheSettings, CACHE_TIMES } from "../utils/cache";
 import {
   ApiKeyCreate,
   StoreUpdate,
-  StoreBasicInfo, // <-- Import StoreBasicInfo
+  StoreBasicInfo,
+  Error, // <-- Import Error type
+  SearchStoresParams, // <-- Import SearchStoresParams if generated
 } from "../types/data-contracts";
-import { useAuth } from "../../hooks/useAuth"; // Import useAuth
+import { useAuth } from "../../hooks/useAuth";
+import { useState, useEffect } from "react"; // <-- Import useState and useEffect for debounce
 
 export function useStoreProfile() {
   // Get clientsReady state
@@ -87,6 +90,49 @@ export function useApiKeyUsage(keyId: string) {
     // Update enabled check, keeping !!keyId
     enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
     ...cacheSettings.apiKeys,
+  });
+}
+
+// --- New Hook for Searching Stores ---
+export function useSearchStores(searchTerm: string, debounceMs = 300) {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  // Debounce effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, debounceMs);
+
+    // Cleanup function to cancel the timeout if searchTerm changes again quickly
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchTerm, debounceMs]);
+
+  // Define query parameters type if not auto-generated
+  // type SearchStoresParams = { query: string; limit?: number };
+
+  return useQuery<StoreBasicInfo[], Error>({
+    // Query key includes the debounced term
+    queryKey: [...cacheKeys.stores.all, "search", debouncedSearchTerm],
+    queryFn: () => {
+      // Prepare parameters for the API call
+      const params: SearchStoresParams = {
+        query: debouncedSearchTerm,
+        limit: 15,
+      }; // Adjust limit as needed
+      return apiClients.stores.searchStores(params).then((res) => res.data);
+    },
+    // Only run query if client is ready, user is authenticated,
+    // and the debounced search term is long enough
+    enabled:
+      clientsReady &&
+      isAuthenticated &&
+      !authLoading &&
+      debouncedSearchTerm.length >= 2, // Match backend validation
+    staleTime: CACHE_TIMES.MEDIUM, // Cache results for a bit
   });
 }
 
