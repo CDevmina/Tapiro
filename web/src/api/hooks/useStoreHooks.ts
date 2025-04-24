@@ -5,11 +5,21 @@ import {
   ApiKeyCreate,
   StoreUpdate,
   StoreBasicInfo,
-  Error, // <-- Import Error type
-  SearchStoresParams, // <-- Import SearchStoresParams if generated
+  Error,
+  SearchStoresParams,
+  GetApiKeyUsagePayload, // <-- Import payload type for usage stats
+  GetApiUsageLogParams, // <-- Import params type for usage log
+  ApiUsageLogEntry, // <-- Import log entry type
+  PaginationInfo, // <-- Import pagination info type
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth";
-import { useState, useEffect } from "react"; // <-- Import useState and useEffect for debounce
+import { useState, useEffect } from "react";
+
+// Define the expected response structure for getApiUsageLog
+interface ApiUsageLogResponse {
+  logs?: ApiUsageLogEntry[];
+  pagination?: PaginationInfo;
+}
 
 export function useStoreProfile() {
   // Get clientsReady state
@@ -78,22 +88,53 @@ export function useRevokeApiKey() {
   });
 }
 
-export function useApiKeyUsage(keyId: string) {
-  // Get clientsReady state
+// Update useApiKeyUsage to accept payload
+export function useApiKeyUsage(
+  keyId: string,
+  payload?: GetApiKeyUsagePayload, // Accept payload
+) {
   const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Include payload in the query key if present
+  // This object now matches the expected parameter type for the updated cache key
+  const queryKeyParams = { keyId, ...payload };
 
   return useQuery({
-    queryKey: cacheKeys.stores.apiKeyUsage(keyId),
+    // This call should now be valid
+    queryKey: cacheKeys.stores.apiKeyUsage(queryKeyParams),
     queryFn: () =>
-      apiClients.stores.getApiKeyUsage(keyId).then((res) => res.data),
-    // Update enabled check, keeping !!keyId
+      // Pass payload to the API call
+      apiClients.stores.getApiKeyUsage(keyId, payload).then((res) => res.data),
     enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
-    ...cacheSettings.apiKeys,
+    ...cacheSettings.apiKeys, // Consider specific cache settings for usage
   });
 }
 
-// --- New Hook for Searching Stores ---
+// --- New Hook for API Usage Log ---
+export function useApiUsageLog(params?: GetApiUsageLogParams) {
+  const { apiClients, clientsReady } = useApiClients();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Ensure params is always an object for the query key
+  const queryParams = params || {};
+
+  return useQuery<ApiUsageLogResponse, Error>({
+    // Use the defined response type
+    queryKey: cacheKeys.stores.apiUsageLog(queryParams), // Use the new cache key
+    queryFn: () =>
+      // Pass the queryParams object to the API client method
+      apiClients.stores.getApiUsageLog(queryParams).then((res) => res.data),
+    // Enable only when authenticated and client is ready
+    enabled: isAuthenticated && !authLoading && clientsReady,
+    // Keep previous data while fetching new page/filters
+    placeholderData: (previousData) => previousData,
+    // Consider specific cache settings for logs if needed
+    // staleTime: CACHE_TIMES.SHORT,
+  });
+}
+// --- End New Hook ---
+
 export function useSearchStores(searchTerm: string, debounceMs = 300) {
   const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth();

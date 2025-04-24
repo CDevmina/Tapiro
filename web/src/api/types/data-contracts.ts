@@ -450,6 +450,39 @@ export interface MonthlySpendingItem {
 /** An array of monthly spending breakdowns. */
 export type MonthlySpendingAnalytics = MonthlySpendingItem[];
 
+export interface ApiUsageLogEntry {
+  /** The unique ID of the log entry. */
+  _id?: string;
+  /** The ID of the store associated with the API key. */
+  storeId?: string;
+  /** The ID of the API key used. */
+  apiKeyId?: string;
+  /** The prefix of the API key used. */
+  apiKeyPrefix?: string;
+  /** The API endpoint accessed. */
+  endpoint?: string;
+  /** The HTTP method used. */
+  method?: string;
+  /**
+   * The timestamp when the request occurred.
+   * @format date-time
+   */
+  timestamp?: string;
+  /** The user agent of the client making the request. */
+  userAgent?: string;
+}
+
+export interface PaginationInfo {
+  /** The current page number. */
+  currentPage?: number;
+  /** The total number of pages available. */
+  totalPages?: number;
+  /** The total number of items matching the query. */
+  totalItems?: number;
+  /** The number of items per page. */
+  limit?: number;
+}
+
 export interface GetApiKeyUsagePayload {
   /**
    * Optional start date for filtering usage data
@@ -461,6 +494,31 @@ export interface GetApiKeyUsagePayload {
    * @format date
    */
   endDate?: string;
+}
+
+export interface GetApiUsageLogParams {
+  /** Filter logs by a specific API key ID. */
+  keyId?: string;
+  /**
+   * Filter logs from this date (inclusive).
+   * @format date
+   */
+  startDate?: string;
+  /**
+   * Filter logs up to this date (inclusive).
+   * @format date
+   */
+  endDate?: string;
+  /**
+   * Page number for pagination.
+   * @default 1
+   */
+  page?: number;
+  /**
+   * Number of logs per page.
+   * @default 15
+   */
+  limit?: number;
 }
 
 export interface GetRecentUserDataParams {

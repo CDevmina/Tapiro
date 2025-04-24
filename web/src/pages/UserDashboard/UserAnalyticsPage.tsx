@@ -33,10 +33,10 @@ import {
 import {
   useRecentUserData,
   useSpendingAnalytics,
-} from "../api/hooks/useUserHooks";
-import { useLookupStores } from "../api/hooks/useStoreHooks";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
+} from "../../api/hooks/useUserHooks";
+import { useLookupStores } from "../../api/hooks/useStoreHooks";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   RecentUserDataEntry, // Keep this import now
   StoreBasicInfo,
@@ -45,7 +45,7 @@ import {
   PurchaseItem, // Assuming PurchaseItem is the type for purchase details items
   PurchaseEntry, // <-- Import PurchaseEntry
   SearchEntry, // Assuming SearchEntry is the type for search details
-} from "../api/types/data-contracts";
+} from "../../api/types/data-contracts";
 
 // --- Helper Functions (Keep existing) ---
 const formatDate = (dateString: string | Date | undefined) => {

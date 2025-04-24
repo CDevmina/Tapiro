@@ -39,4 +39,14 @@ module.exports.getApiKeyUsage = function getApiKeyUsage(req, res, next, keyId) {
     .catch((response) => {
       utils.writeJson(res, response);
     });
-}
+};
+
+module.exports.getApiUsageLog = function getApiUsageLog(req, res, next) {
+  StoreManagement.getApiUsageLog(req)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

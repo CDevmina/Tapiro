@@ -1,6 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
 // Import GetRecentUserDataParams if not already imported
-import { User, GetRecentUserDataParams } from "../types/data-contracts";
+import {
+  User,
+  GetRecentUserDataParams,
+  GetApiUsageLogParams, // <-- Add this import
+  GetApiKeyUsagePayload, // <-- Import payload type
+} from "../types/data-contracts";
 
 // Cache time configurations (in milliseconds)
 export const CACHE_TIMES = {
@@ -24,48 +29,70 @@ export const queryClient = new QueryClient({
 // Cache keys for consistent query identification
 export const cacheKeys = {
   users: {
-    all: ["users"],
-    profile: () => [...cacheKeys.users.all, "profile"],
-    preferences: () => [...cacheKeys.users.all, "preferences"],
-    // Update recentData to accept GetRecentUserDataParams
-    recentData: (params: GetRecentUserDataParams = {}) => [
-      // Default to empty object
-      ...cacheKeys.users.all,
-      "recentData",
-      // Create a stable object key based on params
-      {
-        limit: params.limit ?? 10, // Default limit
-        page: params.page ?? 1, // Default page
-        dataType: params.dataType ?? "all",
-        storeId: params.storeId ?? "all",
-        startDate: params.startDate ?? "all",
-        endDate: params.endDate ?? "all",
-        searchTerm: params.searchTerm ?? "",
-      },
-    ],
-    // Update spendingAnalytics to accept optional dates
-    spendingAnalytics: (startDate?: string, endDate?: string) => [
-      ...cacheKeys.users.all,
-      "spendingAnalytics",
-      { startDate: startDate ?? "all", endDate: endDate ?? "all" }, // Use 'all' if undefined
-    ],
-    storeConsent: () => [...cacheKeys.users.all, "storeConsent"],
+    all: ["users"] as const,
+    profile: () => [...cacheKeys.users.all, "profile"] as const,
+    preferences: () => [...cacheKeys.users.all, "preferences"] as const,
+    storeConsent: () => [...cacheKeys.users.all, "storeConsent"] as const,
+    // Pass params object for recent data
+    recentData: (params: GetRecentUserDataParams = {}) =>
+      [
+        ...cacheKeys.users.all,
+        "recentData",
+        // Create a stable object key based on params
+        {
+          limit: params.limit ?? 10, // Default limit
+          page: params.page ?? 1, // Default page
+          dataType: params.dataType ?? "all",
+          storeId: params.storeId ?? "all",
+          startDate: params.startDate ?? "all",
+          endDate: params.endDate ?? "all",
+          searchTerm: params.searchTerm ?? "",
+        },
+      ] as const,
+    // Pass dates for spending analytics
+    spendingAnalytics: (startDate?: string, endDate?: string) =>
+      [
+        ...cacheKeys.users.all,
+        "spendingAnalytics",
+        { startDate: startDate ?? "all", endDate: endDate ?? "all" }, // Use 'all' if undefined
+      ] as const,
   },
   stores: {
-    all: ["stores"],
-    profile: () => [...cacheKeys.stores.all, "profile"],
-    apiKeys: () => [...cacheKeys.stores.all, "apiKeys"],
-    apiKeyUsage: (keyId: string) => [
-      ...cacheKeys.stores.apiKeys(),
-      keyId,
-      "usage",
-    ],
-    lookup: (ids: string[]) => [...cacheKeys.stores.all, "lookup", ids],
+    all: ["stores"] as const,
+    profile: () => [...cacheKeys.stores.all, "profile"] as const,
+    apiKeys: () => [...cacheKeys.stores.all, "apiKeys"] as const,
+    // Update apiKeyUsage to accept an object with keyId and optional dates
+    apiKeyUsage: (
+      params: { keyId: string } & GetApiKeyUsagePayload, // <-- Accept object
+    ) =>
+      [
+        ...cacheKeys.stores.all,
+        "apiKeyUsage",
+        // Create a stable object key
+        {
+          keyId: params.keyId,
+          startDate: params.startDate ?? "all",
+          endDate: params.endDate ?? "all",
+        },
+      ] as const,
+    // Add key for API usage log, accepting filter params
+    apiUsageLog: (params: GetApiUsageLogParams) =>
+      [
+        // <-- New Key
+        ...cacheKeys.stores.all,
+        "apiUsageLog",
+        params,
+      ] as const,
+    lookup: (ids: string[]) =>
+      [...cacheKeys.stores.all, "lookup", ids] as const,
+    search: (query: string) =>
+      [...cacheKeys.stores.all, "search", query] as const,
   },
   system: {
-    health: () => ["system", "health"],
-    ping: () => ["system", "ping"],
-    taxonomy: () => ["system", "taxonomy"],
+    all: ["system"] as const,
+    health: () => [...cacheKeys.system.all, "health"] as const,
+    ping: () => [...cacheKeys.system.all, "ping"] as const,
+    taxonomy: () => [...cacheKeys.system.all, "taxonomy"] as const,
   },
 };
 

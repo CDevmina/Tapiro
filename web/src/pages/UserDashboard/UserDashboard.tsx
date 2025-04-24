@@ -49,17 +49,17 @@ import {
   useSpendingAnalytics,
   useStoreConsentLists,
   useUserPreferences,
-} from "../api/hooks/useUserHooks";
-import { useLookupStores } from "../api/hooks/useStoreHooks";
-import { useTaxonomy } from "../api/hooks/useTaxonomyHooks";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
+} from "../../api/hooks/useUserHooks";
+import { useLookupStores } from "../../api/hooks/useStoreHooks";
+import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   RecentUserDataEntry,
   StoreBasicInfo,
   MonthlySpendingItem,
-} from "../api/types/data-contracts";
-import { InterestFormModal } from "../components/auth/InterestFormModal";
+} from "../../api/types/data-contracts";
+import { InterestFormModal } from "../../components/auth/InterestFormModal";
 
 // Helper function to format date (keep existing)
 const formatDate = (dateString: string | Date | undefined) => {

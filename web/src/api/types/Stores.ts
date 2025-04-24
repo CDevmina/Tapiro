@@ -15,9 +15,12 @@ import {
   ApiKeyCreate,
   ApiKeyList,
   ApiKeyUsage,
+  ApiUsageLogEntry,
   Error,
   GetApiKeyUsagePayload,
+  GetApiUsageLogParams,
   LookupStoresParams,
+  PaginationInfo,
   SearchStoresParams,
   Store,
   StoreBasicInfo,
@@ -205,6 +208,40 @@ export class Stores<
       body: data,
       secure: true,
       type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+ * @description Retrieves a paginated list of detailed API usage logs for the authenticated store, with optional filtering.
+ *
+ * @tags Store Management
+ * @name GetApiUsageLog
+ * @summary Get API usage log
+ * @request GET:/stores/api-usage-log
+ * @secure
+ * @response `200` `{
+    logs?: (ApiUsageLogEntry)[],
+    pagination?: PaginationInfo,
+
+}` A paginated list of API usage logs.
+ * @response `400` `Error`
+ * @response `401` `Error`
+ * @response `403` `Error`
+ * @response `404` `Error`
+ * @response `500` `Error`
+ */
+  getApiUsageLog = (query: GetApiUsageLogParams, params: RequestParams = {}) =>
+    this.request<
+      {
+        logs?: ApiUsageLogEntry[];
+        pagination?: PaginationInfo;
+      },
+      Error
+    >({
+      path: `/stores/api-usage-log`,
+      method: "GET",
+      query: query,
+      secure: true,
       format: "json",
       ...params,
     });

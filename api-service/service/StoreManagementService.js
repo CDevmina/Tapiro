@@ -280,3 +280,89 @@ exports.getApiKeyUsage = async function (req, keyId) {
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
+
+/**
+ * Get API Usage Log
+ * Get paginated detailed usage logs for the store's API keys
+ */
+exports.getApiUsageLog = async function (req) {
+  try {
+    const db = getDB();
+
+    // Get user data (store owner)
+    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+
+    // Find the store to ensure it exists and get its ID
+    const store = await db.collection('stores').findOne(
+      { auth0Id: userData.sub },
+      { projection: { _id: 1 } } // Only need the store's _id
+    );
+    if (!store) {
+      return respondWithCode(404, { code: 404, message: 'Store not found' });
+    }
+    const storeId = store._id.toString();
+
+    // Get query parameters
+    const { keyId, startDate, endDate } = req.query;
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '15', 10);
+    const skip = (page - 1) * limit;
+
+    // Build the query filter
+    const filter = { storeId: storeId }; // Filter by the authenticated store
+
+    if (keyId) {
+      // Optional: Validate if keyId belongs to this store?
+      // For now, just filter by it if provided.
+      filter.apiKeyId = keyId;
+    }
+
+    const dateFilter = {};
+    if (startDate) {
+      try {
+        dateFilter.$gte = new Date(startDate);
+      } catch (e) {
+        return respondWithCode(400, { code: 400, message: 'Invalid startDate format' });
+      }
+    }
+    if (endDate) {
+      try {
+        // Add 1 day to endDate to make it inclusive of the whole day
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1);
+        dateFilter.$lt = end; // Use $lt with the next day
+      } catch (e) {
+        return respondWithCode(400, { code: 400, message: 'Invalid endDate format' });
+      }
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      filter.timestamp = dateFilter;
+    }
+
+    // Get total count for pagination
+    const totalItems = await db.collection('apiUsage').countDocuments(filter);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // Get paginated logs, sorted by timestamp descending
+    const logs = await db.collection('apiUsage')
+      .find(filter)
+      .sort({ timestamp: -1 }) // Show most recent first
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    return respondWithCode(200, {
+      logs,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        limit,
+      },
+    });
+
+  } catch (error) {
+    console.error('Get API usage log failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};

@@ -34,15 +34,15 @@ import {
   useUpdateUserProfile,
   useUserPreferences,
   useUpdateUserPreferences,
-} from "../api/hooks/useUserHooks";
-import { useTaxonomy } from "../api/hooks/useTaxonomyHooks";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
+} from "../../api/hooks/useUserHooks";
+import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   UserUpdate,
   PreferenceItem,
   TaxonomyCategory,
-} from "../api/types/data-contracts";
+} from "../../api/types/data-contracts";
 
 // --- Form Types ---
 type DemographicsFormData = Pick<
