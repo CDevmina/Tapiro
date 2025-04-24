@@ -14,11 +14,7 @@ import StoreDashboard from "./pages/StoreDashboard/StoreDashboard";
 import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
-import UserProfilePage from "./pages/UserDashboard/UserProfilePage";
 import StoreProfilePage from "./pages/StoreDashboard/StoreProfilePage";
-import UserPreferencesPage from "./pages/UserDashboard/UserPreferencesPage";
-import UserDataSharingPage from "./pages/UserDashboard/UserDataSharingPage";
-import UserAnalyticsPage from "./pages/UserDashboard/UserAnalyticsPage";
 
 const router = createBrowserRouter([
   {
@@ -48,24 +44,6 @@ const router = createBrowserRouter([
           {
             path: "dashboard/user",
             element: <UserDashboard />,
-          },
-          // Add User Profile Route
-          {
-            path: "profile/user",
-            element: <UserProfilePage />,
-          },
-          // --- Add New User Dashboard Sub-routes ---
-          {
-            path: "profile/user/preferences", // Route for preferences
-            element: <UserPreferencesPage />,
-          },
-          {
-            path: "profile/user/sharing", // Route for data sharing
-            element: <UserDataSharingPage />,
-          },
-          {
-            path: "profile/user/analytics", // Route for analytics
-            element: <UserAnalyticsPage />,
           },
         ],
       },

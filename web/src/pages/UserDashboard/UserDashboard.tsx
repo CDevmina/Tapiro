@@ -1,5 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
-import { Link } from "react-router"; // <-- Corrected import
+import React, { useState, useMemo, useEffect } from "react"; // <-- Import useState, useEffect
 import {
   Card,
   Alert,
@@ -13,7 +12,9 @@ import {
   ListItem,
   Datepicker,
   Button,
-  Spinner, // <-- Import Spinner for inline loading
+  Spinner,
+  Tabs,
+  TabItem,
 } from "flowbite-react";
 import {
   HiArrowRight,
@@ -28,21 +29,23 @@ import {
   HiOutlineCake,
   HiOutlineCash,
   HiOutlineUserCircle,
+  HiOutlineViewGrid,
+  HiOutlineSparkles,
+  HiOutlineChartPie,
 } from "react-icons/hi";
 import {
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip, // Alias Tooltip to avoid conflict
+  Legend as RechartsLegend, // Alias Legend
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  Cell,
-  PieChart,
-  Pie,
 } from "recharts";
-
 import {
   useUserProfile,
   useRecentUserData,
@@ -55,11 +58,16 @@ import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
-  RecentUserDataEntry,
   StoreBasicInfo,
   MonthlySpendingItem,
 } from "../../api/types/data-contracts";
 import { InterestFormModal } from "../../components/auth/InterestFormModal";
+
+// --- Import Page Components ---
+import UserPreferencesPage from "./UserPreferencesPage";
+import UserDataSharingPage from "./UserDataSharingPage";
+import UserAnalyticsPage from "./UserAnalyticsPage";
+// --- End Import Page Components ---
 
 // Helper function to format date (keep existing)
 const formatDate = (dateString: string | Date | undefined) => {
@@ -183,7 +191,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
         <Spinner size="xs" />
       ) : (
         <p className="text-sm font-semibold text-gray-900 dark:text-white">
-          {value ?? "--"} {/* Display '--' if value is null/undefined */}
+          {value || "Not set"}
         </p>
       )}
     </div>
@@ -192,6 +200,9 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
 // --- End Mini Demographic Card Component ---
 
 export default function UserDashboard() {
+  // --- State for Active Tab ---
+  const [activeTab, setActiveTab] = useState(0); // 0 = Overview, 1 = Profile, etc.
+
   // --- State for Date Range ---
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -272,9 +283,7 @@ export default function UserDashboard() {
     const processedData = spendingData.map((item: MonthlySpendingItem) => {
       const monthEntry = dataMap.get(item.month) || { month: item.month };
       allCategories.forEach((cat) => {
-        if (!(cat in monthEntry)) {
-          monthEntry[cat] = 0;
-        }
+        if (!(cat in monthEntry)) monthEntry[cat] = 0; // Ensure all categories exist for each month
       });
       return monthEntry;
     });
@@ -311,7 +320,6 @@ export default function UserDashboard() {
       let currentId: string | null | undefined = categoryId; // Allow undefined
       let topLevelId: string = categoryId;
       let safety = 0; // Prevent infinite loops
-
       while (currentId != null && safety < 10) {
         // Check for null or undefined
         const parentId = parentMap.get(currentId);
@@ -328,7 +336,7 @@ export default function UserDashboard() {
     };
 
     // Aggregate scores by top-level category
-    const aggregatedScores = new Map<string, { name: string; score: number }>();
+    const aggregatedScores = new Map<string, { name: string; value: number }>(); // Use 'value' for PieChart
     preferencesData.preferences.forEach((pref) => {
       if (pref.category && pref.score != null) {
         // Use pref.category
@@ -336,43 +344,33 @@ export default function UserDashboard() {
         if (topLevelCat) {
           const current = aggregatedScores.get(topLevelCat.id) || {
             name: topLevelCat.name,
-            score: 0,
+            value: 0, // Use 'value'
           };
-          current.score += pref.score;
+          current.value += pref.score; // Add score to value
           aggregatedScores.set(topLevelCat.id, current);
         }
       }
     });
 
-    // Convert map to array suitable for PieChart, calculate total score
-    let totalScore = 0;
-    const chartData = Array.from(aggregatedScores.values()).map((item) => {
-      totalScore += item.score;
-      return { name: item.name, value: item.score }; // Use 'value' for PieChart
-    });
+    // Convert map to array suitable for PieChart
+    const chartData = Array.from(aggregatedScores.values());
 
-    // Normalize scores to percentages (optional, but good for display)
-    // If totalScore is 0, avoid division by zero
-    if (totalScore > 0) {
-      return chartData.map((item) => ({
-        ...item,
-        value: (item.value / totalScore) * 100, // Normalize to percentage
-      }));
-    } else {
-      // Handle case where all scores are 0 or negative (unlikely but possible)
-      return chartData.map((item) => ({ ...item, value: 0 }));
-    }
+    // Optional: Normalize scores to percentages if needed, or just use raw scores
+    // For PieChart, raw values usually work fine as it calculates percentages internally.
+
+    // Filter out items with zero or negative score if necessary
+    return chartData.filter((item) => item.value > 0);
   }, [preferencesData, taxonomyData]);
 
   // --- Loading and Error States (Checked AFTER hooks) ---
-  const isLoading =
+  const isLoadingInitial =
     profileLoading ||
     activityLoading ||
     spendingLoading ||
     consentLoading ||
     preferencesLoading ||
     storesLoading ||
-    taxonomyLoading; // <-- Add taxonomy loading
+    taxonomyLoading; // Combined loading state for initial dashboard view
 
   const combinedError =
     profileError ||
@@ -381,7 +379,7 @@ export default function UserDashboard() {
     consentError ||
     preferencesError ||
     storesError ||
-    taxonomyError; // <-- Add taxonomy error
+    taxonomyError; // Combined error state
 
   const [showInterestForm, setShowInterestForm] = useState(false);
 
@@ -396,16 +394,16 @@ export default function UserDashboard() {
     }
   }, [preferencesData, preferencesLoading]);
 
-  // Adjust initial loading state check if needed
-  if (isLoading && !profile && !spendingData && !preferencesData) {
+  // Show main spinner only if loading initial data for the overview
+  if (isLoadingInitial && activeTab === 0) {
     return <LoadingSpinner message="Loading your dashboard..." />;
   }
 
-  // Adjust combined error check if needed
-  if (combinedError && !profile && !spendingData && !preferencesData) {
+  // Show main error only if error occurred and trying to view overview
+  if (combinedError && activeTab === 0) {
     return (
       <ErrorDisplay
-        title="Failed to load dashboard"
+        title="Failed to load dashboard overview"
         message="Could not retrieve all dashboard information. Please try again later."
         error={combinedError}
       />
@@ -415,369 +413,422 @@ export default function UserDashboard() {
   // --- Render Dashboard ---
   return (
     <>
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">
-          Welcome back, {profile?.username || "User"}!
-        </h2>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* --- Recent Activity Card --- */}
-          <Card className="col-span-1 flex flex-col">
-            <div className="flex-grow">
-              <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                <HiOutlineNewspaper className="mr-2 h-5 w-5" />
-                Recent Activity
-              </h3>
-              {activityError ? (
-                <Alert color="failure" icon={HiInformationCircle}>
-                  Could not load recent activity.
-                </Alert>
-              ) : !recentActivity || recentActivity.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">
-                  No recent activity found.
-                </p>
-              ) : (
-                <div className="p-4">
-                  <Timeline>
-                    {recentActivity.map(
-                      (
-                        activity: RecentUserDataEntry, // No change needed here, map will iterate over 3 items max
-                      ) => (
-                        <TimelineItem key={activity._id}>
-                          <TimelinePoint icon={HiClock} />
-                          <TimelineContent>
-                            <TimelineTime>
-                              {formatDate(activity.timestamp)}
-                            </TimelineTime>
-                            <TimelineTitle>
-                              {activity.dataType === "purchase"
-                                ? "Purchase"
-                                : "Search"}{" "}
-                              from{" "}
-                              {activity.storeId
-                                ? storeNameMap.get(activity.storeId) ||
-                                  `Store ID: ${activity.storeId}`
-                                : "Unknown Store"}
-                            </TimelineTitle>
-                            {/* Add more details if needed */}
-                            {/* <TimelineBody>Details about the activity...</TimelineBody> */}
-                          </TimelineContent>
-                        </TimelineItem>
-                      ),
-                    )}
-                  </Timeline>
-                </div>
-              )}
-            </div>
-            <Link
-              to="/profile/user/analytics"
-              className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
-            >
-              View All Activity <HiArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Card>
-
-          {/* --- Spending Overview Card --- */}
-          <Card className="lg:col-span- col-span-1 flex flex-col md:col-span-2">
-            {" "}
-            {/* Make spending full width on large screens */}
-            <div className="flex-grow">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-                <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                  <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
-                  Spending Overview
-                </h3>
-                <div className="flex flex-row items-center gap-2">
-                  <Datepicker
-                    icon={HiCalendar}
-                    value={startDate ?? undefined}
-                    onChange={(date: Date | null) => setStartDate(date)}
-                    maxDate={endDate || undefined}
-                    className="w-full"
-                    placeholder="Start Date"
-                  />
-                  <Datepicker
-                    icon={HiCalendar}
-                    value={endDate ?? undefined}
-                    onChange={(date: Date | null) => setEndDate(date)}
-                    minDate={startDate || undefined}
-                    className="w-full"
-                    placeholder="End Date"
-                  />
-                  {(startDate || endDate) && (
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => {
-                        setStartDate(null);
-                        setEndDate(null);
-                      }}
-                      title="Clear date range"
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
+      <div className="container mx-auto px-4 py-12">
+        {/* Control Tabs with state */}
+        <Tabs
+          aria-label="User dashboard tabs"
+          variant="underline"
+          onActiveTabChange={(tab) => setActiveTab(tab)}
+        >
+          {/* Overview Tab (Existing Content) */}
+          <TabItem
+            active={activeTab === 0}
+            title="Overview"
+            icon={HiOutlineViewGrid}
+          >
+            {/* Show loading/error specific to overview if needed, or rely on main checks */}
+            {profileLoading ||
+            activityLoading ||
+            spendingLoading ||
+            consentLoading ||
+            preferencesLoading ||
+            storesLoading ||
+            taxonomyLoading ? (
+              <div className="pt-4">
+                <LoadingSpinner message="Loading overview data..." />
               </div>
-
-              {spendingError ? (
-                <Alert color="failure" icon={HiInformationCircle}>
-                  Could not load spending data for the selected range.
-                </Alert>
-              ) : spendingLoading ? (
-                <div className="flex h-[250px] items-center justify-center">
-                  <LoadingSpinner message="Loading spending data..." />
-                </div>
-              ) : !lineChartData || lineChartData.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">
-                  No spending data available
-                  {startDate || endDate ? " for this period" : " yet"}.
-                </p>
-              ) : (
-                <div style={{ width: "100%", height: 300 }}>
-                  <ResponsiveContainer>
-                    <LineChart
-                      data={lineChartData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tickFormatter={formatMonth} />
-                      <YAxis tickFormatter={formatCurrency} />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        labelFormatter={formatMonth}
-                      />
-                      <Legend />
-                      {categories.map((category, index) => (
-                        <Line
-                          key={category}
-                          type="monotone"
-                          dataKey={category}
-                          stroke={LINE_COLORS[index % LINE_COLORS.length]}
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 6 }}
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
-            <Link
-              to="/profile/user/analytics"
-              className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
-            >
-              View Detailed Analytics <HiArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Card>
-
-          {/* --- Data Sharing Card --- */}
-          <Card className="col-span-1 flex flex-col">
-            {" "}
-            {/* Ensure flex-col */}
-            <div className="flex-grow">
-              {" "}
-              {/* Content takes available space */}
-              <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                <HiOutlineShare className="mr-2 h-5 w-5" />
-                Data Sharing
-              </h3>
-              {/* Specific Loading State for this Card */}
-              {consentLoading || storesLoading ? (
-                <div className="flex h-full min-h-[100px] items-center justify-center py-4">
-                  {" "}
-                  {/* Center spinner, add min-height */}
-                  <Spinner size="md" />
-                </div>
-              ) : consentError || storesError ? (
-                <Alert color="failure" icon={HiInformationCircle}>
-                  Could not load sharing status.
-                </Alert>
-              ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
-                <div className="flex h-full min-h-[100px] items-center justify-center">
-                  {" "}
-                  {/* Center empty state, add min-height */}
-                  <p className="text-center text-gray-500 dark:text-gray-400">
-                    You are not currently sharing data with any stores.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-                    You are sharing data with{" "}
-                    <span className="font-semibold text-gray-800 dark:text-white">
-                      {consentLists?.optInStores?.length}
-                    </span>{" "}
-                    store(s):
-                  </p>
-                  {/* Use a slightly more styled list */}
-                  <List
-                    unstyled
-                    className="mb-4 max-h-40 space-y-2 overflow-y-auto pr-2"
-                  >
-                    {" "}
-                    {/* Add max-height and scroll */}
-                    {consentLists?.optInStores?.slice(0, 5).map((storeId) => (
-                      <ListItem
-                        key={storeId}
-                        className="rounded-md bg-gray-50 px-3 py-1 text-sm text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                      >
-                        {storeNameMap.get(storeId) || `Store ID: ${storeId}`}
-                      </ListItem>
-                    ))}
-                    {(consentLists?.optInStores?.length ?? 0) > 5 && (
-                      <ListItem className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        ... and {consentLists!.optInStores!.length - 5} more
-                      </ListItem>
+            ) : profileError ||
+              activityError ||
+              spendingError ||
+              consentError ||
+              preferencesError ||
+              storesError ||
+              taxonomyError ? (
+              <div className="pt-4">
+                <ErrorDisplay
+                  title="Error Loading Overview"
+                  message="Some overview data could not be loaded."
+                  error={
+                    profileError ||
+                    activityError ||
+                    spendingError ||
+                    consentError ||
+                    preferencesError ||
+                    storesError ||
+                    taxonomyError
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* --- Recent Activity Card --- */}
+                <Card className="col-span-1 flex flex-col lg:col-span-1">
+                  <div className="flex-grow">
+                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                      <HiOutlineNewspaper className="mr-2 h-5 w-5" />
+                      Recent Activity
+                    </h3>
+                    {activityLoading ? (
+                      <div className="flex h-full min-h-[150px] items-center justify-center">
+                        <Spinner size="md" />
+                      </div>
+                    ) : activityError ? (
+                      <Alert color="failure" icon={HiInformationCircle}>
+                        Could not load recent activity.
+                      </Alert>
+                    ) : !recentActivity || recentActivity.length === 0 ? (
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No recent activity recorded.
+                      </p>
+                    ) : (
+                      <div className="p-4">
+                        <Timeline>
+                          {recentActivity.map((entry) => (
+                            <TimelineItem key={entry._id}>
+                              <TimelinePoint icon={HiClock} />
+                              <TimelineContent>
+                                <TimelineTime>
+                                  {formatDate(entry.timestamp)}
+                                </TimelineTime>
+                                <TimelineTitle className="capitalize">
+                                  {entry.dataType}
+                                  {entry.storeId &&
+                                    ` at ${storeNameMap.get(entry.storeId) || "a store"}`}
+                                </TimelineTitle>
+                                {/* Add more details if needed */}
+                              </TimelineContent>
+                            </TimelineItem>
+                          ))}
+                        </Timeline>
+                      </div>
                     )}
-                  </List>
-                </>
-              )}
-            </div>
-            {/* Link stays at the bottom */}
-            <Link
-              to="/profile/user/sharing"
-              className="mt-auto inline-flex items-center self-start pt-2 text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500" // Use mt-auto and pt-2
-            >
-              Manage Sharing Settings <HiArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Card>
+                  </div>
+                  {/* Update Link to Button to change tab */}
+                  <Button
+                    color="light"
+                    size="sm"
+                    className="mt-4 self-start"
+                    onClick={() => setActiveTab(4)} // 4 = Analytics Tab Index
+                  >
+                    View All Activity <HiArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Card>
 
-          {/* --- Preferences & Demographics Card --- */}
-          {/* Make this card span 2 columns on medium screens and up */}
-          <Card className="col-span-1 flex flex-col md:col-span-2">
-            <div className="flex-grow">
-              {/* Main Title */}
-              <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                <HiOutlineAdjustments className="mr-2 h-5 w-5" />
-                Preference & Profile Overview
-              </h3>
-
-              {/* Grid for Pie Chart and Demographics */}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Pie Chart Section */}
-                <div className="flex flex-col">
-                  <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
-                    Top Interests
-                  </h4>
-                  {preferencesError || taxonomyError ? (
-                    <Alert color="failure" icon={HiInformationCircle}>
-                      Could not load preference data.
-                    </Alert>
-                  ) : preferencesLoading || taxonomyLoading ? (
-                    <div className="flex h-[250px] items-center justify-center">
-                      <LoadingSpinner message="Loading preferences..." />
+                {/* --- Spending Overview Card --- */}
+                <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-2">
+                  <div className="flex-grow">
+                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                      <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
+                      Spending Overview
+                    </h3>
+                    {/* Date Filters */}
+                    <div className="mb-4 flex flex-wrap items-center gap-4">
+                      <Datepicker
+                        icon={HiCalendar}
+                        value={startDate || undefined} // Use || undefined
+                        onChange={(date: Date | null) => setStartDate(date)}
+                        maxDate={endDate || undefined}
+                        placeholder="Start Date"
+                      />
+                      <Datepicker
+                        icon={HiCalendar}
+                        value={endDate || undefined} // Use || undefined
+                        onChange={(date: Date | null) => setEndDate(date)}
+                        minDate={startDate || undefined}
+                        placeholder="End Date"
+                      />
+                      {(startDate || endDate) && (
+                        <Button
+                          size="xs"
+                          color="light"
+                          onClick={() => {
+                            setStartDate(null);
+                            setEndDate(null);
+                          }}
+                        >
+                          Clear Dates
+                        </Button>
+                      )}
                     </div>
-                  ) : !preferencesPieChartData ||
-                    preferencesPieChartData.length === 0 ? (
-                    <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                      No preference data available yet. Add interests to see
-                      insights.
-                    </p>
-                  ) : (
-                    <div className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={preferencesPieChartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={renderCustomizedLabel}
-                            outerRadius={100}
-                            fill="#8884d8"
-                            dataKey="value"
-                            nameKey="name"
+                    {/* Chart Area */}
+                    {spendingError ? (
+                      <Alert color="failure" icon={HiInformationCircle}>
+                        Could not load spending data.
+                      </Alert>
+                    ) : spendingLoading ? (
+                      <div className="flex h-[300px] items-center justify-center">
+                        <Spinner size="lg" />
+                      </div>
+                    ) : !lineChartData || lineChartData.length === 0 ? (
+                      <p className="py-4 text-center text-gray-500 dark:text-gray-400">
+                        No spending data available
+                        {startDate || endDate ? " for this period" : " yet"}.
+                      </p>
+                    ) : (
+                      <div style={{ width: "100%", height: 300 }}>
+                        <ResponsiveContainer>
+                          <LineChart
+                            data={lineChartData}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                           >
-                            {preferencesPieChartData.map((_entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={LINE_COLORS[index % LINE_COLORS.length]}
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                              dataKey="month"
+                              tickFormatter={formatMonth}
+                            />
+                            <YAxis tickFormatter={formatCurrency} />
+                            <RechartsTooltip
+                              formatter={(value: number) =>
+                                formatCurrency(value)
+                              }
+                              labelFormatter={formatMonth}
+                            />
+                            <RechartsLegend />
+                            {categories.map((category, index) => (
+                              <Line
+                                key={category}
+                                type="monotone"
+                                dataKey={category}
+                                stroke={LINE_COLORS[index % LINE_COLORS.length]}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 6 }}
                               />
                             ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value: number) =>
-                              `${value.toFixed(1)}%`
-                            }
-                            contentStyle={{
-                              backgroundColor: "rgba(31, 41, 55, 0.9)",
-                              borderColor: "rgba(75, 85, 99, 0.5)",
-                              borderRadius: "0.375rem",
-                            }}
-                            itemStyle={{ color: "#e5e7eb" }}
-                            labelStyle={{
-                              color: "#f9fafb",
-                              fontWeight: "bold",
-                            }}
-                          />
-                          <Legend
-                            layout="horizontal"
-                            verticalAlign="bottom"
-                            align="center"
-                            wrapperStyle={{
-                              fontSize: "12px",
-                              marginTop: "10px",
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  <Link
-                    to="/profile/user/preferences"
-                    className="mt-4 inline-flex items-center self-start text-sm font-medium text-cyan-600 hover:underline dark:text-cyan-500"
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                  {/* Update Link to Button to change tab */}
+                  <Button
+                    color="light"
+                    size="sm"
+                    className="mt-4 self-start"
+                    onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
                   >
-                    Manage All Preferences{" "}
+                    View Detailed Analytics{" "}
                     <HiArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </div>
+                  </Button>
+                </Card>
 
-                {/* Demographics Section */}
-                <div className="flex flex-col">
-                  <h4 className="mb-6 text-base font-medium text-gray-700 dark:text-gray-300">
-                    About You
-                  </h4>
-                  {profileError ? (
-                    <Alert color="failure" icon={HiInformationCircle}>
-                      Could not load profile information.
-                    </Alert>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <DemoInfoCard
-                        icon={HiOutlineUserCircle}
-                        label="Gender"
-                        value={profile?.gender}
-                        isLoading={profileLoading}
-                      />
-                      <DemoInfoCard
-                        icon={HiOutlineCake}
-                        label="Age"
-                        value={profile?.age}
-                        isLoading={profileLoading}
-                      />
-                      <DemoInfoCard
-                        icon={HiOutlineGlobeAlt}
-                        label="Country"
-                        value={profile?.country}
-                        isLoading={profileLoading}
-                      />
-                      <DemoInfoCard
-                        icon={HiOutlineCash}
-                        label="Income"
-                        value={profile?.incomeBracket}
-                        isLoading={profileLoading}
-                      />
+                {/* --- Data Sharing Card --- */}
+                <Card className="col-span-1 flex flex-col">
+                  <div className="flex-grow">
+                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                      <HiOutlineShare className="mr-2 h-5 w-5" />
+                      Data Sharing
+                    </h3>
+                    {consentLoading || storesLoading ? (
+                      <div className="flex h-full min-h-[100px] items-center justify-center py-4">
+                        <Spinner size="md" />
+                      </div>
+                    ) : consentError || storesError ? (
+                      <Alert color="failure" icon={HiInformationCircle}>
+                        Could not load sharing settings.
+                      </Alert>
+                    ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
+                      <p className="text-gray-500 dark:text-gray-400">
+                        You are not currently sharing data with any stores.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
+                          You are sharing data with{" "}
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {consentLists?.optInStores?.length}
+                          </span>{" "}
+                          store(s):
+                        </p>
+                        <List unstyled className="max-h-24 overflow-y-auto">
+                          {(consentLists?.optInStores || [])
+                            .slice(0, 3) // Show first 3
+                            .map((storeId) => (
+                              <ListItem key={storeId} className="text-sm">
+                                {storeNameMap.get(storeId) ||
+                                  `Store ID: ${storeId}`}
+                              </ListItem>
+                            ))}
+                          {(consentLists?.optInStores?.length ?? 0) > 3 && (
+                            <ListItem className="text-sm text-gray-500">
+                              ...and more
+                            </ListItem>
+                          )}
+                        </List>
+                      </>
+                    )}
+                  </div>
+                  {/* Update Link to Button to change tab */}
+                  <Button
+                    color="light"
+                    size="sm"
+                    className="mt-4 self-start"
+                    onClick={() => setActiveTab(2)}
+                  >
+                    Manage Sharing Settings{" "}
+                    <HiArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Card>
+
+                {/* --- Preferences & Demographics Card --- */}
+                <Card className="col-span-1 flex flex-col md:col-span-2">
+                  <div className="flex-grow">
+                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                      <HiOutlineAdjustments className="mr-2 h-5 w-5" />
+                      Preference & Profile Overview
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      {/* Pie Chart Section */}
+                      <div className="flex flex-col">
+                        <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
+                          Top Interests
+                        </h4>
+                        {preferencesError || taxonomyError ? (
+                          <Alert color="failure" icon={HiInformationCircle}>
+                            Could not load preference data.
+                          </Alert>
+                        ) : preferencesLoading || taxonomyLoading ? (
+                          <div className="flex h-[250px] items-center justify-center">
+                            <Spinner>Loading preferences...</Spinner>
+                          </div>
+                        ) : !preferencesPieChartData ||
+                          preferencesPieChartData.length === 0 ? (
+                          <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                            No preference data available yet. Add interests to
+                            see insights.
+                          </p>
+                        ) : (
+                          <div className="h-[300px] w-full">
+                            <ResponsiveContainer>
+                              <PieChart>
+                                <Pie
+                                  data={preferencesPieChartData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={renderCustomizedLabel}
+                                  outerRadius={100}
+                                  fill="#8884d8"
+                                  dataKey="value" // Use 'value' as dataKey
+                                  nameKey="name" // Use 'name' as nameKey
+                                >
+                                  {preferencesPieChartData.map(
+                                    (_entry, index) => (
+                                      <Cell
+                                        key={`cell-${index}`}
+                                        fill={
+                                          LINE_COLORS[
+                                            index % LINE_COLORS.length
+                                          ]
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                </Pie>
+                                <RechartsTooltip
+                                  formatter={(value: number) =>
+                                    `${Math.round(value * 100)}% Interest`
+                                  }
+                                />
+                                <RechartsLegend />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                        {/* Update Link to Button to change tab */}
+                        <Button
+                          color="light"
+                          size="sm"
+                          className="mt-4 self-start"
+                          onClick={() => setActiveTab(2)} // 2 = Preferences Tab Index
+                        >
+                          Manage All Preferences{" "}
+                          <HiArrowRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Demographics Section */}
+                      <div className="flex flex-col">
+                        <h4 className="mb-6 text-base font-medium text-gray-700 dark:text-gray-300">
+                          About You
+                        </h4>
+                        {profileError ? (
+                          <Alert color="failure" icon={HiInformationCircle}>
+                            Could not load profile information.
+                          </Alert>
+                        ) : profileLoading ? (
+                          <div className="flex h-[250px] items-center justify-center">
+                            <Spinner>Loading profile...</Spinner>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <DemoInfoCard
+                              icon={HiOutlineUserCircle}
+                              label="Gender"
+                              value={profile?.gender}
+                              isLoading={profileLoading}
+                            />
+                            <DemoInfoCard
+                              icon={HiOutlineCake}
+                              label="Age"
+                              value={profile?.age}
+                              isLoading={profileLoading}
+                            />
+                            <DemoInfoCard
+                              icon={HiOutlineGlobeAlt}
+                              label="Country"
+                              value={profile?.country}
+                              isLoading={profileLoading}
+                            />
+                            <DemoInfoCard
+                              icon={HiOutlineCash}
+                              label="Income"
+                              value={profile?.incomeBracket}
+                              isLoading={profileLoading}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                </Card>
               </div>
-            </div>
-          </Card>
-        </div>
+            )}
+          </TabItem>
+
+          {/* Preferences Tab */}
+          <TabItem
+            active={activeTab === 1}
+            title="Preferences"
+            icon={HiOutlineSparkles}
+          >
+            {/* Render UserPreferencesPage directly */}
+            <UserPreferencesPage />
+          </TabItem>
+
+          {/* Sharing Tab */}
+          <TabItem
+            active={activeTab === 2}
+            title="Sharing"
+            icon={HiOutlineShare}
+          >
+            {/* Render UserDataSharingPage directly */}
+            <UserDataSharingPage />
+          </TabItem>
+
+          {/* Analytics Tab */}
+          <TabItem
+            active={activeTab === 3}
+            title="Analytics"
+            icon={HiOutlineChartPie}
+          >
+            {/* Render UserAnalyticsPage directly */}
+            <UserAnalyticsPage />
+          </TabItem>
+        </Tabs>
       </div>
 
+      {/* Interest Form Modal (Keep outside tabs) */}
       <InterestFormModal
         show={showInterestForm}
         onClose={() => setShowInterestForm(false)}
