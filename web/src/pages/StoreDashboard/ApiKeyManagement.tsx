@@ -37,6 +37,8 @@ import {
   useRevokeApiKey,
 } from "../../api/hooks/useStoreHooks";
 import { ApiKey } from "../../api/types/data-contracts"; // Removed unused ApiKeyCreate
+import LoadingSpinner from "../../components/common/LoadingSpinner"; // Import LoadingSpinner
+import ErrorDisplay from "../../components/common/ErrorDisplay"; // Import ErrorDisplay
 
 // Define a type for the response when creating a key, which includes the raw key
 interface GeneratedApiKeyResponse extends ApiKey {
@@ -195,13 +197,16 @@ export function ApiKeyManagement() {
         </Button>
       </div>
       {keysLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner size="lg" />
-        </div>
+        // Use LoadingSpinner component
+        <LoadingSpinner message="Loading API keys..." className="py-8" />
       ) : keysError ? (
-        <Alert color="failure" icon={HiInformationCircle}>
-          Failed to load API keys: {keysError.message}
-        </Alert>
+        // Use ErrorDisplay component
+        <ErrorDisplay
+          title="Error Loading Keys"
+          message="Could not load your API keys."
+          error={keysError}
+          className="py-4"
+        />
       ) : !apiKeysData || apiKeysData.length === 0 ? (
         <p className="py-4 text-center text-gray-500 dark:text-gray-400">
           No API keys generated yet.
@@ -222,12 +227,15 @@ export function ApiKeyManagement() {
                   key={key.keyId}
                   className="bg-white dark:border-gray-700 dark:bg-gray-800"
                 >
+                  {/* Key Name */}
                   <TableCell className="font-medium whitespace-nowrap text-gray-900 dark:text-white">
                     {key.name || <span className="italic">Unnamed Key</span>}
                   </TableCell>
+                  {/* Key Prefix */}
                   <TableCell>
                     <span className="font-mono">{key.prefix}...</span>
                   </TableCell>
+                  {/* Key Status */}
                   <TableCell>
                     <Badge
                       color={key.status === "active" ? "success" : "failure"}
@@ -236,7 +244,9 @@ export function ApiKeyManagement() {
                       {key.status}
                     </Badge>
                   </TableCell>
+                  {/* Created At */}
                   <TableCell>{formatDate(key.createdAt)}</TableCell>
+                  {/* Actions */}
                   <TableCell>
                     {key.status === "active" ? (
                       <Button
@@ -247,7 +257,12 @@ export function ApiKeyManagement() {
                           isRevokingKey && keyToRevoke?.keyId === key.keyId
                         }
                       >
-                        <HiTrash className="mr-1 h-4 w-4" />
+                        {/* Show spinner inside button when revoking this specific key */}
+                        {isRevokingKey && keyToRevoke?.keyId === key.keyId ? (
+                          <Spinner size="xs" className="mr-1" />
+                        ) : (
+                          <HiTrash className="mr-1 h-4 w-4" />
+                        )}
                         Revoke
                       </Button>
                     ) : (
@@ -316,6 +331,7 @@ export function ApiKeyManagement() {
               </div>
             </div>
           ) : (
+            // Form to generate key
             <form
               id="generate-key-form"
               onSubmit={(e) => {
@@ -348,12 +364,12 @@ export function ApiKeyManagement() {
             // Only show Close button after generation
             <Button onClick={closeGenerateModal}>Close</Button>
           ) : (
+            // Show Generate/Cancel buttons before generation
             <>
               <Button
                 type="submit"
                 form="generate-key-form"
-                // Remove isProcessing prop
-                disabled={isCreatingKey} // Only disable based on processing state
+                disabled={isCreatingKey} // Disable based on processing state
               >
                 {/* Conditionally render Spinner or Text */}
                 {isCreatingKey ? (
@@ -390,6 +406,7 @@ export function ApiKeyManagement() {
             <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
               Are you sure you want to revoke this API key?
             </h3>
+            {/* Display key details */}
             {keyToRevoke && (
               <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
                 Name:{" "}
@@ -410,7 +427,6 @@ export function ApiKeyManagement() {
               <Button
                 color="failure"
                 onClick={handleRevokeConfirm}
-                // Remove isProcessing prop
                 disabled={isRevokingKey}
               >
                 {/* Conditionally render Spinner or Text */}
@@ -431,7 +447,8 @@ export function ApiKeyManagement() {
                 Cancel
               </Button>
             </div>
-            {revokeKeyError && ( // Show error inside modal during revoke attempt
+            {/* Show error inside modal during revoke attempt */}
+            {revokeKeyError && (
               <Alert
                 color="failure"
                 icon={HiInformationCircle}
