@@ -9,16 +9,12 @@ import { Layout } from "./layout/Layout";
 import HomePage from "./pages/static/HomePage";
 import AboutPage from "./pages/static/AboutPage";
 import ApiDocsPage from "./pages/static/ApiDocsPage";
-import UserDashboard from "./pages/UserDashboard";
-import StoreDashboard from "./pages/StoreDashboard";
+import UserDashboard from "./pages/UserDashboard/UserDashboard";
+import StoreDashboard from "./pages/StoreDashboard/StoreDashboard";
 import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
-import UserProfilePage from "./pages/UserProfilePage";
-import StoreProfilePage from "./pages/StoreProfilePage";
-import UserPreferencesPage from "./pages/UserPreferencesPage";
-import UserDataSharingPage from "./pages/UserDataSharingPage";
-import UserAnalyticsPage from "./pages/UserAnalyticsPage";
+import StoreProfilePage from "./pages/StoreDashboard/StoreProfilePage";
 
 const router = createBrowserRouter([
   {
@@ -48,24 +44,6 @@ const router = createBrowserRouter([
           {
             path: "dashboard/user",
             element: <UserDashboard />,
-          },
-          // Add User Profile Route
-          {
-            path: "profile/user",
-            element: <UserProfilePage />,
-          },
-          // --- Add New User Dashboard Sub-routes ---
-          {
-            path: "profile/user/preferences", // Route for preferences
-            element: <UserPreferencesPage />,
-          },
-          {
-            path: "profile/user/sharing", // Route for data sharing
-            element: <UserDataSharingPage />,
-          },
-          {
-            path: "profile/user/analytics", // Route for analytics
-            element: <UserAnalyticsPage />,
           },
         ],
       },

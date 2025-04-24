@@ -29,11 +29,11 @@ import {
   useUserProfile,
   useUpdateUserProfile,
   useDeleteUserProfile, // Import delete hook
-} from "../api/hooks/useUserHooks";
-import { UserUpdate } from "../api/types/data-contracts";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
-import { useAuth } from "../hooks/useAuth"; // Import useAuth for logout
+} from "../../api/hooks/useUserHooks";
+import { UserUpdate } from "../../api/types/data-contracts";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth for logout
 
 // Define the form data structure based on UserUpdate schema
 type UserProfileFormData = {

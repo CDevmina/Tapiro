@@ -28,11 +28,11 @@ import {
   useStoreProfile,
   useUpdateStoreProfile,
   useDeleteStoreProfile, // Import delete hook
-} from "../api/hooks/useStoreHooks";
-import { StoreUpdate } from "../api/types/data-contracts";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
-import { useAuth } from "../hooks/useAuth"; // Import useAuth for logout
+} from "../../api/hooks/useStoreHooks";
+import { StoreUpdate } from "../../api/types/data-contracts";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth for logout
 
 // Define the form data structure based on StoreUpdate schema
 type StoreProfileFormData = {

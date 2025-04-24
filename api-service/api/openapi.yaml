@@ -533,6 +533,75 @@ paths:
         - oauth2: [store:read]
       x-swagger-router-controller: StoreManagement
 
+  /stores/api-usage-log:
+    get:
+      tags: [Store Management]
+      summary: Get API usage log
+      description: Retrieves a paginated list of detailed API usage logs for the authenticated store, with optional filtering.
+      operationId: getApiUsageLog
+      security:
+        - oauth2: [store:read] # Requires store read scope
+      parameters:
+        - in: query
+          name: keyId
+          schema:
+            type: string
+          required: false
+          description: Filter logs by a specific API key ID.
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          required: false
+          description: Filter logs from this date (inclusive).
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          required: false
+          description: Filter logs up to this date (inclusive).
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          required: false
+          description: Page number for pagination.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 15
+          required: false
+          description: Number of logs per page.
+      responses:
+        "200":
+          description: A paginated list of API usage logs.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiUsageLogEntry" # Define this schema below
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo" # Define this schema below
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError" # If store not found
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: StoreManagement # Route to StoreManagement controller
+
   /health:
     get:
       tags: [Health]
@@ -1580,6 +1649,51 @@ components:
       description: An array of monthly spending breakdowns.
       items:
         $ref: "#/components/schemas/MonthlySpendingItem"
+
+    ApiUsageLogEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: The unique ID of the log entry.
+        storeId:
+          type: string
+          description: The ID of the store associated with the API key.
+        apiKeyId:
+          type: string
+          description: The ID of the API key used.
+        apiKeyPrefix:
+          type: string
+          description: The prefix of the API key used.
+        endpoint:
+          type: string
+          description: The API endpoint accessed.
+        method:
+          type: string
+          description: The HTTP method used.
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp when the request occurred.
+        userAgent:
+          type: string
+          description: The user agent of the client making the request.
+
+    PaginationInfo:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          description: The current page number.
+        totalPages:
+          type: integer
+          description: The total number of pages available.
+        totalItems:
+          type: integer
+          description: The total number of items matching the query.
+        limit:
+          type: integer
+          description: The number of items per page.
 
   responses:
     BadRequestError:

@@ -13,12 +13,15 @@ import {
   useStoreConsentLists,
   useOptInToStore,
   useOptOutFromStore,
-} from "../api/hooks/useUserHooks";
+} from "../../api/hooks/useUserHooks";
 // Import the new search hook
-import { useLookupStores, useSearchStores } from "../api/hooks/useStoreHooks";
-import LoadingSpinner from "../components/common/LoadingSpinner";
-import ErrorDisplay from "../components/common/ErrorDisplay";
-import { StoreBasicInfo } from "../api/types/data-contracts";
+import {
+  useLookupStores,
+  useSearchStores,
+} from "../../api/hooks/useStoreHooks";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
+import { StoreBasicInfo } from "../../api/types/data-contracts";
 
 const UserDataSharingPage: React.FC = () => {
   const {
