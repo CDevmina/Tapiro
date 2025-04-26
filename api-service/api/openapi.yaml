@@ -1038,6 +1038,7 @@ components:
         phone:
           type: string
           description: User's phone number (E.164 format recommended)
+          pattern: '^\+?[\d\s-]+$'
         preferences:
           type: array
           description: User interest preferences with taxonomy categorization
@@ -1050,21 +1051,11 @@ components:
               type: boolean
             anonymizeData:
               type: boolean
-            optInStores:
-              type: array
-              items:
-                type: string
-                description: List of store IDs the user has opted into sharing data with
-            optOutStores:
-              type: array
-              items:
-                type: string
-                description: List of store IDs the user has opted out of sharing data with
+            # optInStores/optOutStores are handled by separate endpoints
         demographicData:
           type: object
-          description: Updatable demographic information (user-provided and verification flags).
+          description: Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values.
           properties:
-            # User-provided fields
             gender:
               type: string
               nullable: true
@@ -1092,26 +1083,36 @@ components:
               type: integer
               format: int32
               nullable: true
-              description: "User-provided age. Setting this clears inferredAgeBracket."
-            # Verification flags for inferred fields
-            hasKidsIsVerified:
+              description: "User-provided age. Setting this clears the inferred age bracket."
+              minimum: 0
+            hasKids:
               type: boolean
-              description: "Set to true by the user to confirm the inferred 'hasKids' status."
-            relationshipStatusIsVerified:
-              type: boolean
-              description: "Set to true by the user to confirm the inferred 'relationshipStatus'."
-            employmentStatusIsVerified:
-              type: boolean
-              description: "Set to true by the user to confirm the inferred 'employmentStatus'."
-            educationLevelIsVerified:
-              type: boolean
-              description: "Set to true by the user to confirm the inferred 'educationLevel'."
-            ageBracketIsVerified:
-              type: boolean
-              description: "Set to true by the user to confirm the inferred 'ageBracket'. Only applicable if 'age' is not set."
-            genderIsVerified:
-              type: boolean
-              description: "Set to true by the user to confirm the inferred 'gender'. Only applicable if 'gender' is not set."
+              nullable: true
+              description: "User-provided: Does the user have children?"
+            relationshipStatus:
+              type: string
+              nullable: true
+              description: "User-provided: User relationship status"
+              enum: [single, relationship, married, prefer_not_to_say, null]
+            employmentStatus:
+              type: string
+              nullable: true
+              description: "User-provided: User employment status"
+              enum: [employed, unemployed, student, prefer_not_to_say, null]
+            educationLevel:
+              type: string
+              nullable: true
+              description: "User-provided: User education level"
+              enum:
+                [
+                  high_school,
+                  bachelors,
+                  masters,
+                  doctorate,
+                  prefer_not_to_say,
+                  null,
+                ]
+            # REMOVED verification flags from update payload
 
     ApiKey:
       type: object
@@ -1595,7 +1596,7 @@ components:
         gender:
           type: string
           nullable: true
-          description: "User-provided gender identity" # Keep as user-provided
+          description: "User-provided gender identity"
           enum: [male, female, non-binary, prefer_not_to_say, null]
           example: "female"
         incomeBracket:
@@ -1622,62 +1623,71 @@ components:
           type: integer
           format: int32
           nullable: true
-          description: "User-provided age" # Keep as user-provided
+          description: "User-provided age"
           example: 35
-        # --- Inferred fields ---
+          minimum: 0
+        hasKids: # NEW User-provided
+          type: boolean
+          nullable: true
+          description: "User-provided: Does the user have children?"
+          example: true
+        relationshipStatus: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User relationship status"
+          enum: [single, relationship, married, prefer_not_to_say, null]
+          example: "married"
+        employmentStatus: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User employment status"
+          enum: [employed, unemployed, student, prefer_not_to_say, null]
+          example: "employed"
+        educationLevel: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User education level"
+          enum:
+            [
+              high_school,
+              bachelors,
+              masters,
+              doctorate,
+              prefer_not_to_say,
+              null,
+            ]
+          example: "bachelors"
+        # --- Inferred (Read-Only in responses, not updatable directly) ---
         inferredHasKids:
           type: boolean
           nullable: true
-          description: "Inferred: Does the user likely have children? (null if unknown)"
-        hasKidsIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredHasKids has been verified by the user"
-          default: false
+          readOnly: true
+          description: "Inferred: Does the user likely have children? (null if unknown or user provided)"
         inferredRelationshipStatus:
           type: string
           nullable: true
-          description: "Inferred: User relationship status (null if unknown)"
+          readOnly: true
+          description: "Inferred: User relationship status (null if unknown or user provided)"
           enum: [single, relationship, married, null]
-        relationshipStatusIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredRelationshipStatus has been verified by the user"
-          default: false
         inferredEmploymentStatus:
           type: string
           nullable: true
-          description: "Inferred: User employment status (null if unknown)"
+          readOnly: true
+          description: "Inferred: User employment status (null if unknown or user provided)"
           enum: [employed, unemployed, student, null]
-        employmentStatusIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredEmploymentStatus has been verified by the user"
-          default: false
         inferredEducationLevel:
           type: string
           nullable: true
-          description: "Inferred: User education level (null if unknown)"
+          readOnly: true
+          description: "Inferred: User education level (null if unknown or user provided)"
           enum: [high_school, bachelors, masters, doctorate, null]
-        educationLevelIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredEducationLevel has been verified by the user"
-          default: false
-        inferredAgeBracket: # NEW (separate from user-provided 'age')
+        inferredGender:
           type: string
           nullable: true
-          description: "Inferred: User age bracket (null if unknown or age provided)"
-          enum: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", null]
-        ageBracketIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredAgeBracket has been verified by the user"
-          default: false
-        inferredGender: # NEW (separate from user-provided 'gender')
-          type: string
-          nullable: true
-          description: "Inferred: User gender identity (null if unknown or gender provided)"
-          enum: [male, female, non-binary, null] # Note: 'prefer_not_to_say' is user-only
-        genderIsVerified: # NEW
-          type: boolean
-          description: "Flag indicating if inferredGender has been verified by the user"
-          default: false
+          readOnly: true
+          description: "Inferred: User gender identity (null if unknown or user provided)"
+          enum: [male, female, non-binary, null]
+
     RecentUserDataEntry:
       type: object
       properties:

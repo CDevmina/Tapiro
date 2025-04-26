@@ -95,17 +95,18 @@ export interface StoreCreate {
 export interface UserUpdate {
   /** User's unique username */
   username?: string;
-  /** User's phone number (E.164 format recommended) */
+  /**
+   * User's phone number (E.164 format recommended)
+   * @pattern ^\+?[\d\s-]+$
+   */
   phone?: string;
   /** User interest preferences with taxonomy categorization */
   preferences?: PreferenceItem[];
   privacySettings?: {
     dataSharingConsent?: boolean;
     anonymizeData?: boolean;
-    optInStores?: string[];
-    optOutStores?: string[];
   };
-  /** Updatable demographic information (user-provided and verification flags). */
+  /** Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values. */
   demographicData?: {
     /** User-provided gender identity */
     gender?: "male" | "female" | "non-binary" | "prefer_not_to_say" | null;
@@ -121,22 +122,35 @@ export interface UserUpdate {
     /** User-provided country of residence (e.g., ISO 3166-1 alpha-2 code) */
     country?: string | null;
     /**
-     * User-provided age. Setting this clears inferredAgeBracket.
+     * User-provided age. Setting this clears the inferred age bracket.
      * @format int32
+     * @min 0
      */
     age?: number | null;
-    /** Set to true by the user to confirm the inferred 'hasKids' status. */
-    hasKidsIsVerified?: boolean;
-    /** Set to true by the user to confirm the inferred 'relationshipStatus'. */
-    relationshipStatusIsVerified?: boolean;
-    /** Set to true by the user to confirm the inferred 'employmentStatus'. */
-    employmentStatusIsVerified?: boolean;
-    /** Set to true by the user to confirm the inferred 'educationLevel'. */
-    educationLevelIsVerified?: boolean;
-    /** Set to true by the user to confirm the inferred 'ageBracket'. Only applicable if 'age' is not set. */
-    ageBracketIsVerified?: boolean;
-    /** Set to true by the user to confirm the inferred 'gender'. Only applicable if 'gender' is not set. */
-    genderIsVerified?: boolean;
+    /** User-provided: Does the user have children? */
+    hasKids?: boolean | null;
+    /** User-provided: User relationship status */
+    relationshipStatus?:
+      | "single"
+      | "relationship"
+      | "married"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided: User employment status */
+    employmentStatus?:
+      | "employed"
+      | "unemployed"
+      | "student"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided: User education level */
+    educationLevel?:
+      | "high_school"
+      | "bachelors"
+      | "masters"
+      | "doctorate"
+      | "prefer_not_to_say"
+      | null;
   };
 }
 
@@ -432,63 +446,61 @@ export interface DemographicData {
   /**
    * User-provided age
    * @format int32
+   * @min 0
    * @example 35
    */
   age?: number | null;
-  /** Inferred: Does the user likely have children? (null if unknown) */
+  /**
+   * User-provided: Does the user have children?
+   * @example true
+   */
+  hasKids?: boolean | null;
+  /**
+   * User-provided: User relationship status
+   * @example "married"
+   */
+  relationshipStatus?:
+    | "single"
+    | "relationship"
+    | "married"
+    | "prefer_not_to_say"
+    | null;
+  /**
+   * User-provided: User employment status
+   * @example "employed"
+   */
+  employmentStatus?:
+    | "employed"
+    | "unemployed"
+    | "student"
+    | "prefer_not_to_say"
+    | null;
+  /**
+   * User-provided: User education level
+   * @example "bachelors"
+   */
+  educationLevel?:
+    | "high_school"
+    | "bachelors"
+    | "masters"
+    | "doctorate"
+    | "prefer_not_to_say"
+    | null;
+  /** Inferred: Does the user likely have children? (null if unknown or user provided) */
   inferredHasKids?: boolean | null;
-  /**
-   * Flag indicating if inferredHasKids has been verified by the user
-   * @default false
-   */
-  hasKidsIsVerified?: boolean;
-  /** Inferred: User relationship status (null if unknown) */
+  /** Inferred: User relationship status (null if unknown or user provided) */
   inferredRelationshipStatus?: "single" | "relationship" | "married" | null;
-  /**
-   * Flag indicating if inferredRelationshipStatus has been verified by the user
-   * @default false
-   */
-  relationshipStatusIsVerified?: boolean;
-  /** Inferred: User employment status (null if unknown) */
+  /** Inferred: User employment status (null if unknown or user provided) */
   inferredEmploymentStatus?: "employed" | "unemployed" | "student" | null;
-  /**
-   * Flag indicating if inferredEmploymentStatus has been verified by the user
-   * @default false
-   */
-  employmentStatusIsVerified?: boolean;
-  /** Inferred: User education level (null if unknown) */
+  /** Inferred: User education level (null if unknown or user provided) */
   inferredEducationLevel?:
     | "high_school"
     | "bachelors"
     | "masters"
     | "doctorate"
     | null;
-  /**
-   * Flag indicating if inferredEducationLevel has been verified by the user
-   * @default false
-   */
-  educationLevelIsVerified?: boolean;
-  /** Inferred: User age bracket (null if unknown or age provided) */
-  inferredAgeBracket?:
-    | "18-24"
-    | "25-34"
-    | "35-44"
-    | "45-54"
-    | "55-64"
-    | "65+"
-    | null;
-  /**
-   * Flag indicating if inferredAgeBracket has been verified by the user
-   * @default false
-   */
-  ageBracketIsVerified?: boolean;
-  /** Inferred: User gender identity (null if unknown or gender provided) */
+  /** Inferred: User gender identity (null if unknown or user provided) */
   inferredGender?: "male" | "female" | "non-binary" | null;
-  /**
-   * Flag indicating if inferredGender has been verified by the user
-   * @default false
-   */
-  genderIsVerified?: boolean;
 }
 
 export interface RecentUserDataEntry {

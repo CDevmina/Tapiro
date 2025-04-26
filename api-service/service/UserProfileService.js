@@ -111,13 +111,11 @@ exports.updateUserProfile = async function (req, body) {
     // --- Update Demographic Data ---
     // Use dot notation to set fields within the demographicData object
 
-    // User-provided fields (existing logic)
-    if (body.demographicData?.gender !== undefined) { // Check within demographicData object
+    // User-provided fields
+    if (body.demographicData?.gender !== undefined) {
         updateData['demographicData.gender'] = body.demographicData.gender;
+        updateData['demographicData.inferredGender'] = null; // Clear inferred on user update
         demographicsChanged = true;
-        // If gender is being set by user, clear the inferred gender and its verification
-        updateData['demographicData.inferredGender'] = null;
-        updateData['demographicData.genderIsVerified'] = false; // Reset verification if user changes main field
     }
     if (body.demographicData?.incomeBracket !== undefined) {
         updateData['demographicData.incomeBracket'] = body.demographicData.incomeBracket;
@@ -129,58 +127,41 @@ exports.updateUserProfile = async function (req, body) {
     }
     if (body.demographicData?.age !== undefined) {
         const ageValue = body.demographicData.age === null ? null : parseInt(body.demographicData.age);
-        if (ageValue === null || !isNaN(ageValue)) {
+        if (ageValue === null || (!isNaN(ageValue) && ageValue >= 0)) { // Added age >= 0 check
              updateData['demographicData.age'] = ageValue;
+             // No inferred age bracket to clear anymore
              demographicsChanged = true;
-             // If age is being set by user, clear the inferred age bracket and its verification
-             updateData['demographicData.inferredAgeBracket'] = null;
-             updateData['demographicData.ageBracketIsVerified'] = false; // Reset verification
         } else {
             console.warn(`Invalid age value provided for user ${auth0UserId}: ${body.demographicData.age}`);
             // Optionally return a 400 error here
+            // return respondWithCode(400, { code: 400, message: 'Invalid age provided.' });
         }
+    }
+    // --- NEW User-Provided Fields ---
+    if (body.demographicData?.hasKids !== undefined) {
+        updateData['demographicData.hasKids'] = body.demographicData.hasKids;
+        updateData['demographicData.inferredHasKids'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.relationshipStatus !== undefined) {
+        updateData['demographicData.relationshipStatus'] = body.demographicData.relationshipStatus;
+        updateData['demographicData.inferredRelationshipStatus'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.employmentStatus !== undefined) {
+        updateData['demographicData.employmentStatus'] = body.demographicData.employmentStatus;
+        updateData['demographicData.inferredEmploymentStatus'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.educationLevel !== undefined) {
+        updateData['demographicData.educationLevel'] = body.demographicData.educationLevel;
+        updateData['demographicData.inferredEducationLevel'] = null; // Clear inferred on user update
+        demographicsChanged = true;
     }
 
-    // --- NEW: Handle Verification Flags ---
-    // Only allow setting verification flags via this endpoint
-    if (body.demographicData?.hasKidsIsVerified !== undefined && typeof body.demographicData.hasKidsIsVerified === 'boolean') {
-        updateData['demographicData.hasKidsIsVerified'] = body.demographicData.hasKidsIsVerified;
-        demographicsChanged = true; // Consider verification change as demographic change for cache invalidation
-    }
-    if (body.demographicData?.relationshipStatusIsVerified !== undefined && typeof body.demographicData.relationshipStatusIsVerified === 'boolean') {
-        updateData['demographicData.relationshipStatusIsVerified'] = body.demographicData.relationshipStatusIsVerified;
-        demographicsChanged = true;
-    }
-    if (body.demographicData?.employmentStatusIsVerified !== undefined && typeof body.demographicData.employmentStatusIsVerified === 'boolean') {
-        updateData['demographicData.employmentStatusIsVerified'] = body.demographicData.employmentStatusIsVerified;
-        demographicsChanged = true;
-    }
-    if (body.demographicData?.educationLevelIsVerified !== undefined && typeof body.demographicData.educationLevelIsVerified === 'boolean') {
-        updateData['demographicData.educationLevelIsVerified'] = body.demographicData.educationLevelIsVerified;
-        demographicsChanged = true;
-    }
-    if (body.demographicData?.ageBracketIsVerified !== undefined && typeof body.demographicData.ageBracketIsVerified === 'boolean') {
-        // Only allow verifying inferred age bracket if user hasn't provided their specific age
-        const currentUserDoc = await db.collection('users').findOne({ auth0Id: auth0UserId }, { projection: { 'demographicData.age': 1 } });
-        if (currentUserDoc?.demographicData?.age === null) {
-            updateData['demographicData.ageBracketIsVerified'] = body.demographicData.ageBracketIsVerified;
-            demographicsChanged = true;
-        } else {
-            console.warn(`User ${auth0UserId} attempted to verify age bracket when specific age is set.`);
-            // Do not update the flag if specific age is provided
-        }
-    }
-    if (body.demographicData?.genderIsVerified !== undefined && typeof body.demographicData.genderIsVerified === 'boolean') {
-         // Only allow verifying inferred gender if user hasn't provided their specific gender
-        const currentUserDoc = await db.collection('users').findOne({ auth0Id: auth0UserId }, { projection: { 'demographicData.gender': 1 } });
-         if (currentUserDoc?.demographicData?.gender === null) {
-            updateData['demographicData.genderIsVerified'] = body.demographicData.genderIsVerified;
-            demographicsChanged = true;
-         } else {
-            console.warn(`User ${auth0UserId} attempted to verify inferred gender when specific gender is set.`);
-            // Do not update the flag if specific gender is provided
-         }
-    }
+    // --- REMOVED Verification Flag Handling ---
+    // The logic for hasKidsIsVerified, relationshipStatusIsVerified, etc. is removed.
+
     // --- End Update Demographic Data ---
 
 

@@ -57,66 +57,58 @@ const userSchema = {
               description: 'User-provided age', // Clarified description
               minimum: 0,
             },
-            // --- Inferred fields ---
+            // --- NEW User-Provided fields (mirroring inferred ones) ---
+            hasKids: {
+              bsonType: ['bool', 'null'],
+              description: 'User-provided: Does the user have children?',
+            },
+            relationshipStatus: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User relationship status',
+              enum: ['single', 'relationship', 'married', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            employmentStatus: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User employment status',
+              enum: ['employed', 'unemployed', 'student', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            educationLevel: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User education level',
+              enum: ['high_school', 'bachelors', 'masters', 'doctorate', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            // --- Inferred fields (kept separate, no verification flags) ---
             inferredHasKids: {
               bsonType: ['bool', 'null'],
-              description: 'Inferred: Does the user likely have children? (null if unknown)',
+              description: 'Inferred: Does the user likely have children? (null if unknown or user provided)',
             },
-            hasKidsIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredHasKids has been verified by the user',
-              default: false // Default to false
-            },
+            // REMOVED hasKidsIsVerified
             inferredRelationshipStatus: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User relationship status (null if unknown)',
-              enum: ['single', 'relationship', 'married', null],
+              description: 'Inferred: User relationship status (null if unknown or user provided)',
+              enum: ['single', 'relationship', 'married', null], // Inferred won't be 'prefer_not_to_say'
             },
-            relationshipStatusIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredRelationshipStatus has been verified by the user',
-              default: false
-            },
+            // REMOVED relationshipStatusIsVerified
             inferredEmploymentStatus: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User employment status (null if unknown)',
+              description: 'Inferred: User employment status (null if unknown or user provided)',
               enum: ['employed', 'unemployed', 'student', null],
             },
-            employmentStatusIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredEmploymentStatus has been verified by the user',
-              default: false
-            },
+            // REMOVED employmentStatusIsVerified
             inferredEducationLevel: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User education level (null if unknown)',
+              description: 'Inferred: User education level (null if unknown or user provided)',
               enum: ['high_school', 'bachelors', 'masters', 'doctorate', null],
             },
-            educationLevelIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredEducationLevel has been verified by the user',
-              default: false
-            },
-            inferredAgeBracket: { // Kept separate from user-provided 'age'
+            // REMOVED educationLevelIsVerified
+            // REMOVED inferredAgeBracket
+            // REMOVED ageBracketIsVerified
+            inferredGender: { // Kept inferred gender
               bsonType: ['string', 'null'],
-              description: 'Inferred: User age bracket (null if unknown or age provided)', // Clarified description
-              enum: ['18-24', '25-34', '35-44', '45-54', '55-64', '65+', null],
+              description: 'Inferred: User gender identity (null if unknown or user provided)',
+              enum: ['male', 'female', 'non-binary', null],
             },
-            ageBracketIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredAgeBracket has been verified by the user',
-              default: false
-            },
-            inferredGender: { // NEW inferred field
-              bsonType: ['string', 'null'],
-              description: 'Inferred: User gender identity (null if unknown or gender provided)',
-              enum: ['male', 'female', 'non-binary', null], // Note: 'prefer_not_to_say' is user-only
-            },
-            genderIsVerified: { // NEW verification flag
-              bsonType: 'bool',
-              description: 'Flag indicating if inferredGender has been verified by the user',
-              default: false
-            },
+            // REMOVED genderIsVerified
           }
         },
         // --- End: Demographic Data Object ---

@@ -25,33 +25,27 @@ KEYWORD_RULES = {
     "relationship_status": {
         "married": {"wedding", "anniversary", "spouse", "husband", "wife"},
         "relationship": {"boyfriend", "girlfriend", "dating", "partner gift", "couples"}
-        # 'single' is hard to determine via keywords reliably
     },
     "employment_status": {
         "student": {"student loan", "internship", "university", "college", "textbook", "dorm"},
-        "unemployed": {"resume help", "job search"} # Still weak signals
+        "unemployed": {"resume help", "job search"}
     },
     "education_level": {
         "doctorate": {"phd", "dissertation", "postdoc"},
         "masters": {"master's degree", "thesis"},
         "bachelors": {"bachelor's degree", "undergrad"},
-        # 'high_school' is too ambiguous
     },
-    "gender": { # Use with extreme caution - high potential for bias
+    "gender": { # Use with extreme caution
         "male": {"men's", "for him", "grooming kit men"},
         "female": {"women's", "for her", "makeup set", "feminine hygiene"}
     }
-    # No reliable keywords for age_bracket
 }
 
 # --- NEW: Evidence Weights ---
 RULE_MATCH_WEIGHT = 1.5
 SEMANTIC_MATCH_WEIGHT = 1.0
-# --- End NEW Configuration ---
 
-
-# --- Semantic Target Descriptions (Keep as is) ---
-# Keys should match the field names in DemographicData (e.g., inferredHasKids -> has_kids)
+# --- Semantic Target Descriptions ---
 SEMANTIC_TARGETS = {
     "has_kids": {
         True: [
@@ -62,26 +56,25 @@ SEMANTIC_TARGETS = {
             "maternity wear or products",
             "family activities or vacations",
         ],
-        # False is hard to infer semantically, rely on lack of True evidence
     },
     "relationship_status": {
         "married": [
             "wedding gifts or planning items",
             "anniversary presents",
             "items for spouse or partner",
-            "joint home purchases", # Requires more context than just text
+            "joint home purchases",
             "husband or wife related items",
         ],
         "relationship": [
             "gifts for partner or significant other",
             "couples items or activities",
             "romantic presents",
-            "dating related items", # Can overlap with single, use threshold
+            "dating related items",
             "items for boyfriend or girlfriend",
         ],
         "single": [
             "items for one person",
-            "dating app subscriptions", # Very specific if found
+            "dating app subscriptions",
             "solo travel or activities",
             "self-care items focused on independence",
         ]
@@ -102,10 +95,9 @@ SEMANTIC_TARGETS = {
             "internship-related items",
             "study aids",
         ],
-        "unemployed": [ # Very hard to infer reliably from purchases/searches
+        "unemployed": [
             "job searching resources",
             "resume building services",
-            # "unemployment benefit applications" # Unlikely purchase/search
         ]
     },
     "education_level": {
@@ -126,72 +118,28 @@ SEMANTIC_TARGETS = {
             "college supplies",
             "university merchandise",
         ],
-        "high_school": [ # Very hard to infer post-facto
-            "high school supplies", # Overlaps heavily
-            # "ged preparation"
-        ]
-    },
-    "age_bracket": { # Extremely unreliable, keep targets broad
-        "18-24": [
-            "college student items",
-            "first apartment essentials",
-            "entry-level job search",
-            "youth fashion trends",
-            "music festivals or concerts",
-        ],
-        "25-34": [
-            "young professional items",
-            "starting a family supplies", # Overlaps kids
-            "new homeowner items",
-            "advanced career development",
-            "travel and experiences",
-        ],
-        "35-44": [
-            "mid-career professional items",
-            "family-oriented products", # Overlaps kids
-            "home renovation supplies",
-            "investment or retirement planning",
-        ],
-        "45-54": [
-            "senior management or executive items",
-            "planning for children's college",
-            "luxury travel or hobbies",
-            "health and wellness focus",
-        ],
-        "55-64": [
-            "pre-retirement planning",
-            "downsizing home items",
-            "travel for seniors",
-            "health monitoring devices",
-            "grandparent gifts",
-        ],
-        "65+": [
-            "retirement living items",
-            "senior health care products",
-            "hobby supplies for retirees",
-            "accessible travel",
-            "gifts for grandchildren",
+        "high_school": [
+            "high school supplies",
         ]
     },
     "gender": { # Also potentially unreliable/sensitive
          "male": [
              "men's clothing and accessories",
              "grooming products typically for men",
-             "hobbies stereotypically associated with men", # Be very careful with stereotypes
+             "hobbies stereotypically associated with men",
              "gifts for him",
          ],
          "female": [
              "women's clothing and accessories",
              "makeup and cosmetics",
              "skincare products typically for women",
-             "hobbies stereotypically associated with women", # Be very careful
+             "hobbies stereotypically associated with women",
              "gifts for her",
              "feminine hygiene products",
          ],
-         "non-binary": [ # Extremely difficult to infer semantically from general purchases
+         "non-binary": [
              "gender-neutral clothing",
              "unisex products",
-             # "lgbtq+ related merchandise" # Can be indicative but not definitive
          ]
     }
 }
@@ -370,11 +318,11 @@ async def _run_hybrid_inference_for_attribute( # Renamed for clarity
     # --- End Determine inferred value ---
 
 
-# --- Main Inference Runner (Updated to call hybrid helper) ---
+# --- Main Inference Runner (Updated) ---
 async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) -> bool:
     """
     Runs HYBRID demographic inference based on recent user data and updates
-    the user document if changes are found and the field is not verified by the user.
+    the user document if changes are found AND the user has not provided their own value.
     Returns True if the user document was updated, False otherwise.
     """
     logger.info(f"Running HYBRID demographic inference for user {user_id} ({email})")
@@ -399,58 +347,65 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
 
         # Get Taxonomy Service (needed for embeddings)
         taxonomy_service = await get_taxonomy_service(db)
-        # No need to check embedding model availability here, helper function handles it
 
-        # --- Run hybrid inference functions ---
-        # Call the renamed helper function
-        inferred_kids = await _run_hybrid_inference_for_attribute("has_kids", recent_data, taxonomy_service)
-        inferred_status = await _run_hybrid_inference_for_attribute("relationship_status", recent_data, taxonomy_service)
-        inferred_employment = await _run_hybrid_inference_for_attribute("employment_status", recent_data, taxonomy_service)
-        inferred_education = await _run_hybrid_inference_for_attribute("education_level", recent_data, taxonomy_service)
-
-        # Conditional inference based on user-provided data
         current_demographics = user.get("demographicData", {})
-        inferred_age_bracket = None
-        if current_demographics.get("age") is None:
-            logger.info(f"Inference: User {email} has no age set, attempting age bracket inference.")
-            inferred_age_bracket = await _run_hybrid_inference_for_attribute("age_bracket", recent_data, taxonomy_service)
+
+        # --- Run hybrid inference functions (conditionally) ---
+        inferred_kids = None
+        if current_demographics.get("hasKids") is None:
+            inferred_kids = await _run_hybrid_inference_for_attribute("has_kids", recent_data, taxonomy_service)
         else:
-            logger.info(f"Inference: User {email} has age set, skipping age bracket inference.")
+            logger.info(f"Inference (has_kids): Skipped, user value exists ('{current_demographics.get('hasKids')}')")
+
+        inferred_status = None
+        if current_demographics.get("relationshipStatus") is None:
+            inferred_status = await _run_hybrid_inference_for_attribute("relationship_status", recent_data, taxonomy_service)
+        else:
+             logger.info(f"Inference (relationship_status): Skipped, user value exists ('{current_demographics.get('relationshipStatus')}')")
+
+        inferred_employment = None
+        if current_demographics.get("employmentStatus") is None:
+            inferred_employment = await _run_hybrid_inference_for_attribute("employment_status", recent_data, taxonomy_service)
+        else:
+             logger.info(f"Inference (employment_status): Skipped, user value exists ('{current_demographics.get('employmentStatus')}')")
+
+        inferred_education = None
+        if current_demographics.get("educationLevel") is None:
+            inferred_education = await _run_hybrid_inference_for_attribute("education_level", recent_data, taxonomy_service)
+        else:
+             logger.info(f"Inference (education_level): Skipped, user value exists ('{current_demographics.get('educationLevel')}')")
 
         inferred_gender = None
         if current_demographics.get("gender") is None:
-             logger.info(f"Inference: User {email} has no gender set, attempting gender inference.")
              inferred_gender = await _run_hybrid_inference_for_attribute("gender", recent_data, taxonomy_service)
         else:
-             logger.info(f"Inference: User {email} has gender set, skipping gender inference.")
+             logger.info(f"Inference (gender): Skipped, user value exists ('{current_demographics.get('gender')}')")
 
-        # --- Prepare update payload, respecting verification flags (No changes needed here) ---
+        # --- Prepare update payload (Simplified check_and_set) ---
         update_payload = {}
         now = datetime.now()
 
-        def check_and_set(field_name: str, inferred_value: Any, is_verified_flag: str):
-            current_value = current_demographics.get(field_name)
-            is_verified = current_demographics.get(is_verified_flag, False)
+        # Simplified: Only updates the inferred field if the new inference differs from the current inferred value
+        def check_and_set(field_name: str, inferred_value: Any):
+            # Note: field_name here is the *inferred* field name (e.g., "inferredHasKids")
+            current_inferred_value = current_demographics.get(field_name)
 
-            if inferred_value is not None and inferred_value != current_value:
-                if not is_verified:
-                    # Use dot notation for nested update
-                    db_field_name = f"demographicData.{field_name}"
-                    update_payload[db_field_name] = inferred_value
-                    logger.info(f"Inference update for {email}: {db_field_name} -> {inferred_value} (was {current_value}, verified: {is_verified})")
-                else:
-                    logger.info(f"Inference skipped for {email}: {field_name} is verified by user (Value: {current_value}). Would have inferred: {inferred_value}")
+            if inferred_value is not None and inferred_value != current_inferred_value:
+                # Use dot notation for nested update
+                db_field_name = f"demographicData.{field_name}"
+                update_payload[db_field_name] = inferred_value
+                logger.info(f"Inference update for {email}: {db_field_name} -> {inferred_value} (was {current_inferred_value})")
+            # No need to log skipping based on verification anymore
 
-        # Map inferred fields to their verification flags
-        check_and_set("inferredHasKids", inferred_kids, "hasKidsIsVerified")
-        check_and_set("inferredRelationshipStatus", inferred_status, "relationshipStatusIsVerified")
-        check_and_set("inferredEmploymentStatus", inferred_employment, "employmentStatusIsVerified")
-        check_and_set("inferredEducationLevel", inferred_education, "educationLevelIsVerified")
-        check_and_set("inferredAgeBracket", inferred_age_bracket, "ageBracketIsVerified")
-        check_and_set("inferredGender", inferred_gender, "genderIsVerified")
+        # Map inferred values to their DB field names
+        check_and_set("inferredHasKids", inferred_kids)
+        check_and_set("inferredRelationshipStatus", inferred_status)
+        check_and_set("inferredEmploymentStatus", inferred_employment)
+        check_and_set("inferredEducationLevel", inferred_education)
+        check_and_set("inferredGender", inferred_gender)
         # --- End Prepare update payload ---
 
-        # --- Update user document in DB if there are changes (No changes needed here) ---
+        # --- Update user document in DB if there are changes ---
         if update_payload:
             update_payload["updatedAt"] = now # Update timestamp
             result = await db.users.update_one(
@@ -459,26 +414,28 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
             )
             if result.modified_count > 0:
                 updated = True
-                logger.info(f"Inference: Successfully updated demographic data for user {user_id}")
+                logger.info(f"Inference: Successfully updated inferred demographic data for user {user_id}")
                 # --- Invalidate Caches ---
                 auth0_id = user.get("auth0Id")
                 if auth0_id:
                     await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
-                    await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
+                    await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}") # Invalidate prefs as demographics changed
                     # Invalidate store-specific caches if opt-in stores exist
                     if user.get("privacySettings", {}).get("optInStores"):
                         for store_id in user["privacySettings"]["optInStores"]:
-                            # CRITICAL FIX: Use user_object_id (ObjectId string) for store cache key consistency
+                            # Use user_id (ObjectId string) for store cache key consistency
                             await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_id}:{store_id}")
                     logger.info(f"Inference: Invalidated relevant caches for user {auth0_id}")
                 # --- End Cache Invalidation ---
             else:
                 logger.warning(f"Inference: Update attempted for {user_id} but no documents were modified.")
         else:
-            logger.info(f"Inference: No demographic updates found for {user_id}")
+            logger.info(f"Inference: No inferred demographic updates needed for {user_id}")
 
     except Exception as e:
         logger.error(f"Error during demographic inference for user {user_id}: {str(e)}", exc_info=True)
+        # Do not return True here, as the update didn't necessarily succeed
+        updated = False # Ensure updated is False on error
 
     return updated
     # --- End Main Inference Runner ---
