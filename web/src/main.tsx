@@ -15,7 +15,6 @@ import { AuthProviderWrapper } from "./context/AuthContext";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import NotFoundPage from "./pages/static/NotFoundPage";
 import StoreProfilePage from "./pages/StoreDashboard/StoreProfilePage";
-import UserProfilePage from "./pages/UserDashboard/UserProfilePage";
 
 const router = createBrowserRouter([
   {
@@ -45,10 +44,6 @@ const router = createBrowserRouter([
           {
             path: "dashboard/user",
             element: <UserDashboard />,
-          },
-          {
-            path: "profile/user",
-            element: <UserProfilePage />,
           },
         ],
       },
