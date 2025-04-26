@@ -10,10 +10,10 @@ import {
   ModalFooter,
   Label,
   TextInput,
-  Select,
+  Select, // Already imported
   RangeSlider,
-  List, // Import List
-  ListItem, // Import ListItem
+  List,
+  ListItem,
 } from "flowbite-react";
 import {
   HiInformationCircle,
@@ -26,23 +26,23 @@ import {
   HiOutlineCake,
   HiOutlineGlobeAlt,
   HiOutlineCash,
-  // --- End Add icons ---
 } from "react-icons/hi";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import {
   useUserProfile,
-  useUpdateUserProfile,
   useUserPreferences,
+  useUpdateUserProfile,
   useUpdateUserPreferences,
 } from "../../api/hooks/useUserHooks";
 import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
-import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   UserUpdate,
   PreferenceItem,
   TaxonomyCategory,
 } from "../../api/types/data-contracts";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import countryData from "../../data/countries.json"; // <-- Import country data
 
 // --- Form Types ---
 type DemographicsFormData = Pick<
@@ -55,12 +55,46 @@ type PreferenceFormData = {
   attributes?: Record<string, string | undefined>;
 };
 
-// --- Mini Demographic Card Component (Add this) ---
+// --- Define options for selects (copied from UserRegistrationForm) ---
+const genderOptions = [
+  { value: "", label: "Select Gender" },
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "non-binary", label: "Non-binary" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const incomeOptions = [
+  { value: "", label: "Select Income Bracket" }, // Make placeholder less optional here
+  { value: "<25k", label: "< $25,000" },
+  { value: "25k-50k", label: "$25,000 - $49,999" },
+  { value: "50k-100k", label: "$50,000 - $99,999" },
+  { value: "100k-200k", label: "$100,000 - $199,999" },
+  { value: ">200k", label: "> $200,000" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+// --- Country Options (copied from UserRegistrationForm) ---
+interface CountryOption {
+  value: string;
+  label: string;
+}
+const typedCountryData: CountryOption[] = Object.entries(countryData).map(
+  ([code, name]) => ({ value: code, label: name }),
+);
+typedCountryData.sort((a, b) => a.label.localeCompare(b.label));
+const countryOptions: CountryOption[] = [
+  { value: "", label: "Select Country" }, // Make placeholder less optional here
+  ...typedCountryData,
+];
+// --- End Country Options ---
+
+// --- Mini Demographic Card Component (Keep existing) ---
 interface DemoInfoCardProps {
   icon: React.ElementType;
   label: string;
   value: string | number | null | undefined;
-  isLoading?: boolean; // Optional loading state if needed later
+  isLoading?: boolean;
 }
 
 const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
@@ -88,7 +122,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
 // --- End Mini Demographic Card Component ---
 
 const UserPreferencesPage: React.FC = () => {
-  // --- Data Fetching ---
+  // --- Data Fetching (Keep existing) ---
   const {
     data: userProfile,
     isLoading: profileLoading,
@@ -105,7 +139,7 @@ const UserPreferencesPage: React.FC = () => {
     error: taxonomyError,
   } = useTaxonomy();
 
-  // --- Mutations ---
+  // --- Mutations (Keep existing) ---
   const {
     mutate: updateProfile,
     isPending: isUpdatingProfile,
@@ -117,7 +151,7 @@ const UserPreferencesPage: React.FC = () => {
     error: updatePreferencesError,
   } = useUpdateUserPreferences();
 
-  // --- State ---
+  // --- State (Keep existing) ---
   const [isEditingDemographics, setIsEditingDemographics] = useState(false);
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreferenceIndex, setEditingPreferenceIndex] = useState<
@@ -234,17 +268,31 @@ const UserPreferencesPage: React.FC = () => {
 
   // --- Handlers ---
   const onDemoSubmit: SubmitHandler<DemographicsFormData> = (data) => {
-    // Filter out empty strings before sending
-    const payload: Partial<DemographicsFormData> = {};
-    if (data.gender) payload.gender = data.gender;
-    if (data.age) payload.age = data.age;
-    if (data.country) payload.country = data.country;
-    if (data.incomeBracket) payload.incomeBracket = data.incomeBracket;
+    // Filter out empty strings or nulls before sending
+    const payload: Partial<UserUpdate> = {}; // Use UserUpdate for payload type
+    if (data.gender && data.gender !== "") payload.gender = data.gender;
+    else payload.gender = null; // Explicitly set to null if empty
 
-    updateProfile(payload as UserUpdate, {
-      // Cast as UserUpdate
-      onSuccess: () => setIsEditingDemographics(false),
-    });
+    if (data.age !== undefined && data.age !== null && !isNaN(data.age))
+      payload.age = Number(data.age);
+    else payload.age = null; // Explicitly set to null if empty/invalid
+
+    if (data.country && data.country !== "") payload.country = data.country;
+    else payload.country = null; // Explicitly set to null if empty
+
+    if (data.incomeBracket && data.incomeBracket !== "")
+      payload.incomeBracket = data.incomeBracket;
+    else payload.incomeBracket = null; // Explicitly set to null if empty
+
+    // Only submit if there are actual changes
+    if (Object.keys(payload).length > 0) {
+      updateProfile(payload as UserUpdate, {
+        onSuccess: () => setIsEditingDemographics(false),
+      });
+    } else {
+      // No changes detected, just exit edit mode
+      setIsEditingDemographics(false);
+    }
   };
 
   const onPrefSubmit: SubmitHandler<PreferenceFormData> = (data) => {
@@ -361,13 +409,21 @@ const UserPreferencesPage: React.FC = () => {
               onSubmit={handleDemoSubmit(onDemoSubmit)}
               className="mt-4 space-y-4" // Use space-y for consistent spacing
             >
+              {/* --- Gender Select --- */}
               <div>
                 <Label htmlFor="gender">Gender</Label>
-                <TextInput
+                <Select
                   id="gender"
-                  {...registerDemo("gender")}
-                  placeholder="e.g., Male, Female, Non-binary"
-                />
+                  {...registerDemo("gender")} // Register the select
+                  className="mt-1"
+                  defaultValue={userProfile?.demographicData?.gender || ""} // Set default value for reset
+                >
+                  {genderOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div>
                 <Label htmlFor="age">Age</Label>
@@ -376,28 +432,57 @@ const UserPreferencesPage: React.FC = () => {
                   type="number"
                   {...registerDemo("age", { valueAsNumber: true })}
                   placeholder="e.g., 30"
+                  min="0" // Add min value
+                  className="mt-1"
                 />
               </div>
               <div>
                 <Label htmlFor="country">Country</Label>
-                <TextInput
+                <Select
                   id="country"
-                  {...registerDemo("country")}
-                  placeholder="e.g., USA, Canada"
-                />
+                  {...registerDemo("country")} // Register the select
+                  className="mt-1"
+                  defaultValue={userProfile?.demographicData?.country || ""} // Set default value
+                >
+                  {countryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
+              {/* --- Income Bracket Select --- */}
               <div>
                 <Label htmlFor="incomeBracket">Income Bracket</Label>
-                <TextInput
+                <Select
                   id="incomeBracket"
-                  {...registerDemo("incomeBracket")}
-                  placeholder="e.g., $50k-$75k, High"
-                />
+                  {...registerDemo("incomeBracket")} // Register the select
+                  className="mt-1"
+                  defaultValue={
+                    userProfile?.demographicData?.incomeBracket || ""
+                  } // Set default value for reset
+                >
+                  {incomeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <Button
                   color="gray"
-                  onClick={() => setIsEditingDemographics(false)}
+                  onClick={() => {
+                    setIsEditingDemographics(false);
+                    // Reset form to original values on cancel
+                    resetDemoForm({
+                      gender: userProfile?.demographicData?.gender || "",
+                      age: userProfile?.demographicData?.age || undefined,
+                      country: userProfile?.demographicData?.country || "",
+                      incomeBracket:
+                        userProfile?.demographicData?.incomeBracket || "",
+                    });
+                  }}
                   disabled={isMutating}
                 >
                   Cancel
@@ -414,7 +499,8 @@ const UserPreferencesPage: React.FC = () => {
               </div>
             </form>
           ) : (
-            <div className="mt-4 space-y-3 text-sm">
+            // --- DISPLAY VIEW ---
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DemoInfoCard
                 icon={HiOutlineUserCircle}
                 label="Gender"
@@ -587,6 +673,7 @@ const UserPreferencesPage: React.FC = () => {
                   Select a category...
                 </option>
                 {Array.from(categoryMap.values())
+                  .filter((cat) => cat.id) // Ensure category has an ID
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((cat) => (
                     <option key={cat.id} value={cat.id}>

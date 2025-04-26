@@ -3,21 +3,27 @@ import {
   Button,
   Checkbox,
   Label,
-  Modal, // Import Modal components
+  Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Popover, // <-- Import Popover
-  Select, // <-- Import Select
-  TextInput, // <-- Import TextInput
+  Popover,
+  Select, // Already imported
+  TextInput,
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { HiCheckCircle, HiInformationCircle } from "react-icons/hi"; // Import icons
+import { HiCheckCircle, HiInformationCircle } from "react-icons/hi";
+import countryData from "../../data/countries.json";
 
 interface UserRegistrationFormProps {
   onSubmit: (userData: UserCreate) => void;
   isLoading: boolean;
+}
+
+interface CountryOption {
+  value: string;
+  label: string;
 }
 
 // Define options for selects
@@ -38,6 +44,20 @@ const incomeOptions = [
   { value: ">200k", label: "> $200,000" },
   { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
+
+// --- Transform the imported country data object into an array ---
+const typedCountryData: CountryOption[] = Object.entries(countryData).map(
+  ([code, name]) => ({ value: code, label: name }),
+);
+// Sort alphabetically by label (optional but good UX)
+typedCountryData.sort((a, b) => a.label.localeCompare(b.label));
+
+// --- Create the final country options array ---
+const countryOptions: CountryOption[] = [
+  { value: "", label: "Select Country (Optional)" },
+  ...typedCountryData, // Spread the transformed array
+];
+// --- End Country Options ---
 
 export function UserRegistrationForm({
   onSubmit,
@@ -67,13 +87,11 @@ export function UserRegistrationForm({
     }
 
     const userData: UserCreate = {
-      // Use the state variable linked to the checkbox
       dataSharingConsent: dataSharingConsent,
-      preferences: [], // We can leave this empty for now
-      // Add demographic data, ensuring null if empty string or invalid number
+      preferences: [],
       gender: gender || null,
       incomeBracket: incomeBracket || null,
-      country: country || null,
+      country: country || null, // country state is already used here
       age: age !== null && !isNaN(age) ? Number(age) : null,
     };
 
@@ -92,7 +110,6 @@ export function UserRegistrationForm({
     setShowConsentModal(false);
   };
 
-  // Content for the popover
   const popoverContent = (
     <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
       <p>
@@ -150,20 +167,27 @@ export function UserRegistrationForm({
               ))}
             </Select>
           </div>
-          {/* Country Input */}
+
+          {/* --- Country Select (Replaces TextInput) --- */}
           <div>
-            <Label htmlFor="country">Country (ISO Code)"</Label>
-            <TextInput
+            <Label htmlFor="country">Country</Label>
+            <Select
               id="country"
-              placeholder="e.g., US, CA, GB"
               value={country ?? ""}
               onChange={(e) =>
-                setCountry(e.target.value ? e.target.value.toUpperCase() : null)
+                setCountry(e.target.value ? e.target.value : null)
               }
-              maxLength={2} // ISO 3166-1 alpha-2
               className="mt-1"
-            />
+            >
+              {countryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           </div>
+          {/* --- End Country Select --- */}
+
           {/* Age Input */}
           <div>
             <Label htmlFor="age">Age</Label>
