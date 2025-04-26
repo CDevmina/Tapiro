@@ -105,17 +105,39 @@ export interface UserUpdate {
     optInStores?: string[];
     optOutStores?: string[];
   };
-  /** User gender identity */
-  gender?: string | null;
-  /** User income bracket category */
-  incomeBracket?: string | null;
-  /** User country of residence (ISO 3166-1 alpha-2 code) */
-  country?: string | null;
-  /**
-   * User age
-   * @format int32
-   */
-  age?: number | null;
+  /** Updatable demographic information (user-provided and verification flags). */
+  demographicData?: {
+    /** User-provided gender identity */
+    gender?: "male" | "female" | "non-binary" | "prefer_not_to_say" | null;
+    /** User-provided income bracket category */
+    incomeBracket?:
+      | "<25k"
+      | "25k-50k"
+      | "50k-100k"
+      | "100k-200k"
+      | ">200k"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided country of residence (e.g., ISO 3166-1 alpha-2 code) */
+    country?: string | null;
+    /**
+     * User-provided age. Setting this clears inferredAgeBracket.
+     * @format int32
+     */
+    age?: number | null;
+    /** Set to true by the user to confirm the inferred 'hasKids' status. */
+    hasKidsIsVerified?: boolean;
+    /** Set to true by the user to confirm the inferred 'relationshipStatus'. */
+    relationshipStatusIsVerified?: boolean;
+    /** Set to true by the user to confirm the inferred 'employmentStatus'. */
+    employmentStatusIsVerified?: boolean;
+    /** Set to true by the user to confirm the inferred 'educationLevel'. */
+    educationLevelIsVerified?: boolean;
+    /** Set to true by the user to confirm the inferred 'ageBracket'. Only applicable if 'age' is not set. */
+    ageBracketIsVerified?: boolean;
+    /** Set to true by the user to confirm the inferred 'gender'. Only applicable if 'gender' is not set. */
+    genderIsVerified?: boolean;
+  };
 }
 
 export interface ApiKey {
@@ -386,12 +408,12 @@ export interface Taxonomy {
 /** User-provided and inferred demographic information */
 export interface DemographicData {
   /**
-   * User gender identity
+   * User-provided gender identity
    * @example "female"
    */
   gender?: "male" | "female" | "non-binary" | "prefer_not_to_say" | null;
   /**
-   * User income bracket category
+   * User-provided income bracket category
    * @example "50k-100k"
    */
   incomeBracket?:
@@ -403,22 +425,37 @@ export interface DemographicData {
     | "prefer_not_to_say"
     | null;
   /**
-   * User country of residence (e.g., ISO 3166-1 alpha-2 code)
+   * User-provided country of residence (e.g., ISO 3166-1 alpha-2 code)
    * @example "US"
    */
   country?: string | null;
   /**
-   * User age
+   * User-provided age
    * @format int32
    * @example 35
    */
   age?: number | null;
   /** Inferred: Does the user likely have children? (null if unknown) */
   inferredHasKids?: boolean | null;
+  /**
+   * Flag indicating if inferredHasKids has been verified by the user
+   * @default false
+   */
+  hasKidsIsVerified?: boolean;
   /** Inferred: User relationship status (null if unknown) */
   inferredRelationshipStatus?: "single" | "relationship" | "married" | null;
+  /**
+   * Flag indicating if inferredRelationshipStatus has been verified by the user
+   * @default false
+   */
+  relationshipStatusIsVerified?: boolean;
   /** Inferred: User employment status (null if unknown) */
   inferredEmploymentStatus?: "employed" | "unemployed" | "student" | null;
+  /**
+   * Flag indicating if inferredEmploymentStatus has been verified by the user
+   * @default false
+   */
+  employmentStatusIsVerified?: boolean;
   /** Inferred: User education level (null if unknown) */
   inferredEducationLevel?:
     | "high_school"
@@ -426,7 +463,12 @@ export interface DemographicData {
     | "masters"
     | "doctorate"
     | null;
-  /** Inferred: User age bracket if age not provided (null if unknown) */
+  /**
+   * Flag indicating if inferredEducationLevel has been verified by the user
+   * @default false
+   */
+  educationLevelIsVerified?: boolean;
+  /** Inferred: User age bracket (null if unknown or age provided) */
   inferredAgeBracket?:
     | "18-24"
     | "25-34"
@@ -435,6 +477,18 @@ export interface DemographicData {
     | "55-64"
     | "65+"
     | null;
+  /**
+   * Flag indicating if inferredAgeBracket has been verified by the user
+   * @default false
+   */
+  ageBracketIsVerified?: boolean;
+  /** Inferred: User gender identity (null if unknown or gender provided) */
+  inferredGender?: "male" | "female" | "non-binary" | null;
+  /**
+   * Flag indicating if inferredGender has been verified by the user
+   * @default false
+   */
+  genderIsVerified?: boolean;
 }
 
 export interface RecentUserDataEntry {

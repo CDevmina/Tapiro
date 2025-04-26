@@ -101,15 +101,24 @@ exports.registerUser = async function (req, body) {
       email: userData.email,
       phone: userData.phone_number || null,
       demographicData: {
+        // User provided
         gender: gender || null,
         incomeBracket: incomeBracket || null,
         country: country || null,
         age: age || null,
+        // Inferred (initialize as null, verified as false)
         inferredHasKids: null,
+        hasKidsIsVerified: false, // Initialize
         inferredRelationshipStatus: null,
+        relationshipStatusIsVerified: false, // Initialize
         inferredEmploymentStatus: null,
+        employmentStatusIsVerified: false, // Initialize
         inferredEducationLevel: null,
+        educationLevelIsVerified: false, // Initialize
         inferredAgeBracket: null,
+        ageBracketIsVerified: false, // Initialize
+        inferredGender: null,
+        genderIsVerified: false, // Initialize
       },
       preferences: preferences || [],
       privacySettings: {
