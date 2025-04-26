@@ -564,8 +564,9 @@ const UserPreferencesPage: React.FC = () => {
         Manage Your Profile & Interests
       </h2>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* --- Demographics Section (Left Column on Large Screens) --- */}
+      {/* wrap both cards in a grid */}
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+        {/* --- Demographics Section (Left) */}
         <Card className="lg:col-span-1">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
@@ -954,7 +955,7 @@ const UserPreferencesPage: React.FC = () => {
           )}
         </Card>
 
-        {/* --- Preferences Section (Right Column on Large Screens) --- */}
+        {/* --- Your Interests Card (Right) */}
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
