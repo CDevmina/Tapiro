@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.9'; // Incremented version
+const SCHEMA_VERSION = '3.0.0'; // Incremented version
 
 const userSchema = {
   validator: {
