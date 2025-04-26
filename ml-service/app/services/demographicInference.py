@@ -57,22 +57,32 @@ AGE_BRACKET_SENIOR_KEYWORDS = { # Approx 65+
 
 
 # --- Helper Function to Extract Text ---
-def _extract_text_from_entries(entries: List[Dict[str, Any]]) -> List[str]:
-    """Extracts relevant text (item names, search queries) from entries."""
+# MODIFIED: Now accepts a list of userData documents
+def _extract_text_from_user_data_docs(user_data_docs: List[Dict[str, Any]]) -> List[str]:
+    """Extracts relevant text (item names, search queries) from a list of userData documents."""
     texts = []
-    for entry in entries:
-        if entry.get("dataType") == "purchase":
-            texts.extend([item.get("name", "").lower() for item in entry.get("items", [])])
-        elif entry.get("dataType") == "search":
-            texts.append(entry.get("query", "").lower())
+    for doc in user_data_docs:
+        # Each doc has an 'entries' list
+        for entry in doc.get("entries", []):
+            # Process purchase items within each entry
+            if doc.get("dataType") == "purchase": # Check dataType at the document level
+                texts.extend([item.get("name", "").lower() for item in entry.get("items", [])])
+            # Process search query within each entry
+            elif doc.get("dataType") == "search": # Check dataType at the document level
+                texts.append(entry.get("query", "").lower())
+            # Handle cases where dataType might be missing or different
+            # else:
+            #     logger.warning(f"Unknown or missing dataType in userData document: {doc.get('_id')}")
     return [text for text in texts if text] # Filter out empty strings
 
 # --- Inference Functions ---
 
-async def infer_has_kids(entries: List[Dict[str, Any]]) -> Optional[bool]:
+# MODIFIED: Pass the list of userData documents directly
+async def infer_has_kids(user_data_docs: List[Dict[str, Any]]) -> Optional[bool]:
     """Infer if user has kids based on purchase/search keywords."""
     kid_evidence_count = 0
-    texts = _extract_text_from_entries(entries)
+    # MODIFIED: Call the updated helper function
+    texts = _extract_text_from_user_data_docs(user_data_docs)
     logger.debug(f"Inferring 'has_kids' from {len(texts)} text entries.")
     for text in texts:
         if any(keyword in text for keyword in KIDS_KEYWORDS):
@@ -85,12 +95,14 @@ async def infer_has_kids(entries: List[Dict[str, Any]]) -> Optional[bool]:
     logger.debug(f"Inferring 'has_kids' = None (evidence count: {kid_evidence_count})")
     return None # Not enough evidence
 
-async def infer_relationship_status(entries: List[Dict[str, Any]]) -> Optional[str]:
+# MODIFIED: Pass the list of userData documents directly
+async def infer_relationship_status(user_data_docs: List[Dict[str, Any]]) -> Optional[str]:
     """Infer relationship status (single, relationship, married) based on keywords."""
     married_evidence = 0
     relationship_evidence = 0
     single_evidence = 0 # Less reliable
-    texts = _extract_text_from_entries(entries)
+    # MODIFIED: Call the updated helper function
+    texts = _extract_text_from_user_data_docs(user_data_docs)
     logger.debug(f"Inferring 'relationship_status' from {len(texts)} text entries.")
 
     for text in texts:
@@ -120,12 +132,13 @@ async def infer_relationship_status(entries: List[Dict[str, Any]]) -> Optional[s
 
 # --- NEW Inference Functions ---
 
-async def infer_employment_status(entries: List[Dict[str, Any]]) -> Optional[str]:
+# MODIFIED: Pass the list of userData documents directly
+async def infer_employment_status(user_data_docs: List[Dict[str, Any]]) -> Optional[str]:
     """Infer employment status (employed, student, unemployed) based on keywords."""
     student_evidence = 0
     employment_evidence = 0
-    # Inferring 'unemployed' directly from keywords is very difficult/unreliable
-    texts = _extract_text_from_entries(entries)
+    # MODIFIED: Call the updated helper function
+    texts = _extract_text_from_user_data_docs(user_data_docs)
     logger.debug(f"Inferring 'employment_status' from {len(texts)} text entries.")
 
     for text in texts:
@@ -148,12 +161,14 @@ async def infer_employment_status(entries: List[Dict[str, Any]]) -> Optional[str
     logger.debug("Inferring 'employment_status' = None (insufficient evidence)")
     return None # Not enough evidence
 
-async def infer_education_level(entries: List[Dict[str, Any]]) -> Optional[str]:
+# MODIFIED: Pass the list of userData documents directly
+async def infer_education_level(user_data_docs: List[Dict[str, Any]]) -> Optional[str]:
     """Infer education level (high_school, bachelors, masters, doctorate) - Very Speculative."""
     doctorate_evidence = 0
     masters_evidence = 0
     bachelors_evidence = 0
-    texts = _extract_text_from_entries(entries)
+    # MODIFIED: Call the updated helper function
+    texts = _extract_text_from_user_data_docs(user_data_docs)
     logger.debug(f"Inferring 'education_level' from {len(texts)} text entries.")
 
     for text in texts:
@@ -182,12 +197,14 @@ async def infer_education_level(entries: List[Dict[str, Any]]) -> Optional[str]:
     logger.debug("Inferring 'education_level' = None (insufficient evidence)")
     return None # Very uncertain
 
-async def infer_age_bracket(entries: List[Dict[str, Any]]) -> Optional[str]:
+# MODIFIED: Pass the list of userData documents directly
+async def infer_age_bracket(user_data_docs: List[Dict[str, Any]]) -> Optional[str]:
     """Infer age bracket based on keywords - EXTREMELY SPECULATIVE AND UNRELIABLE."""
     young_adult_evidence = 0
     mid_career_evidence = 0
     senior_evidence = 0
-    texts = _extract_text_from_entries(entries)
+    # MODIFIED: Call the updated helper function
+    texts = _extract_text_from_user_data_docs(user_data_docs)
     logger.debug(f"Inferring 'age_bracket' from {len(texts)} text entries.")
 
     for text in texts:
@@ -299,21 +316,6 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
                 updated = True
                 logger.info(f"Inference: Successfully updated user document for {email}")
 
-                # --- Invalidate Caches on Successful Update ---
-                auth0_id = user.get("auth0Id")
-                if auth0_id:
-                    # Invalidate user data and general preferences
-                    await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
-                    await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
-                    logger.info(f"Inference: Invalidated USER_DATA and PREFERENCES cache for {auth0_id}")
-
-                    # Invalidate store-specific preferences for opt-in stores
-                    if user.get("privacySettings", {}).get("optInStores"):
-                        user_object_id_str = str(user_object_id)
-                        for store_id in user["privacySettings"]["optInStores"]:
-                            await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_object_id_str}:{store_id}")
-                        logger.info(f"Inference: Invalidated STORE_PREFERENCES caches for {auth0_id}")
-                # --- End Cache Invalidation ---
             else:
                  logger.warning(f"Inference: Update payload generated but DB modify count was 0 for {email}. Payload: {update_payload}")
         else:
