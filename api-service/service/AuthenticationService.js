@@ -100,10 +100,17 @@ exports.registerUser = async function (req, body) {
       username: userData.username || userData.nickname || userData.sub,
       email: userData.email,
       phone: userData.phone_number || null,
-      gender: gender || null, // Add new fields, defaulting to null if not provided
-      incomeBracket: incomeBracket || null,
-      country: country || null,
-      age: age || null,
+      demographicData: {
+        gender: gender || null,
+        incomeBracket: incomeBracket || null,
+        country: country || null,
+        age: age || null,
+        inferredHasKids: null,
+        inferredRelationshipStatus: null,
+        inferredEmploymentStatus: null,
+        inferredEducationLevel: null,
+        inferredAgeBracket: null,
+      },
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,

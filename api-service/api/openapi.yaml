@@ -897,27 +897,6 @@ components:
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
-        gender:
-          type: string
-          nullable: true
-          description: User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
-          example: "female"
-        incomeBracket:
-          type: string
-          nullable: true
-          description: User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
-          example: "50k-100k"
-        country:
-          type: string
-          nullable: true
-          description: User country of residence (ISO 3166-1 alpha-2 code)
-          example: "US"
-        age:
-          type: integer
-          format: int32
-          nullable: true
-          description: User age
-          example: 35
         privacySettings:
           type: object
           properties:
@@ -937,6 +916,8 @@ components:
               items:
                 type: string
               description: List of store IDs user has opted out from
+        demographicData:
+          $ref: "#/components/schemas/DemographicData"
         createdAt:
           type: string
           format: date-time
@@ -1570,6 +1551,67 @@ components:
             $ref: "#/components/schemas/TaxonomyCategory"
         version:
           type: string
+
+    DemographicData:
+      type: object
+      description: User-provided and inferred demographic information
+      properties:
+        gender:
+          type: string
+          nullable: true
+          description: User gender identity
+          enum: [male, female, non-binary, prefer_not_to_say, null]
+          example: "female"
+        incomeBracket:
+          type: string
+          nullable: true
+          description: User income bracket category
+          enum:
+            [
+              "<25k",
+              "25k-50k",
+              "50k-100k",
+              "100k-200k",
+              ">200k",
+              "prefer_not_to_say",
+              null,
+            ]
+          example: "50k-100k"
+        country:
+          type: string
+          nullable: true
+          description: User country of residence (e.g., ISO 3166-1 alpha-2 code)
+          example: "US"
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: User age
+          example: 35
+        inferredHasKids:
+          type: boolean
+          nullable: true
+          description: "Inferred: Does the user likely have children? (null if unknown)"
+        inferredRelationshipStatus:
+          type: string
+          nullable: true
+          description: "Inferred: User relationship status (null if unknown)"
+          enum: [single, relationship, married, null]
+        inferredEmploymentStatus:
+          type: string
+          nullable: true
+          description: "Inferred: User employment status (null if unknown)"
+          enum: [employed, unemployed, student, null]
+        inferredEducationLevel:
+          type: string
+          nullable: true
+          description: "Inferred: User education level (null if unknown)"
+          enum: [high_school, bachelors, masters, doctorate, null]
+        inferredAgeBracket:
+          type: string
+          nullable: true
+          description: "Inferred: User age bracket if age not provided (null if unknown)"
+          enum: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", null]
 
     RecentUserDataEntry:
       type: object
