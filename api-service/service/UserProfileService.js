@@ -177,6 +177,10 @@ exports.updateUserProfile = async function (req, body) {
         updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
         privacySettingsChanged = true;
       }
+      if (body.privacySettings.allowInference !== undefined) { // <-- Add check for allowInference
+        updateData['privacySettings.allowInference'] = body.privacySettings.allowInference;
+        privacySettingsChanged = true;
+      }
       // DO NOT update optInStores or optOutStores here
     }
 
@@ -217,7 +221,7 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // Invalidate store-specific preferences if demographics or relevant privacy settings changed
-    // Also invalidate if the optInStores list exists (safer to clear on any profile update)
+    // (Keep existing logic, as privacySettingsChanged flag now includes allowInference)
     const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
     if ((demographicsChanged || privacySettingsChanged) && updatedUserDoc.privacySettings?.optInStores) {
        const userObjectId = updatedUserDoc._id; // Use the _id from the updated result

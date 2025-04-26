@@ -47,6 +47,10 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     user_id = str(user["_id"]) # Use the confirmed user ID from DB
     logger.info(f"Found user {email} with DB ID {user_id}")
 
+    # --- Check Inference Permission ---
+    privacy_settings = user.get("privacySettings", {})
+    allow_inference = privacy_settings.get("allowInference", True) # Default to True if missing
+
     # Extract demographics from the nested 'demographicData' field
     user_demographics_nested = user.get("demographicData", {})
     # Flatten the dictionary to pass to processing functions
@@ -155,18 +159,21 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     except Exception as e:
         logger.error(f"Failed to update userData status for {email}: {str(e)}")
 
-    # --- Run Demographic Inference (After main processing) ---
+    # --- Run Demographic Inference (Conditionally) ---
     inference_updated_user = False
-    try:
-        logger.info(f"Starting demographic inference for user {email} ({user_id})")
-        inference_updated_user = await run_inference_for_user(user_id, email, db)
-        if inference_updated_user:
-             logger.info(f"Demographic inference updated user document for {email}")
-             # Cache invalidation is handled within run_inference_for_user
-        else:
-             logger.info(f"Demographic inference did not result in updates for user {email}")
-    except Exception as inference_error:
-        logger.error(f"Demographic inference failed for user {email}: {inference_error}", exc_info=True)
+    if allow_inference: # <-- Check the flag
+        try:
+            logger.info(f"Starting demographic inference for user {email} ({user_id}) as allowInference is True.")
+            inference_updated_user = await run_inference_for_user(user_id, email, db)
+            if inference_updated_user:
+                 logger.info(f"Demographic inference updated user document for {email}")
+                 # Cache invalidation is handled within run_inference_for_user
+            else:
+                 logger.info(f"Demographic inference did not result in updates for user {email}")
+        except Exception as inference_error:
+            logger.error(f"Demographic inference failed for user {email}: {inference_error}", exc_info=True)
+    else:
+        logger.info(f"Skipping demographic inference for user {email} ({user_id}) as allowInference is False.")
     # --- End Demographic Inference ---
 
 

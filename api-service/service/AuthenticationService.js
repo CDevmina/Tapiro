@@ -13,10 +13,11 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    // Destructure new demographic fields
+    // Destructure new demographic fields AND allowInference
     const {
       preferences,
       dataSharingConsent,
+      allowInference, // <-- Add allowInference
       gender,
       incomeBracket,
       country,
@@ -128,6 +129,7 @@ exports.registerUser = async function (req, body) {
       privacySettings: {
         dataSharingConsent,
         anonymizeData: false,
+        allowInference: allowInference !== undefined ? allowInference : true, // <-- Set allowInference, default true
         optInStores: [],
         optOutStores: [],
       },

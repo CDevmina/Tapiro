@@ -147,8 +147,12 @@ const userSchema = {
           properties: {
             dataSharingConsent: { bsonType: 'bool' },
             anonymizeData: { bsonType: 'bool' },
-            optInStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
-            optOutStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
+            allowInference: { // <-- Add new field
+              bsonType: 'bool',
+              description: 'Allow Tapiro to infer demographic data based on user activity (default: true)',
+            },
+            optInStores: { bsonType: 'array', items: { bsonType: 'string' } },
+            optOutStores: { bsonType: 'array', items: { bsonType: 'string' } },
           },
         },
         createdAt: { bsonType: 'date' },
