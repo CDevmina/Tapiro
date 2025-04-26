@@ -1,9 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  QueryKey,
-} from "@tanstack/react-query"; // Import QueryKey
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, optimisticUpdates } from "../utils/cache";
 import {
@@ -15,25 +10,15 @@ import {
   MonthlySpendingAnalytics,
   GetSpendingAnalyticsParams,
   GetRecentUserDataParams, // <-- Import params type for recent data
-  Error, // <-- Import Error type
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
-// Define a type for the context returned by onMutate
-interface MutationContext {
-  previousData?: User | undefined;
-  queryKey?: QueryKey;
-}
-
 export function useUserProfile() {
   const { apiClients, clientsReady } = useApiClients();
-  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
-  return useQuery<User, Error>({
-    // Specify types
+  return useQuery({
     queryKey: cacheKeys.users.profile(),
     queryFn: () => apiClients.users.getUserProfile().then((res) => res.data),
-    // Update enabled check
-    enabled: isAuthenticated && !authLoading && clientsReady,
+    enabled: clientsReady,
     ...cacheSettings.user,
   });
 }
@@ -42,16 +27,11 @@ export function useUpdateUserProfile() {
   const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
-  return useMutation<User, Error, UserUpdate>({
-    // Specify types
+  return useMutation({
     mutationFn: (userData: UserUpdate) =>
       apiClients.users.updateUserProfile(userData).then((res) => res.data),
-    onSuccess: (updatedUser) => {
-      // Can use updatedUser if needed
-      // Invalidate or directly update the cache
-      queryClient.setQueryData(cacheKeys.users.profile(), updatedUser);
-      // Optionally invalidate if optimistic updates aren't enough or for related data
-      // queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.users.profile() });
     },
   });
 }
@@ -62,7 +42,6 @@ export function useUserPreferences() {
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state
 
   return useQuery({
-    // Add types if UserPreferences type exists
     queryKey: cacheKeys.users.preferences(),
     queryFn: () =>
       apiClients.users.getUserOwnPreferences().then((res) => res.data),
@@ -77,22 +56,14 @@ export function useUpdateUserPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Add types if UserPreferences type exists
     mutationFn: (preferences: UserPreferencesUpdate) =>
       apiClients.users
         .updateUserPreferences(preferences)
         .then((res) => res.data),
-    onSuccess: (updatedPreferences) => {
-      // Can use updatedPreferences
-      // Invalidate or directly update the cache
-      queryClient.setQueryData(
-        cacheKeys.users.preferences(),
-        updatedPreferences,
-      );
-      // Optionally invalidate
-      // queryClient.invalidateQueries({
-      //   queryKey: cacheKeys.users.preferences(),
-      // });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.preferences(),
+      });
     },
   });
 }
@@ -101,9 +72,7 @@ export function useOptInToStore() {
   const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string, MutationContext>({
-    // Add MutationContext type
-    // Specify types
+  return useMutation({
     mutationFn: (storeId: string) =>
       apiClients.users.optInToStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
@@ -113,24 +82,18 @@ export function useOptInToStore() {
       const previousData = queryClient.getQueryData<User>(queryKey); // <--- Use User type
 
       // Apply optimistic update (which now targets the profile cache)
-      if (previousData) {
-        optimisticUpdates.optInStore(storeId); // Apply optimistic update locally
-      }
+      optimisticUpdates.optInStore(storeId);
 
       return { previousData, queryKey }; // Pass queryKey for rollback/settled
     },
     onError: (_err, _variables, context) => {
-      // Context is now typed
       // Rollback on error using the correct key and data
-      // Check if context and its properties exist before using them
-      if (context?.queryKey && context.previousData !== undefined) {
+      if (context?.previousData) {
         queryClient.setQueryData(context.queryKey, context.previousData);
       }
     },
     onSettled: (_data, _error, _variables, context) => {
-      // Context is now typed
       // Invalidate the USER PROFILE cache on settled
-      // Check if context and queryKey exist
       if (context?.queryKey) {
         queryClient.invalidateQueries({ queryKey: context.queryKey });
       }
@@ -146,9 +109,7 @@ export function useOptOutFromStore() {
   const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string, MutationContext>({
-    // Add MutationContext type
-    // Specify types
+  return useMutation({
     mutationFn: (storeId: string) =>
       apiClients.users.optOutFromStore(storeId).then((res) => res.data),
     onMutate: async (storeId) => {
@@ -158,24 +119,18 @@ export function useOptOutFromStore() {
       const previousData = queryClient.getQueryData<User>(queryKey); // <--- Use User type
 
       // Apply optimistic update (which now targets the profile cache)
-      if (previousData) {
-        optimisticUpdates.optOutStore(storeId); // Apply optimistic update locally
-      }
+      optimisticUpdates.optOutStore(storeId);
 
       return { previousData, queryKey }; // Pass queryKey for rollback/settled
     },
     onError: (_err, _variables, context) => {
-      // Context is now typed
       // Rollback on error using the correct key and data
-      // Check if context and its properties exist before using them
-      if (context?.queryKey && context.previousData !== undefined) {
+      if (context?.previousData) {
         queryClient.setQueryData(context.queryKey, context.previousData);
       }
     },
     onSettled: (_data, _error, _variables, context) => {
-      // Context is now typed
       // Invalidate the USER PROFILE cache on settled
-      // Check if context and queryKey exist
       if (context?.queryKey) {
         queryClient.invalidateQueries({ queryKey: context.queryKey });
       }
@@ -191,14 +146,13 @@ export function useDeleteUserProfile() {
   const { apiClients } = useApiClients();
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, void>({
-    // Specify types
+  return useMutation({
     mutationFn: () =>
       apiClients.users.deleteUserProfile().then((res) => res.data),
     onSuccess: () => {
       // After successful deletion, clear user-related cache
       queryClient.invalidateQueries({ queryKey: ["auth", "metadata"] });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.users.all }); // Invalidate all user queries
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
   });
 }
