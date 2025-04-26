@@ -28,22 +28,32 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
-  privacySettings: {
-    /** @default false */
-    dataSharingConsent?: boolean;
-    /** @default false */
-    anonymizeData?: boolean;
-    /** List of store IDs user has opted into */
-    optInStores?: string[];
-    /** List of store IDs user has opted out from */
-    optOutStores?: string[];
-  };
+  privacySettings: PrivacySettings;
   /** User-provided and inferred demographic information */
   demographicData?: DemographicData;
   /** @format date-time */
   createdAt?: string;
   /** @format date-time */
   updatedAt?: string;
+}
+
+export interface PrivacySettings {
+  /** User consent to share aggregated/anonymized data. */
+  dataSharingConsent: boolean;
+  /**
+   * User preference to anonymize data where possible (future use).
+   * @default false
+   */
+  anonymizeData?: boolean;
+  /**
+   * Allow Tapiro to infer demographic data based on user activity.
+   * @default true
+   */
+  allowInference?: boolean;
+  /** List of store IDs the user explicitly allows data sharing with. */
+  optInStores?: string[];
+  /** List of store IDs the user explicitly blocks data sharing with. */
+  optOutStores?: string[];
 }
 
 export interface Store {
@@ -69,6 +79,8 @@ export interface UserCreate {
   preferences?: PreferenceItem[];
   /** User's consent for data sharing */
   dataSharingConsent: boolean;
+  /** Allow Tapiro to infer demographic data (defaults to true if omitted). */
+  allowInference?: boolean;
   /** User gender identity */
   gender?: string | null;
   /** User income bracket category */
