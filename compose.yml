@@ -122,6 +122,18 @@ services:
       retries: 5
       start_period: 10s
 
+  demo-store:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+    container_name: demo
+    ports:
+      - "5174:80"
+    networks:
+      - tapiro-net
+    depends_on:
+      - api-service
+
 networks:
   tapiro-net:
 
