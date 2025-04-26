@@ -33,7 +33,7 @@ import {
   HiQuestionMarkCircle, // Icon for inferred/unverified
   HiTrash,
   HiPlus,
-  HiOutlineHeart, // Icon for correcting
+  HiOutlineHeart,
 } from "react-icons/hi";
 import {
   useUserProfile,
@@ -591,7 +591,8 @@ const UserPreferencesPage: React.FC = () => {
         Manage Your Profile & Interests
       </h2>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      {/* Add items-start to align cards to the top */}
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
         {/* --- Demographics Section (UPDATED) --- */}
         <Card className="lg:col-span-1">
           <div className="flex items-center justify-between">
