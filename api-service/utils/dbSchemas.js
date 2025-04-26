@@ -146,7 +146,6 @@ const userSchema = {
           required: ['dataSharingConsent'],
           properties: {
             dataSharingConsent: { bsonType: 'bool' },
-            anonymizeData: { bsonType: 'bool' },
             allowInference: { // <-- Add new field
               bsonType: 'bool',
               description: 'Allow Tapiro to infer demographic data based on user activity (default: true)',

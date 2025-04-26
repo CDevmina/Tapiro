@@ -916,10 +916,6 @@ components:
         dataSharingConsent:
           type: boolean
           description: User consent to share aggregated/anonymized data.
-        anonymizeData:
-          type: boolean
-          description: User preference to anonymize data where possible (future use).
-          default: false
         allowInference: # <-- Add allowInference here
           type: boolean
           description: Allow Tapiro to infer demographic data based on user activity.

@@ -173,10 +173,6 @@ exports.updateUserProfile = async function (req, body) {
         updateData['privacySettings.dataSharingConsent'] = body.privacySettings.dataSharingConsent;
         privacySettingsChanged = true;
       }
-      if (body.privacySettings.anonymizeData !== undefined) {
-        updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
-        privacySettingsChanged = true;
-      }
       if (body.privacySettings.allowInference !== undefined) { // <-- Add check for allowInference
         updateData['privacySettings.allowInference'] = body.privacySettings.allowInference;
         privacySettingsChanged = true;

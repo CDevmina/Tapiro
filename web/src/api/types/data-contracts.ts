@@ -41,11 +41,6 @@ export interface PrivacySettings {
   /** User consent to share aggregated/anonymized data. */
   dataSharingConsent: boolean;
   /**
-   * User preference to anonymize data where possible (future use).
-   * @default false
-   */
-  anonymizeData?: boolean;
-  /**
    * Allow Tapiro to infer demographic data based on user activity.
    * @default true
    */
