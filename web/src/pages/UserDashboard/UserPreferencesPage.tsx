@@ -143,15 +143,13 @@ const UserPreferencesPage: React.FC = () => {
     defaultValues: { category: "", attributes: {}, score: 50 },
   });
 
-  // --- Effects ---
-  // Reset demographics form when profile loads or editing starts/stops
   useEffect(() => {
     if (userProfile && !isEditingDemographics) {
       resetDemoForm({
-        gender: userProfile.gender || "",
-        age: userProfile.age || undefined,
-        country: userProfile.country || "",
-        incomeBracket: userProfile.incomeBracket || "",
+        gender: userProfile?.demographicData?.gender || "",
+        age: userProfile?.demographicData?.age || undefined,
+        country: userProfile?.demographicData?.country || "",
+        incomeBracket: userProfile?.demographicData?.incomeBracket || "",
       });
     }
   }, [userProfile, isEditingDemographics, resetDemoForm]);
@@ -420,25 +418,25 @@ const UserPreferencesPage: React.FC = () => {
               <DemoInfoCard
                 icon={HiOutlineUserCircle}
                 label="Gender"
-                value={userProfile?.gender}
+                value={userProfile?.demographicData?.gender}
                 isLoading={profileLoading}
               />
               <DemoInfoCard
                 icon={HiOutlineCake}
                 label="Age"
-                value={userProfile?.age}
+                value={userProfile?.demographicData?.age}
                 isLoading={profileLoading}
               />
               <DemoInfoCard
                 icon={HiOutlineGlobeAlt}
                 label="Country"
-                value={userProfile?.country}
+                value={userProfile?.demographicData?.country}
                 isLoading={profileLoading}
               />
               <DemoInfoCard
                 icon={HiOutlineCash}
                 label="Income"
-                value={userProfile?.incomeBracket}
+                value={userProfile?.demographicData?.incomeBracket}
                 isLoading={profileLoading}
               />
             </div>

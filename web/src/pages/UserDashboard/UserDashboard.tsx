@@ -146,7 +146,6 @@ const renderCustomizedLabel = ({
   outerRadius,
   percent,
 }: CustomizedLabelProps) => {
-  // Use the defined interface
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
@@ -765,25 +764,25 @@ export default function UserDashboard() {
                             <DemoInfoCard
                               icon={HiOutlineUserCircle}
                               label="Gender"
-                              value={profile?.gender}
+                              value={profile?.demographicData?.gender}
                               isLoading={profileLoading}
                             />
                             <DemoInfoCard
                               icon={HiOutlineCake}
                               label="Age"
-                              value={profile?.age}
+                              value={profile?.demographicData?.age}
                               isLoading={profileLoading}
                             />
                             <DemoInfoCard
                               icon={HiOutlineGlobeAlt}
                               label="Country"
-                              value={profile?.country}
+                              value={profile?.demographicData?.country}
                               isLoading={profileLoading}
                             />
                             <DemoInfoCard
                               icon={HiOutlineCash}
                               label="Income"
-                              value={profile?.incomeBracket}
+                              value={profile?.demographicData?.incomeBracket}
                               isLoading={profileLoading}
                             />
                           </div>
