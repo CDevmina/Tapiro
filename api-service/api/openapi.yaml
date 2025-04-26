@@ -1060,13 +1060,7 @@ components:
           items:
             $ref: "#/components/schemas/PreferenceItem"
         privacySettings:
-          type: object
-          properties:
-            dataSharingConsent:
-              type: boolean
-            anonymizeData:
-              type: boolean
-            # optInStores/optOutStores are handled by separate endpoints
+          $ref: "#/components/schemas/PrivacySettings"
         demographicData:
           type: object
           description: Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values.

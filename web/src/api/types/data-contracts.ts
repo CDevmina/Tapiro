@@ -114,10 +114,7 @@ export interface UserUpdate {
   phone?: string;
   /** User interest preferences with taxonomy categorization */
   preferences?: PreferenceItem[];
-  privacySettings?: {
-    dataSharingConsent?: boolean;
-    anonymizeData?: boolean;
-  };
+  privacySettings?: PrivacySettings;
   /** Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values. */
   demographicData?: {
     /** User-provided gender identity */

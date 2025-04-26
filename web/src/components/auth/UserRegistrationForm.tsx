@@ -10,6 +10,7 @@ import {
   Popover,
   Select, // Already imported
   TextInput,
+  Tooltip, // <-- Import ToggleSwitch if you prefer it over Checkbox
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -69,6 +70,8 @@ export function UserRegistrationForm({
   const [showConsentModal, setShowConsentModal] = useState(false);
   // State to track if consent has been explicitly accepted via the modal
   const [consentAccepted, setConsentAccepted] = useState(false);
+  // --- Add state for allowInference ---
+  const [allowInference, setAllowInference] = useState(true); // Default to true
 
   // Add state for demographic fields
   const [gender, setGender] = useState<string | null>(null);
@@ -88,6 +91,7 @@ export function UserRegistrationForm({
 
     const userData: UserCreate = {
       dataSharingConsent: dataSharingConsent,
+      allowInference: allowInference, // <-- Include allowInference
       preferences: [],
       gender: gender || null,
       incomeBracket: incomeBracket || null,
@@ -207,7 +211,8 @@ export function UserRegistrationForm({
         </div>
 
         {/* Consent Section */}
-        <div className="flex flex-col space-y-2 rounded border border-gray-200 p-4 dark:border-gray-600">
+        <div className="flex flex-col space-y-4 rounded border border-gray-200 p-4 dark:border-gray-600">
+          {/* --- Data Sharing Consent (Existing) --- */}
           {/* Conditionally wrap Checkbox/Label in Popover */}
           {!consentAccepted ? (
             <Popover content={popoverContent} trigger="hover">
@@ -248,6 +253,26 @@ export function UserRegistrationForm({
             </div>
           )}
 
+          {/* --- Allow Inference Toggle --- */}
+          <div className="flex items-center gap-2">
+            {/* Using Checkbox for consistency, but ToggleSwitch is also an option */}
+            <Checkbox
+              id="allow-inference"
+              checked={allowInference}
+              onChange={(e) => setAllowInference(e.target.checked)}
+            />
+            <Label
+              htmlFor="allow-inference"
+              className="flex text-gray-700 dark:text-gray-300"
+            >
+              Allow Tapiro to infer demographic insights{" "}
+              <Tooltip content="Tapiro can estimate demographic details like age group or interests based on your activity to improve personalization, even if you don't provide them directly. You can disable this anytime.">
+                <HiInformationCircle className="ml-1 h-4 w-4 cursor-help text-gray-400" />
+              </Tooltip>
+            </Label>
+          </div>
+          {/* --- End Allow Inference Toggle --- */}
+
           {/* Button to open the modal remains the same */}
           <button
             type="button"
@@ -260,7 +285,8 @@ export function UserRegistrationForm({
           {/* Confirmation message remains the same */}
           {consentAccepted && (
             <p className="mt-1 flex items-center text-sm text-green-600 dark:text-green-400">
-              <HiCheckCircle className="mr-1 h-4 w-4" /> Consent Accepted
+              <HiCheckCircle className="mr-1 h-4 w-4" /> Data Sharing Consent
+              Accepted
             </p>
           )}
         </div>
