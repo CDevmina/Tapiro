@@ -1,7 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const http = require('http');
-const express = require('express'); // Import express
+const express = require('express');
 const oas3Tools = require('oas3-tools');
 const cors = require('cors');
 const { auth, checkJwtAndScope } = require('./middleware/authMiddleware');
@@ -13,7 +13,6 @@ const serverPort = process.env.PORT;
 
 // CORS configuration
 const corsOptions = {
-  origin: [process.env.FRONTEND_URL],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   credentials: true,
