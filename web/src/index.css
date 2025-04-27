@@ -2,4 +2,10 @@
 @plugin "flowbite-react/plugin/tailwindcss";
 @source "../.flowbite-react/class-list.json";
 
+@layer base {
+  body {
+    @apply bg-gray-50 dark:bg-gray-900;
+  }
+}
+
 @custom-variant dark (&:where(.dark, .dark *));

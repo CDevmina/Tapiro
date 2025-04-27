@@ -215,11 +215,13 @@ export function ApiKeyManagement() {
         <div className="overflow-x-auto">
           <Table hoverable>
             <TableHead>
-              <TableHeadCell>Name</TableHeadCell>
-              <TableHeadCell>Prefix</TableHeadCell>
-              <TableHeadCell>Status</TableHeadCell>
-              <TableHeadCell>Created At</TableHeadCell>
-              <TableHeadCell>Actions</TableHeadCell>
+              <TableRow>
+                <TableHeadCell>Name</TableHeadCell>
+                <TableHeadCell>Prefix</TableHeadCell>
+                <TableHeadCell>Status</TableHeadCell>
+                <TableHeadCell>Created At</TableHeadCell>
+                <TableHeadCell>Actions</TableHeadCell>
+              </TableRow>
             </TableHead>
             <TableBody className="divide-y">
               {apiKeysData.map((key) => (
