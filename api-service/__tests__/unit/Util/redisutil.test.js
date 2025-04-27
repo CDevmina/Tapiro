@@ -1,5 +1,5 @@
 const redis = require('redis');
-const { getCache, setCache } = require('../../utils/redisUtil');
+const { getCache, setCache } = require('../../../utils/redisUtil');
 
 describe('Redis Utilities - Unit Tests', () => {
   test('getCache should return cached value', async () => {
