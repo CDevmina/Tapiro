@@ -897,46 +897,10 @@ components:
         phone:
           type: string
           pattern: ^\+?[\d\s-]+$
-        gender:
-          type: string
-          nullable: true
-          description: User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
-          example: "female"
-        incomeBracket:
-          type: string
-          nullable: true
-          description: User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
-          example: "50k-100k"
-        country:
-          type: string
-          nullable: true
-          description: User country of residence (ISO 3166-1 alpha-2 code)
-          example: "US"
-        age:
-          type: integer
-          format: int32
-          nullable: true
-          description: User age
-          example: 35
         privacySettings:
-          type: object
-          properties:
-            dataSharingConsent:
-              type: boolean
-              default: false
-            anonymizeData:
-              type: boolean
-              default: false
-            optInStores:
-              type: array
-              items:
-                type: string
-              description: List of store IDs user has opted into
-            optOutStores:
-              type: array
-              items:
-                type: string
-              description: List of store IDs user has opted out from
+          $ref: "#/components/schemas/PrivacySettings"
+        demographicData:
+          $ref: "#/components/schemas/DemographicData"
         createdAt:
           type: string
           format: date-time
@@ -945,6 +909,19 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    PrivacySettings:
+      type: object
+      properties:
+        dataSharingConsent:
+          type: boolean
+          description: User consent to share aggregated/anonymized data.
+        allowInference:
+          type: boolean
+          description: Allow Tapiro to infer demographic data based on user activity.
+          default: true
+      required:
+        - dataSharingConsent
 
     Store:
       type: object
@@ -1006,6 +983,9 @@ components:
         dataSharingConsent:
           type: boolean
           description: User's consent for data sharing
+        allowInference:
+          type: boolean
+          description: Allow Tapiro to infer demographic data (defaults to true if omitted).
         gender:
           type: string
           nullable: true
@@ -1057,45 +1037,75 @@ components:
         phone:
           type: string
           description: User's phone number (E.164 format recommended)
+          pattern: '^\+?[\d\s-]+$'
         preferences:
           type: array
           description: User interest preferences with taxonomy categorization
           items:
             $ref: "#/components/schemas/PreferenceItem"
         privacySettings:
+          $ref: "#/components/schemas/PrivacySettings"
+        demographicData:
           type: object
+          description: Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values.
           properties:
-            dataSharingConsent:
+            gender:
+              type: string
+              nullable: true
+              description: "User-provided gender identity"
+              enum: [male, female, non-binary, prefer_not_to_say, null]
+            incomeBracket:
+              type: string
+              nullable: true
+              description: "User-provided income bracket category"
+              enum:
+                [
+                  "<25k",
+                  "25k-50k",
+                  "50k-100k",
+                  "100k-200k",
+                  ">200k",
+                  "prefer_not_to_say",
+                  null,
+                ]
+            country:
+              type: string
+              nullable: true
+              description: "User-provided country of residence (e.g., ISO 3166-1 alpha-2 code)"
+            age:
+              type: integer
+              format: int32
+              nullable: true
+              description: "User-provided age. Setting this clears the inferred age bracket."
+              minimum: 0
+            hasKids:
               type: boolean
-            anonymizeData:
-              type: boolean
-            optInStores:
-              type: array
-              items:
-                type: string
-                description: List of store IDs the user has opted into sharing data with
-            optOutStores:
-              type: array
-              items:
-                type: string
-                description: List of store IDs the user has opted out of sharing data with
-        gender:
-          type: string
-          nullable: true
-          description: User gender identity
-        incomeBracket:
-          type: string
-          nullable: true
-          description: User income bracket category
-        country:
-          type: string
-          nullable: true
-          description: User country of residence (ISO 3166-1 alpha-2 code)
-        age:
-          type: integer
-          format: int32
-          nullable: true
-          description: User age
+              nullable: true
+              description: "User-provided: Does the user have children?"
+            relationshipStatus:
+              type: string
+              nullable: true
+              description: "User-provided: User relationship status"
+              enum: [single, relationship, married, prefer_not_to_say, null]
+            employmentStatus:
+              type: string
+              nullable: true
+              description: "User-provided: User employment status"
+              enum: [employed, unemployed, student, prefer_not_to_say, null]
+            educationLevel:
+              type: string
+              nullable: true
+              description: "User-provided: User education level"
+              enum:
+                [
+                  high_school,
+                  bachelors,
+                  masters,
+                  doctorate,
+                  prefer_not_to_say,
+                  null,
+                ]
+            # REMOVED verification flags from update payload
 
     ApiKey:
       type: object
@@ -1570,6 +1580,106 @@ components:
             $ref: "#/components/schemas/TaxonomyCategory"
         version:
           type: string
+
+    DemographicData:
+      type: object
+      description: User-provided and inferred demographic information
+      properties:
+        # --- User-Provided ---
+        gender:
+          type: string
+          nullable: true
+          description: "User-provided gender identity"
+          enum: [male, female, non-binary, prefer_not_to_say, null]
+          example: "female"
+        incomeBracket:
+          type: string
+          nullable: true
+          description: "User-provided income bracket category"
+          enum:
+            [
+              "<25k",
+              "25k-50k",
+              "50k-100k",
+              "100k-200k",
+              ">200k",
+              "prefer_not_to_say",
+              null,
+            ]
+          example: "50k-100k"
+        country:
+          type: string
+          nullable: true
+          description: "User-provided country of residence (e.g., ISO 3166-1 alpha-2 code)"
+          example: "US"
+        age:
+          type: integer
+          format: int32
+          nullable: true
+          description: "User-provided age"
+          example: 35
+          minimum: 0
+        hasKids: # NEW User-provided
+          type: boolean
+          nullable: true
+          description: "User-provided: Does the user have children?"
+          example: true
+        relationshipStatus: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User relationship status"
+          enum: [single, relationship, married, prefer_not_to_say, null]
+          example: "married"
+        employmentStatus: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User employment status"
+          enum: [employed, unemployed, student, prefer_not_to_say, null]
+          example: "employed"
+        educationLevel: # NEW User-provided
+          type: string
+          nullable: true
+          description: "User-provided: User education level"
+          enum:
+            [
+              high_school,
+              bachelors,
+              masters,
+              doctorate,
+              prefer_not_to_say,
+              null,
+            ]
+          example: "bachelors"
+        # --- Inferred (Read-Only in responses, not updatable directly) ---
+        inferredHasKids:
+          type: boolean
+          nullable: true
+          readOnly: true
+          description: "Inferred: Does the user likely have children? (null if unknown or user provided)"
+        inferredRelationshipStatus:
+          type: string
+          nullable: true
+          readOnly: true
+          description: "Inferred: User relationship status (null if unknown or user provided)"
+          enum: [single, relationship, married, null]
+        inferredEmploymentStatus:
+          type: string
+          nullable: true
+          readOnly: true
+          description: "Inferred: User employment status (null if unknown or user provided)"
+          enum: [employed, unemployed, student, null]
+        inferredEducationLevel:
+          type: string
+          nullable: true
+          readOnly: true
+          description: "Inferred: User education level (null if unknown or user provided)"
+          enum: [high_school, bachelors, masters, doctorate, null]
+        inferredGender:
+          type: string
+          nullable: true
+          readOnly: true
+          description: "Inferred: User gender identity (null if unknown or user provided)"
+          enum: [male, female, non-binary, null]
 
     RecentUserDataEntry:
       type: object

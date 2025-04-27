@@ -47,6 +47,10 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     user_id = str(user["_id"]) # Use the confirmed user ID from DB
     logger.info(f"Found user {email} with DB ID {user_id}")
 
+    # --- Check Inference Permission ---
+    privacy_settings = user.get("privacySettings", {})
+    allow_inference = privacy_settings.get("allowInference", True) # Default to True if missing
+
     # Extract demographics from the nested 'demographicData' field
     user_demographics_nested = user.get("demographicData", {})
     # Flatten the dictionary to pass to processing functions
@@ -155,42 +159,42 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     except Exception as e:
         logger.error(f"Failed to update userData status for {email}: {str(e)}")
 
-    # --- Run Demographic Inference (After main processing) ---
+    # --- Run Demographic Inference (Conditionally) ---
     inference_updated_user = False
-    try:
-        logger.info(f"Starting demographic inference for user {email} ({user_id})")
-        inference_updated_user = await run_inference_for_user(user_id, email, db)
-        if inference_updated_user:
-             logger.info(f"Demographic inference updated user document for {email}")
-             # Cache invalidation is handled within run_inference_for_user
-        else:
-             logger.info(f"Demographic inference did not result in updates for user {email}")
-    except Exception as inference_error:
-        logger.error(f"Demographic inference failed for user {email}: {inference_error}", exc_info=True)
+    if allow_inference: # <-- Check the flag
+        try:
+            logger.info(f"Starting demographic inference for user {email} ({user_id}) as allowInference is True.")
+            inference_updated_user = await run_inference_for_user(user_id, email, db)
+            if inference_updated_user:
+                 logger.info(f"Demographic inference updated user document for {email}")
+                 # Cache invalidation is handled within run_inference_for_user
+            else:
+                 logger.info(f"Demographic inference did not result in updates for user {email}")
+        except Exception as inference_error:
+            logger.error(f"Demographic inference failed for user {email}: {inference_error}", exc_info=True)
+    else:
+        logger.info(f"Skipping demographic inference for user {email} ({user_id}) as allowInference is False.")
     # --- End Demographic Inference ---
 
 
-    # Invalidate user preferences cache using auth0Id (if not already done by inference)
-    # This ensures caches are cleared even if inference didn't run or update
+    # Invalidate relevant caches unconditionally after processing and inference attempt
     auth0_id = user.get("auth0Id")
     if auth0_id:
-        # Check if inference already invalidated caches for this user
-        if not inference_updated_user:
-            logger.info(f"Running post-processing cache invalidation for {auth0_id} as inference didn't update.")
-            await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
-            logger.info(f"Invalidated PREFERENCES cache for user {auth0_id} (post-processing)")
+        logger.info(f"Running post-processing cache invalidation for {auth0_id}.")
+        # Invalidate general user data and preferences
+        await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
+        await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
+        logger.info(f"Invalidated USER_DATA and PREFERENCES caches for user {auth0_id} (post-processing)")
 
-            # Invalidate store-specific caches if opt-in stores exist
-            if user.get("privacySettings", {}).get("optInStores"):
-                for store_id in user["privacySettings"]["optInStores"]:
-                     store_pref_key = f"{CACHE_KEYS['STORE_PREFERENCES']}{user_id}:{store_id}"
-                     await invalidate_cache(store_pref_key)
-                logger.info(f"Invalidated STORE_PREFERENCES caches for user {auth0_id} (post-processing)")
-        else:
-             logger.info(f"Skipping post-processing cache invalidation as inference already handled it for {auth0_id}")
+        # Invalidate store-specific caches if opt-in stores exist
+        if user.get("privacySettings", {}).get("optInStores"):
+            user_object_id_str = str(user["_id"]) # Use user_id from the fetched user object
+            for store_id in user["privacySettings"]["optInStores"]:
+                 store_pref_key = f"{CACHE_KEYS['STORE_PREFERENCES']}{user_object_id_str}:{store_id}"
+                 await invalidate_cache(store_pref_key)
+            logger.info(f"Invalidated STORE_PREFERENCES caches for user {auth0_id} (post-processing)")
     else:
         logger.warning(f"Cannot invalidate caches for user {email} as auth0Id is missing.")
-
 
     # Return updated preferences in the expected format
     return UserPreferences(

@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '2.0.8'; // Incremented version
+const SCHEMA_VERSION = '3.0.0'; // Incremented version
 
 const userSchema = {
   validator: {
@@ -37,50 +37,78 @@ const userSchema = {
           bsonType: 'object',
           description: 'User-provided and inferred demographic information',
           properties: {
+            // --- User-Provided ---
             gender: {
               bsonType: ['string', 'null'],
-              description: 'User gender identity',
+              description: 'User-provided gender identity', // Clarified description
               enum: ['male', 'female', 'non-binary', 'prefer_not_to_say', null]
             },
             incomeBracket: {
               bsonType: ['string', 'null'],
-              description: 'User income bracket category',
+              description: 'User-provided income bracket category', // Clarified description
               enum: ['<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say', null]
             },
             country: {
               bsonType: ['string', 'null'],
-              description: 'User country of residence (e.g., ISO 3166-1 alpha-2 code)',
+              description: 'User-provided country of residence (e.g., ISO 3166-1 alpha-2 code)', // Clarified description
             },
             age: {
               bsonType: ['int', 'null'],
-              description: 'User age',
+              description: 'User-provided age', // Clarified description
               minimum: 0,
             },
-            // --- Inferred fields within demographicData ---
+            // --- NEW User-Provided fields (mirroring inferred ones) ---
+            hasKids: {
+              bsonType: ['bool', 'null'],
+              description: 'User-provided: Does the user have children?',
+            },
+            relationshipStatus: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User relationship status',
+              enum: ['single', 'relationship', 'married', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            employmentStatus: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User employment status',
+              enum: ['employed', 'unemployed', 'student', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            educationLevel: {
+              bsonType: ['string', 'null'],
+              description: 'User-provided: User education level',
+              enum: ['high_school', 'bachelors', 'masters', 'doctorate', 'prefer_not_to_say', null], // Added prefer_not_to_say
+            },
+            // --- Inferred fields (kept separate, no verification flags) ---
             inferredHasKids: {
               bsonType: ['bool', 'null'],
-              description: 'Inferred: Does the user likely have children? (null if unknown)',
+              description: 'Inferred: Does the user likely have children? (null if unknown or user provided)',
             },
+            // REMOVED hasKidsIsVerified
             inferredRelationshipStatus: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User relationship status (null if unknown)',
-              enum: ['single', 'relationship', 'married', null],
+              description: 'Inferred: User relationship status (null if unknown or user provided)',
+              enum: ['single', 'relationship', 'married', null], // Inferred won't be 'prefer_not_to_say'
             },
+            // REMOVED relationshipStatusIsVerified
             inferredEmploymentStatus: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User employment status (null if unknown)',
+              description: 'Inferred: User employment status (null if unknown or user provided)',
               enum: ['employed', 'unemployed', 'student', null],
             },
+            // REMOVED employmentStatusIsVerified
             inferredEducationLevel: {
               bsonType: ['string', 'null'],
-              description: 'Inferred: User education level (null if unknown)',
+              description: 'Inferred: User education level (null if unknown or user provided)',
               enum: ['high_school', 'bachelors', 'masters', 'doctorate', null],
             },
-            inferredAgeBracket: {
+            // REMOVED educationLevelIsVerified
+            // REMOVED inferredAgeBracket
+            // REMOVED ageBracketIsVerified
+            inferredGender: { // Kept inferred gender
               bsonType: ['string', 'null'],
-              description: 'Inferred: User age bracket if age not provided (null if unknown)',
-              enum: ['18-24', '25-34', '35-44', '45-54', '55-64', '65+', null],
+              description: 'Inferred: User gender identity (null if unknown or user provided)',
+              enum: ['male', 'female', 'non-binary', null],
             },
+            // REMOVED genderIsVerified
           }
         },
         // --- End: Demographic Data Object ---
@@ -118,9 +146,12 @@ const userSchema = {
           required: ['dataSharingConsent'],
           properties: {
             dataSharingConsent: { bsonType: 'bool' },
-            anonymizeData: { bsonType: 'bool' },
-            optInStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
-            optOutStores: { bsonType: 'array', items: { bsonType: 'string' } }, // Specify item type
+            allowInference: { // <-- Add new field
+              bsonType: 'bool',
+              description: 'Allow Tapiro to infer demographic data based on user activity (default: true)',
+            },
+            optInStores: { bsonType: 'array', items: { bsonType: 'string' } },
+            optOutStores: { bsonType: 'array', items: { bsonType: 'string' } },
           },
         },
         createdAt: { bsonType: 'date' },

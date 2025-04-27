@@ -13,10 +13,11 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    // Destructure new demographic fields
+    // Destructure new demographic fields AND allowInference
     const {
       preferences,
       dataSharingConsent,
+      allowInference, // <-- Add allowInference
       gender,
       incomeBracket,
       country,
@@ -100,14 +101,35 @@ exports.registerUser = async function (req, body) {
       username: userData.username || userData.nickname || userData.sub,
       email: userData.email,
       phone: userData.phone_number || null,
-      gender: gender || null, // Add new fields, defaulting to null if not provided
-      incomeBracket: incomeBracket || null,
-      country: country || null,
-      age: age || null,
+      demographicData: {
+        // User provided (initialize as null unless provided in registration body)
+        gender: gender || null,
+        incomeBracket: incomeBracket || null,
+        country: country || null,
+        age: age || null,
+        hasKids: null, // NEW user-provided, init null
+        relationshipStatus: null, // NEW user-provided, init null
+        employmentStatus: null, // NEW user-provided, init null
+        educationLevel: null, // NEW user-provided, init null
+        // Inferred (initialize as null)
+        inferredHasKids: null,
+        // REMOVED hasKidsIsVerified
+        inferredRelationshipStatus: null,
+        // REMOVED relationshipStatusIsVerified
+        inferredEmploymentStatus: null,
+        // REMOVED employmentStatusIsVerified
+        inferredEducationLevel: null,
+        // REMOVED educationLevelIsVerified
+        // REMOVED inferredAgeBracket
+        // REMOVED ageBracketIsVerified
+        inferredGender: null,
+        // REMOVED genderIsVerified
+      },
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,
         anonymizeData: false,
+        allowInference: allowInference !== undefined ? allowInference : true, // <-- Set allowInference, default true
         optInStores: [],
         optOutStores: [],
       },

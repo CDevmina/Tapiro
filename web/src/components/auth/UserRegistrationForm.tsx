@@ -3,21 +3,27 @@ import {
   Button,
   Checkbox,
   Label,
-  Modal, // Import Modal components
+  Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Popover, // <-- Import Popover
-  Select, // <-- Import Select
-  TextInput, // <-- Import TextInput
+  Popover,
+  Select,
+  TextInput,
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { HiCheckCircle, HiInformationCircle } from "react-icons/hi"; // Import icons
+import { HiCheckCircle, HiInformationCircle } from "react-icons/hi";
+import countryData from "../../data/countries.json";
 
 interface UserRegistrationFormProps {
   onSubmit: (userData: UserCreate) => void;
   isLoading: boolean;
+}
+
+interface CountryOption {
+  value: string;
+  label: string;
 }
 
 // Define options for selects
@@ -39,6 +45,20 @@ const incomeOptions = [
   { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 
+// --- Transform the imported country data object into an array ---
+const typedCountryData: CountryOption[] = Object.entries(countryData).map(
+  ([code, name]) => ({ value: code, label: name }),
+);
+// Sort alphabetically by label (optional but good UX)
+typedCountryData.sort((a, b) => a.label.localeCompare(b.label));
+
+// --- Create the final country options array ---
+const countryOptions: CountryOption[] = [
+  { value: "", label: "Select Country (Optional)" },
+  ...typedCountryData, // Spread the transformed array
+];
+// --- End Country Options ---
+
 export function UserRegistrationForm({
   onSubmit,
   isLoading,
@@ -49,6 +69,8 @@ export function UserRegistrationForm({
   const [showConsentModal, setShowConsentModal] = useState(false);
   // State to track if consent has been explicitly accepted via the modal
   const [consentAccepted, setConsentAccepted] = useState(false);
+  // --- Add state for allowInference ---
+  const [allowInference, setAllowInference] = useState(true); // Default to true
 
   // Add state for demographic fields
   const [gender, setGender] = useState<string | null>(null);
@@ -67,13 +89,12 @@ export function UserRegistrationForm({
     }
 
     const userData: UserCreate = {
-      // Use the state variable linked to the checkbox
       dataSharingConsent: dataSharingConsent,
-      preferences: [], // We can leave this empty for now
-      // Add demographic data, ensuring null if empty string or invalid number
+      allowInference: allowInference, // <-- Include allowInference
+      preferences: [],
       gender: gender || null,
       incomeBracket: incomeBracket || null,
-      country: country || null,
+      country: country || null, // country state is already used here
       age: age !== null && !isNaN(age) ? Number(age) : null,
     };
 
@@ -92,7 +113,17 @@ export function UserRegistrationForm({
     setShowConsentModal(false);
   };
 
-  // Content for the popover
+  // Define content for the inference popover
+  const inferencePopoverContent = (
+    <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
+      <p>
+        Tapiro can estimate demographic details like age group or interests
+        based on your activity to improve personalization, even if you don't
+        provide them directly. You can disable this anytime.
+      </p>
+    </div>
+  );
+
   const popoverContent = (
     <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
       <p>
@@ -150,20 +181,27 @@ export function UserRegistrationForm({
               ))}
             </Select>
           </div>
-          {/* Country Input */}
+
+          {/* --- Country Select (Replaces TextInput) --- */}
           <div>
-            <Label htmlFor="country">Country (ISO Code)"</Label>
-            <TextInput
+            <Label htmlFor="country">Country</Label>
+            <Select
               id="country"
-              placeholder="e.g., US, CA, GB"
               value={country ?? ""}
               onChange={(e) =>
-                setCountry(e.target.value ? e.target.value.toUpperCase() : null)
+                setCountry(e.target.value ? e.target.value : null)
               }
-              maxLength={2} // ISO 3166-1 alpha-2
               className="mt-1"
-            />
+            >
+              {countryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           </div>
+          {/* --- End Country Select --- */}
+
           {/* Age Input */}
           <div>
             <Label htmlFor="age">Age</Label>
@@ -183,7 +221,8 @@ export function UserRegistrationForm({
         </div>
 
         {/* Consent Section */}
-        <div className="flex flex-col space-y-2 rounded border border-gray-200 p-4 dark:border-gray-600">
+        <div className="flex flex-col space-y-4 rounded border border-gray-200 p-4 dark:border-gray-600">
+          {/* --- Data Sharing Consent (Existing) --- */}
           {/* Conditionally wrap Checkbox/Label in Popover */}
           {!consentAccepted ? (
             <Popover content={popoverContent} trigger="hover">
@@ -224,6 +263,27 @@ export function UserRegistrationForm({
             </div>
           )}
 
+          {/* --- Allow Inference Toggle --- */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="allow-inference"
+              checked={allowInference}
+              onChange={(e) => setAllowInference(e.target.checked)}
+            />
+            <Label
+              htmlFor="allow-inference"
+              className="flex items-center text-gray-700 dark:text-gray-300" // Added items-center
+            >
+              Allow Tapiro to infer demographic insights
+              {/* Replace Tooltip with Popover */}
+              <Popover content={inferencePopoverContent} trigger="hover">
+                {/* Icon is the trigger */}
+                <HiInformationCircle className="ml-1 h-4 w-4 cursor-help text-gray-400" />
+              </Popover>
+            </Label>
+          </div>
+          {/* --- End Allow Inference Toggle --- */}
+
           {/* Button to open the modal remains the same */}
           <button
             type="button"
@@ -236,7 +296,8 @@ export function UserRegistrationForm({
           {/* Confirmation message remains the same */}
           {consentAccepted && (
             <p className="mt-1 flex items-center text-sm text-green-600 dark:text-green-400">
-              <HiCheckCircle className="mr-1 h-4 w-4" /> Consent Accepted
+              <HiCheckCircle className="mr-1 h-4 w-4" /> Data Sharing Consent
+              Accepted
             </p>
           )}
         </div>

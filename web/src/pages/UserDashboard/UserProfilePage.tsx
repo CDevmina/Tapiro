@@ -14,6 +14,7 @@ import {
   Modal, // Import Modal
   ModalBody,
   ModalHeader,
+  Tooltip, // <-- Import Tooltip
 } from "flowbite-react";
 // Import necessary icons
 import {
@@ -24,6 +25,7 @@ import {
   HiX,
   HiTrash, // Import Trash icon for Delete
   HiExclamation, // Import Exclamation icon for Modal
+  HiInformationCircle, // <-- Import for Tooltip
 } from "react-icons/hi";
 import {
   useUserProfile,
@@ -40,7 +42,7 @@ type UserProfileFormData = {
   username?: string;
   phone?: string;
   privacySettings_dataSharingConsent?: boolean;
-  privacySettings_anonymizeData?: boolean;
+  privacySettings_allowInference?: boolean; // <-- Add allowInference
 };
 
 export default function UserProfilePage() {
@@ -79,7 +81,7 @@ export default function UserProfilePage() {
       username: "",
       phone: "",
       privacySettings_dataSharingConsent: false,
-      privacySettings_anonymizeData: false,
+      privacySettings_allowInference: true, // <-- Default to true
     },
   });
 
@@ -91,8 +93,8 @@ export default function UserProfilePage() {
         phone: userProfile.phone || "",
         privacySettings_dataSharingConsent:
           userProfile.privacySettings?.dataSharingConsent ?? false,
-        privacySettings_anonymizeData:
-          userProfile.privacySettings?.anonymizeData ?? false,
+        privacySettings_allowInference:
+          userProfile.privacySettings?.allowInference ?? true,
       });
     }
   }, [userProfile, reset]);
@@ -156,8 +158,8 @@ export default function UserProfilePage() {
       username: data.username,
       phone: data.phone,
       privacySettings: {
-        dataSharingConsent: data.privacySettings_dataSharingConsent,
-        anonymizeData: data.privacySettings_anonymizeData,
+        dataSharingConsent: data.privacySettings_dataSharingConsent ?? false,
+        allowInference: data.privacySettings_allowInference ?? true, // Default to true if undefined
       },
     };
     updateUser(updatePayload);
@@ -303,29 +305,57 @@ export default function UserProfilePage() {
                 Privacy Settings
               </h2>
               {/* Data Sharing Consent */}
-              <Controller
-                name="privacySettings_dataSharingConsent"
-                control={control}
-                render={({ field }) => (
-                  <ToggleSwitch
-                    label="Allow Data Sharing with Stores"
-                    checked={field.value ?? false}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-              {/* Anonymize Data */}
-              <Controller
-                name="privacySettings_anonymizeData"
-                control={control}
-                render={({ field }) => (
-                  <ToggleSwitch
-                    label="Anonymize Data Shared with Stores"
-                    checked={field.value ?? false}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
+              <div>
+                {" "}
+                {/* Wrap ToggleSwitch and HelperText */}
+                <Controller
+                  name="privacySettings_dataSharingConsent"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleSwitch
+                      label="Allow Data Sharing with Stores"
+                      checked={field.value ?? false}
+                      onChange={field.onChange}
+                      // REMOVE helperText prop from here
+                    />
+                  )}
+                />
+                {/* Add HelperText or simple div below */}
+                <div className="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                  Controls sharing preferences with specific stores.{" "}
+                  <Tooltip content="Manage which specific stores you share data with on the 'Sharing' tab.">
+                    <HiInformationCircle className="ml-1 h-4 w-4 cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" />
+                  </Tooltip>
+                </div>
+              </div>
+
+              {/* --- Allow Inference Toggle --- */}
+              <div>
+                {" "}
+                {/* Wrap ToggleSwitch and HelperText */}
+                <Controller
+                  name="privacySettings_allowInference" // <-- Use correct name
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleSwitch
+                      label="Allow Demographic Inference"
+                      checked={field.value ?? true} // Default checked state if undefined
+                      onChange={field.onChange}
+                      // REMOVE helperText prop from here
+                    />
+                  )}
+                />
+                {/* Add HelperText or simple div below */}
+                <div className="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                  Allow Tapiro to infer demographic insights based on your
+                  activity.{" "}
+                  <Tooltip content="Inferred insights (like potential interests or age group) help personalize recommendations. This data is not directly shared.">
+                    <HiInformationCircle className="ml-1 h-4 w-4 cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" />
+                  </Tooltip>
+                </div>
+              </div>
+              {/* --- End Allow Inference Toggle --- */}
+
               {/* Save Button - Common for all tabs within the form */}
               <Button
                 type="submit"
@@ -335,16 +365,16 @@ export default function UserProfilePage() {
                 {isUpdating ? (
                   <>
                     <Spinner size="sm" />
-                    <span className="pl-3">Saving...</span>
+                    <span className="pl-3">Saving Privacy Settings...</span>
                   </>
                 ) : (
-                  "Save Changes"
+                  "Save Privacy Settings" // More specific label
                 )}
               </Button>
             </form>
           </TabItem>
 
-          {/* Security Tab */}
+          {/* Security Tab (Existing) */}
           <TabItem title="Security" icon={HiLockClosed}>
             <div className="flex flex-col gap-8 pt-4">
               {" "}

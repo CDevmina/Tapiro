@@ -28,41 +28,27 @@ export interface User {
   username?: string;
   /** @pattern ^\+?[\d\s-]+$ */
   phone?: string;
-  /**
-   * User gender identity (e.g., 'male', 'female', 'non-binary', 'prefer_not_to_say')
-   * @example "female"
-   */
-  gender?: string | null;
-  /**
-   * User income bracket category (e.g., '<25k', '25k-50k', '50k-100k', '100k-200k', '>200k', 'prefer_not_to_say')
-   * @example "50k-100k"
-   */
-  incomeBracket?: string | null;
-  /**
-   * User country of residence (ISO 3166-1 alpha-2 code)
-   * @example "US"
-   */
-  country?: string | null;
-  /**
-   * User age
-   * @format int32
-   * @example 35
-   */
-  age?: number | null;
-  privacySettings: {
-    /** @default false */
-    dataSharingConsent?: boolean;
-    /** @default false */
-    anonymizeData?: boolean;
-    /** List of store IDs user has opted into */
-    optInStores?: string[];
-    /** List of store IDs user has opted out from */
-    optOutStores?: string[];
-  };
+  privacySettings: PrivacySettings;
+  /** User-provided and inferred demographic information */
+  demographicData?: DemographicData;
   /** @format date-time */
   createdAt?: string;
   /** @format date-time */
   updatedAt?: string;
+}
+
+export interface PrivacySettings {
+  /** User consent to share aggregated/anonymized data. */
+  dataSharingConsent: boolean;
+  /**
+   * Allow Tapiro to infer demographic data based on user activity.
+   * @default true
+   */
+  allowInference?: boolean;
+  /** List of store IDs the user explicitly allows data sharing with. */
+  optInStores?: string[];
+  /** List of store IDs the user explicitly blocks data sharing with. */
+  optOutStores?: string[];
 }
 
 export interface Store {
@@ -88,6 +74,8 @@ export interface UserCreate {
   preferences?: PreferenceItem[];
   /** User's consent for data sharing */
   dataSharingConsent: boolean;
+  /** Allow Tapiro to infer demographic data (defaults to true if omitted). */
+  allowInference?: boolean;
   /** User gender identity */
   gender?: string | null;
   /** User income bracket category */
@@ -114,27 +102,60 @@ export interface StoreCreate {
 export interface UserUpdate {
   /** User's unique username */
   username?: string;
-  /** User's phone number (E.164 format recommended) */
+  /**
+   * User's phone number (E.164 format recommended)
+   * @pattern ^\+?[\d\s-]+$
+   */
   phone?: string;
   /** User interest preferences with taxonomy categorization */
   preferences?: PreferenceItem[];
-  privacySettings?: {
-    dataSharingConsent?: boolean;
-    anonymizeData?: boolean;
-    optInStores?: string[];
-    optOutStores?: string[];
+  privacySettings?: PrivacySettings;
+  /** Updatable user-provided demographic information. Setting a value here implies verification and may clear inferred values. */
+  demographicData?: {
+    /** User-provided gender identity */
+    gender?: "male" | "female" | "non-binary" | "prefer_not_to_say" | null;
+    /** User-provided income bracket category */
+    incomeBracket?:
+      | "<25k"
+      | "25k-50k"
+      | "50k-100k"
+      | "100k-200k"
+      | ">200k"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided country of residence (e.g., ISO 3166-1 alpha-2 code) */
+    country?: string | null;
+    /**
+     * User-provided age. Setting this clears the inferred age bracket.
+     * @format int32
+     * @min 0
+     */
+    age?: number | null;
+    /** User-provided: Does the user have children? */
+    hasKids?: boolean | null;
+    /** User-provided: User relationship status */
+    relationshipStatus?:
+      | "single"
+      | "relationship"
+      | "married"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided: User employment status */
+    employmentStatus?:
+      | "employed"
+      | "unemployed"
+      | "student"
+      | "prefer_not_to_say"
+      | null;
+    /** User-provided: User education level */
+    educationLevel?:
+      | "high_school"
+      | "bachelors"
+      | "masters"
+      | "doctorate"
+      | "prefer_not_to_say"
+      | null;
   };
-  /** User gender identity */
-  gender?: string | null;
-  /** User income bracket category */
-  incomeBracket?: string | null;
-  /** User country of residence (ISO 3166-1 alpha-2 code) */
-  country?: string | null;
-  /**
-   * User age
-   * @format int32
-   */
-  age?: number | null;
 }
 
 export interface ApiKey {
@@ -400,6 +421,90 @@ export interface Taxonomy {
   _id?: string;
   categories: TaxonomyCategory[];
   version: string;
+}
+
+/** User-provided and inferred demographic information */
+export interface DemographicData {
+  /**
+   * User-provided gender identity
+   * @example "female"
+   */
+  gender?: "male" | "female" | "non-binary" | "prefer_not_to_say" | null;
+  /**
+   * User-provided income bracket category
+   * @example "50k-100k"
+   */
+  incomeBracket?:
+    | "<25k"
+    | "25k-50k"
+    | "50k-100k"
+    | "100k-200k"
+    | ">200k"
+    | "prefer_not_to_say"
+    | null;
+  /**
+   * User-provided country of residence (e.g., ISO 3166-1 alpha-2 code)
+   * @example "US"
+   */
+  country?: string | null;
+  /**
+   * User-provided age
+   * @format int32
+   * @min 0
+   * @example 35
+   */
+  age?: number | null;
+  /**
+   * User-provided: Does the user have children?
+   * @example true
+   */
+  hasKids?: boolean | null;
+  /**
+   * User-provided: User relationship status
+   * @example "married"
+   */
+  relationshipStatus?:
+    | "single"
+    | "relationship"
+    | "married"
+    | "prefer_not_to_say"
+    | null;
+  /**
+   * User-provided: User employment status
+   * @example "employed"
+   */
+  employmentStatus?:
+    | "employed"
+    | "unemployed"
+    | "student"
+    | "prefer_not_to_say"
+    | null;
+  /**
+   * User-provided: User education level
+   * @example "bachelors"
+   */
+  educationLevel?:
+    | "high_school"
+    | "bachelors"
+    | "masters"
+    | "doctorate"
+    | "prefer_not_to_say"
+    | null;
+  /** Inferred: Does the user likely have children? (null if unknown or user provided) */
+  inferredHasKids?: boolean | null;
+  /** Inferred: User relationship status (null if unknown or user provided) */
+  inferredRelationshipStatus?: "single" | "relationship" | "married" | null;
+  /** Inferred: User employment status (null if unknown or user provided) */
+  inferredEmploymentStatus?: "employed" | "unemployed" | "student" | null;
+  /** Inferred: User education level (null if unknown or user provided) */
+  inferredEducationLevel?:
+    | "high_school"
+    | "bachelors"
+    | "masters"
+    | "doctorate"
+    | null;
+  /** Inferred: User gender identity (null if unknown or user provided) */
+  inferredGender?: "male" | "female" | "non-binary" | null;
 }
 
 export interface RecentUserDataEntry {

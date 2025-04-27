@@ -110,31 +110,58 @@ exports.updateUserProfile = async function (req, body) {
 
     // --- Update Demographic Data ---
     // Use dot notation to set fields within the demographicData object
-    if (body.gender !== undefined) {
-        updateData['demographicData.gender'] = body.gender;
+
+    // User-provided fields
+    if (body.demographicData?.gender !== undefined) {
+        updateData['demographicData.gender'] = body.demographicData.gender;
+        updateData['demographicData.inferredGender'] = null; // Clear inferred on user update
         demographicsChanged = true;
     }
-    if (body.incomeBracket !== undefined) {
-        updateData['demographicData.incomeBracket'] = body.incomeBracket;
+    if (body.demographicData?.incomeBracket !== undefined) {
+        updateData['demographicData.incomeBracket'] = body.demographicData.incomeBracket;
         demographicsChanged = true;
     }
-    if (body.country !== undefined) {
-        updateData['demographicData.country'] = body.country;
+    if (body.demographicData?.country !== undefined) {
+        updateData['demographicData.country'] = body.demographicData.country;
         demographicsChanged = true;
     }
-    if (body.age !== undefined) {
-        // Ensure age is null or an integer
-        const ageValue = body.age === null ? null : parseInt(body.age);
-        if (ageValue === null || !isNaN(ageValue)) {
+    if (body.demographicData?.age !== undefined) {
+        const ageValue = body.demographicData.age === null ? null : parseInt(body.demographicData.age);
+        if (ageValue === null || (!isNaN(ageValue) && ageValue >= 0)) { // Added age >= 0 check
              updateData['demographicData.age'] = ageValue;
+             // No inferred age bracket to clear anymore
              demographicsChanged = true;
-             // If age is being set, clear the inferred age bracket
-             updateData['demographicData.inferredAgeBracket'] = null;
         } else {
-            console.warn(`Invalid age value provided for user ${auth0UserId}: ${body.age}`);
+            console.warn(`Invalid age value provided for user ${auth0UserId}: ${body.demographicData.age}`);
             // Optionally return a 400 error here
+            // return respondWithCode(400, { code: 400, message: 'Invalid age provided.' });
         }
     }
+    // --- NEW User-Provided Fields ---
+    if (body.demographicData?.hasKids !== undefined) {
+        updateData['demographicData.hasKids'] = body.demographicData.hasKids;
+        updateData['demographicData.inferredHasKids'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.relationshipStatus !== undefined) {
+        updateData['demographicData.relationshipStatus'] = body.demographicData.relationshipStatus;
+        updateData['demographicData.inferredRelationshipStatus'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.employmentStatus !== undefined) {
+        updateData['demographicData.employmentStatus'] = body.demographicData.employmentStatus;
+        updateData['demographicData.inferredEmploymentStatus'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+    if (body.demographicData?.educationLevel !== undefined) {
+        updateData['demographicData.educationLevel'] = body.demographicData.educationLevel;
+        updateData['demographicData.inferredEducationLevel'] = null; // Clear inferred on user update
+        demographicsChanged = true;
+    }
+
+    // --- REMOVED Verification Flag Handling ---
+    // The logic for hasKidsIsVerified, relationshipStatusIsVerified, etc. is removed.
+
     // --- End Update Demographic Data ---
 
 
@@ -146,8 +173,8 @@ exports.updateUserProfile = async function (req, body) {
         updateData['privacySettings.dataSharingConsent'] = body.privacySettings.dataSharingConsent;
         privacySettingsChanged = true;
       }
-      if (body.privacySettings.anonymizeData !== undefined) {
-        updateData['privacySettings.anonymizeData'] = body.privacySettings.anonymizeData;
+      if (body.privacySettings.allowInference !== undefined) { // <-- Add check for allowInference
+        updateData['privacySettings.allowInference'] = body.privacySettings.allowInference;
         privacySettingsChanged = true;
       }
       // DO NOT update optInStores or optOutStores here
@@ -190,7 +217,7 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // Invalidate store-specific preferences if demographics or relevant privacy settings changed
-    // Also invalidate if the optInStores list exists (safer to clear on any profile update)
+    // (Keep existing logic, as privacySettingsChanged flag now includes allowInference)
     const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
     if ((demographicsChanged || privacySettingsChanged) && updatedUserDoc.privacySettings?.optInStores) {
        const userObjectId = updatedUserDoc._id; // Use the _id from the updated result

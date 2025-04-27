@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   Button,
@@ -12,42 +11,58 @@ import {
   TextInput,
   Select,
   RangeSlider,
-  List, // Import List
-  ListItem, // Import ListItem
+  List,
+  ListItem,
 } from "flowbite-react";
 import {
-  HiInformationCircle,
-  HiPencil,
-  HiTrash,
-  HiPlus,
   HiUser,
-  HiSparkles,
   HiOutlineUserCircle,
   HiOutlineCake,
   HiOutlineGlobeAlt,
   HiOutlineCash,
-  // --- End Add icons ---
-} from "react-icons/hi";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+  HiOutlineAcademicCap, // <-- Icon for education
+  HiOutlineBriefcase, // <-- Icon for employment
+  HiOutlineUsers, // <-- Icon for relationship
+  HiOutlineHeart, // <-- Icon for hasKids
+  HiInformationCircle,
+  HiSparkles,
+  HiPlus,
+  HiPencil,
+  HiTrash,
+  HiCheck,
+  HiX,
+} from "react-icons/hi"; // <-- Add new icons
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
+import { useEffect, useState, useMemo } from "react";
 import {
   useUserProfile,
-  useUpdateUserProfile,
   useUserPreferences,
+  useUpdateUserProfile,
   useUpdateUserPreferences,
-} from "../../api/hooks/useUserHooks";
-import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
-import ErrorDisplay from "../../components/common/ErrorDisplay";
+} from "../../api/hooks/useUserHooks"; // <-- Corrected import path
+import { useTaxonomy } from "../../api/hooks/useTaxonomyHooks"; // <-- Corrected import path
 import {
   UserUpdate,
   PreferenceItem,
   TaxonomyCategory,
+  DemographicData, // <-- Import DemographicData type
 } from "../../api/types/data-contracts";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorDisplay from "../../components/common/ErrorDisplay";
+import countryData from "../../data/countries.json";
 
 // --- Form Types ---
+// Update to include all user-editable demographic fields
 type DemographicsFormData = Pick<
-  UserUpdate,
-  "gender" | "age" | "country" | "incomeBracket"
+  DemographicData, // Use DemographicData type directly
+  | "gender"
+  | "age"
+  | "country"
+  | "incomeBracket"
+  | "hasKids"
+  | "relationshipStatus"
+  | "employmentStatus"
+  | "educationLevel"
 >;
 type PreferenceFormData = {
   category: string;
@@ -55,12 +70,90 @@ type PreferenceFormData = {
   attributes?: Record<string, string | undefined>;
 };
 
-// --- Mini Demographic Card Component (Add this) ---
+// --- Define options for selects ---
+const genderOptions = [
+  { value: "", label: "Select Gender" },
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "non-binary", label: "Non-binary" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const incomeOptions = [
+  { value: "", label: "Select Income Bracket" }, // Make placeholder less optional here
+  { value: "<25k", label: "< $25,000" },
+  { value: "25k-50k", label: "$25,000 - $49,999" },
+  { value: "50k-100k", label: "$50,000 - $99,999" },
+  { value: "100k-200k", label: "$100,000 - $199,999" },
+  { value: ">200k", label: "> $200,000" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+// --- NEW Options ---
+const relationshipOptions = [
+  { value: "", label: "Select Relationship Status" },
+  { value: "single", label: "Single" },
+  { value: "relationship", label: "In a relationship" },
+  { value: "married", label: "Married" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const employmentOptions = [
+  { value: "", label: "Select Employment Status" },
+  { value: "employed", label: "Employed" },
+  { value: "unemployed", label: "Unemployed" },
+  { value: "student", label: "Student" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const educationOptions = [
+  { value: "", label: "Select Education Level" },
+  { value: "high_school", label: "High School" },
+  { value: "bachelors", label: "Bachelor's Degree" },
+  { value: "masters", label: "Master's Degree" },
+  { value: "doctorate", label: "Doctorate" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+// --- End NEW Options ---
+
+// --- Has Kids Options ---
+const hasKidsOptions = [
+  { value: "", label: "Select an option" }, // Default/unset option
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" }, // Represented by null in the data
+];
+// --- End Has Kids Options ---
+
+// --- Country Options (copied from UserRegistrationForm) ---
+interface CountryOption {
+  value: string;
+  label: string;
+}
+const typedCountryData: CountryOption[] = Object.entries(countryData).map(
+  ([code, name]) => ({ value: code, label: name }),
+);
+typedCountryData.sort((a, b) => a.label.localeCompare(b.label));
+const countryOptions: CountryOption[] = [
+  { value: "", label: "Select Country" }, // Make placeholder less optional here
+  ...typedCountryData,
+];
+// --- End Country Options ---
+
+// --- Mini Demographic Card Component ---
+// filepath: /Users/cdevmina/Projects/Tapiro/web/src/pages/UserDashboard/UserPreferencesPage.tsx
 interface DemoInfoCardProps {
   icon: React.ElementType;
   label: string;
   value: string | number | null | undefined;
-  isLoading?: boolean; // Optional loading state if needed later
+  isLoading?: boolean;
+  isInferred?: boolean; // Added: Flag for inferred data
+  fieldName?: keyof DemographicsFormData; // Added: Field name for verification
+  onVerify?: (
+    fieldName: keyof DemographicsFormData,
+    // --- CHANGE HERE ---
+    valueToVerify: string | number | boolean | null | undefined,
+  ) => void; // Added: Handler for verify button
 }
 
 const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
@@ -68,6 +161,9 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
   label,
   value,
   isLoading,
+  isInferred, // Destructure
+  fieldName, // Destructure
+  onVerify, // Destructure
 }) => (
   <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
     <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
@@ -78,9 +174,30 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
       {isLoading ? (
         <Spinner size="xs" />
       ) : (
-        <p className="text-sm font-semibold text-gray-900 dark:text-white">
-          {value || "Not set"}
-        </p>
+        <div className="flex items-center">
+          {" "}
+          {/* Wrap value and button */}
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            {value || "Not set"}
+            {isInferred &&
+              value && ( // Show "(inferred)" text
+                <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                  (inferred)
+                </span>
+              )}
+          </p>
+          {/* Show Verify button if inferred, has value, not loading, and handler provided */}
+          {isInferred && value && !isLoading && fieldName && onVerify && (
+            <Button
+              size="xs"
+              color="light"
+              className="ml-2 px-2 py-1" // Adjusted padding for smaller button
+              onClick={() => onVerify(fieldName, value)} // Call handler with fieldName and current value
+            >
+              Verify
+            </Button>
+          )}
+        </div>
       )}
     </div>
   </div>
@@ -88,7 +205,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
 // --- End Mini Demographic Card Component ---
 
 const UserPreferencesPage: React.FC = () => {
-  // --- Data Fetching ---
+  // --- Data Fetching (Keep existing) ---
   const {
     data: userProfile,
     isLoading: profileLoading,
@@ -105,7 +222,7 @@ const UserPreferencesPage: React.FC = () => {
     error: taxonomyError,
   } = useTaxonomy();
 
-  // --- Mutations ---
+  // --- Mutations (Keep existing) ---
   const {
     mutate: updateProfile,
     isPending: isUpdatingProfile,
@@ -117,7 +234,7 @@ const UserPreferencesPage: React.FC = () => {
     error: updatePreferencesError,
   } = useUpdateUserPreferences();
 
-  // --- State ---
+  // --- State (Keep existing) ---
   const [isEditingDemographics, setIsEditingDemographics] = useState(false);
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreferenceIndex, setEditingPreferenceIndex] = useState<
@@ -129,7 +246,8 @@ const UserPreferencesPage: React.FC = () => {
     register: registerDemo,
     handleSubmit: handleDemoSubmit,
     reset: resetDemoForm,
-    formState: { isDirty: isDemoDirty },
+    setValue: setValueDemo, // <-- Get setValue for verification
+    formState: { isDirty: isDemoDirty, errors: demoErrors }, // <-- Add errors
   } = useForm<DemographicsFormData>();
 
   const {
@@ -143,15 +261,19 @@ const UserPreferencesPage: React.FC = () => {
     defaultValues: { category: "", attributes: {}, score: 50 },
   });
 
-  // --- Effects ---
-  // Reset demographics form when profile loads or editing starts/stops
+  // Update useEffect to reset ALL demographic fields when NOT editing
   useEffect(() => {
-    if (userProfile && !isEditingDemographics) {
+    if (userProfile?.demographicData && !isEditingDemographics) {
       resetDemoForm({
-        gender: userProfile.gender || "",
-        age: userProfile.age || undefined,
-        country: userProfile.country || "",
-        incomeBracket: userProfile.incomeBracket || "",
+        gender: userProfile.demographicData.gender ?? null, // Use ?? null
+        age: userProfile.demographicData.age ?? undefined, // Use ?? for null/undefined
+        country: userProfile.demographicData.country ?? null, // Use ?? null
+        incomeBracket: userProfile.demographicData.incomeBracket ?? null, // Use ?? null
+        hasKids: userProfile.demographicData.hasKids ?? null, // Default to null
+        relationshipStatus:
+          userProfile.demographicData.relationshipStatus ?? null, // Use ?? null
+        employmentStatus: userProfile.demographicData.employmentStatus ?? null, // Use ?? null
+        educationLevel: userProfile.demographicData.educationLevel ?? null, // Use ?? null
       });
     }
   }, [userProfile, isEditingDemographics, resetDemoForm]);
@@ -168,9 +290,9 @@ const UserPreferencesPage: React.FC = () => {
         const formAttributes: Record<string, string | undefined> = {};
         if (pref.attributes) {
           Object.entries(pref.attributes).forEach(([key, valueObj]) => {
+            // Attempt to get the first key if it's an object like { "Blue": 1.0 }
             let displayValue: string | undefined = undefined;
             if (typeof valueObj === "object" && valueObj !== null) {
-              // Attempt to get the first key if it's an object like { "Blue": 1.0 }
               const firstKey = Object.keys(valueObj)[0];
               if (firstKey) displayValue = firstKey;
             } else if (typeof valueObj === "string") {
@@ -235,18 +357,51 @@ const UserPreferencesPage: React.FC = () => {
   }, [selectedCategoryId, attributeMap]);
 
   // --- Handlers ---
+  // Update onDemoSubmit to handle all fields and nest payload
   const onDemoSubmit: SubmitHandler<DemographicsFormData> = (data) => {
-    // Filter out empty strings before sending
-    const payload: Partial<DemographicsFormData> = {};
-    if (data.gender) payload.gender = data.gender;
-    if (data.age) payload.age = data.age;
-    if (data.country) payload.country = data.country;
-    if (data.incomeBracket) payload.incomeBracket = data.incomeBracket;
+    // Construct the nested demographicData payload
+    const demoPayload: Partial<DemographicData> = {};
 
-    updateProfile(payload as UserUpdate, {
-      // Cast as UserUpdate
-      onSuccess: () => setIsEditingDemographics(false),
-    });
+    // Handle each field, setting to null if empty/default
+    demoPayload.gender = data.gender ? data.gender : null;
+    demoPayload.age =
+      data.age !== undefined && data.age !== null && !isNaN(data.age)
+        ? Number(data.age)
+        : null;
+    demoPayload.country = data.country ? data.country : null;
+    demoPayload.incomeBracket = data.incomeBracket ? data.incomeBracket : null;
+    // Handle boolean (null is allowed)
+    // Ensure undefined from form becomes null for API
+    demoPayload.hasKids = data.hasKids === undefined ? null : data.hasKids;
+    demoPayload.relationshipStatus = data.relationshipStatus
+      ? data.relationshipStatus
+      : null;
+    demoPayload.employmentStatus = data.employmentStatus
+      ? data.employmentStatus
+      : null;
+    demoPayload.educationLevel = data.educationLevel
+      ? data.educationLevel
+      : null;
+
+    // Construct the final UserUpdate payload
+    const finalPayload: UserUpdate = {
+      demographicData: demoPayload,
+    };
+
+    console.log("Submitting demographic update:", finalPayload); // Debug log
+
+    // Only submit if the form is dirty (React Hook Form tracks this)
+    if (isDemoDirty) {
+      updateProfile(finalPayload, {
+        onSuccess: () => setIsEditingDemographics(false),
+        onError: (err) => {
+          console.error("Profile update failed:", err); // Log error
+        },
+      });
+    } else {
+      // No changes detected, just exit edit mode
+      setIsEditingDemographics(false);
+    }
   };
 
   const onPrefSubmit: SubmitHandler<PreferenceFormData> = (data) => {
@@ -308,7 +463,66 @@ const UserPreferencesPage: React.FC = () => {
     setEditingPreferenceIndex(index);
     setShowPreferenceModal(true);
   };
+  const handleVerify = (
+    fieldName: keyof DemographicsFormData,
+    // --- CHANGE HERE ---
+    valueToVerify: string | number | boolean | null | undefined,
+  ) => {
+    setIsEditingDemographics(true);
+    // Use timeout to ensure state update completes before setting value
+    setTimeout(() => {
+      // Convert boolean "Yes"/"No" back to boolean for ToggleSwitch
+      // --- FIX: Handle potential undefined from valueToVerify ---
+      let formValue: string | number | boolean | null = valueToVerify ?? null;
 
+      // Find the corresponding value for enum fields OR hasKids
+      if (fieldName === "hasKids") {
+        // Find the option matching the display label
+        const option = hasKidsOptions.find((o) => o.label === valueToVerify);
+        // Convert the option's string value back to boolean/null
+        formValue =
+          option?.value === "true"
+            ? true
+            : option?.value === "false"
+              ? false
+              : null;
+      } else if (fieldName === "gender")
+        formValue =
+          genderOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+      else if (fieldName === "country")
+        formValue =
+          countryOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+      else if (fieldName === "incomeBracket")
+        formValue =
+          incomeOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+      else if (fieldName === "relationshipStatus")
+        formValue =
+          relationshipOptions.find((o) => o.label === valueToVerify)?.value ??
+          null;
+      else if (fieldName === "employmentStatus")
+        formValue =
+          employmentOptions.find((o) => o.label === valueToVerify)?.value ??
+          null;
+      else if (fieldName === "educationLevel")
+        formValue =
+          educationOptions.find((o) => o.label === valueToVerify)?.value ??
+          null;
+      // Ensure age is treated as a number or null for the form
+      else if (fieldName === "age") {
+        // Use valueToVerify here as formValue might already be null
+        formValue = typeof valueToVerify === "number" ? valueToVerify : null;
+      }
+
+      // Use setValueDemo with the potentially transformed formValue
+      setValueDemo(fieldName, formValue, { shouldDirty: true });
+
+      // Optional: Focus the element after setting value
+      const element = document.getElementById(fieldName);
+      element?.focus();
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
+    console.log(`Verifying ${fieldName} with value:`, valueToVerify);
+  };
   // --- Render Logic ---
   const isLoading = profileLoading || preferencesLoading || taxonomyLoading;
   const error = profileError || preferencesError || taxonomyError;
@@ -328,14 +542,31 @@ const UserPreferencesPage: React.FC = () => {
     );
   }
 
+  // Helper to format boolean/null
+  const formatBoolean = (value: boolean | null | undefined): string => {
+    if (value === true) return "Yes";
+    if (value === false) return "No";
+    return "Not set";
+  };
+
+  // Helper to format enum values
+  const formatEnum = (
+    value: string | null | undefined,
+    options: { value: string; label: string }[],
+  ): string => {
+    const found = options.find((opt) => opt.value === value);
+    return found?.label || value || "Not set";
+  };
+
   return (
     <div className="container mx-auto px-4 py-12">
       <h2 className="mb-8 text-3xl font-bold text-gray-900 dark:text-white">
         Manage Your Profile & Interests
       </h2>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* --- Demographics Section (Left Column on Large Screens) --- */}
+      {/* wrap both cards in a grid */}
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+        {/* --- Demographics Section (Left) */}
         <Card className="lg:col-span-1">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
@@ -344,7 +575,7 @@ const UserPreferencesPage: React.FC = () => {
             </h3>
             {!isEditingDemographics && (
               <Button
-                color="light"
+                color="gray"
                 size="sm"
                 onClick={() => setIsEditingDemographics(true)}
                 disabled={isMutating}
@@ -359,93 +590,371 @@ const UserPreferencesPage: React.FC = () => {
             </Alert>
           )}
           {isEditingDemographics ? (
+            // --- EDIT FORM ---
             <form
               onSubmit={handleDemoSubmit(onDemoSubmit)}
-              className="mt-4 space-y-4" // Use space-y for consistent spacing
+              className="mt-4 space-y-4"
             >
+              {/* Gender */}
               <div>
                 <Label htmlFor="gender">Gender</Label>
-                <TextInput
-                  id="gender"
-                  {...registerDemo("gender")}
-                  placeholder="e.g., Male, Female, Non-binary"
-                />
+                <Select id="gender" {...registerDemo("gender")}>
+                  {genderOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
+              {/* Age */}
               <div>
                 <Label htmlFor="age">Age</Label>
                 <TextInput
                   id="age"
                   type="number"
-                  {...registerDemo("age", { valueAsNumber: true })}
-                  placeholder="e.g., 30"
+                  placeholder="Enter your age"
+                  {...registerDemo("age", {
+                    valueAsNumber: true, // Keep this if API expects number
+                    min: { value: 0, message: "Age cannot be negative" },
+                    validate: (value) =>
+                      value === null ||
+                      value === undefined ||
+                      !isNaN(value) ||
+                      "Invalid age", // Allow null/undefined
+                  })}
                 />
+                {demoErrors.age && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {demoErrors.age.message}
+                  </p>
+                )}
               </div>
+              {/* Country */}
               <div>
                 <Label htmlFor="country">Country</Label>
-                <TextInput
-                  id="country"
-                  {...registerDemo("country")}
-                  placeholder="e.g., USA, Canada"
-                />
+                <Select id="country" {...registerDemo("country")}>
+                  {countryOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
+              {/* Income Bracket */}
               <div>
                 <Label htmlFor="incomeBracket">Income Bracket</Label>
-                <TextInput
-                  id="incomeBracket"
-                  {...registerDemo("incomeBracket")}
-                  placeholder="e.g., $50k-$75k, High"
-                />
+                <Select id="incomeBracket" {...registerDemo("incomeBracket")}>
+                  {incomeOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
-              <div className="mt-6 flex justify-end gap-3">
+              {/* Has Kids - Changed to Select */}
+              <div>
+                <Label htmlFor="hasKids">Do you have children?</Label>
+                <Select
+                  id="hasKids"
+                  {...registerDemo("hasKids", {
+                    // Convert string "true"/"false" back to boolean, handle ""/"prefer_not_to_say" as null
+                    setValueAs: (value) => {
+                      if (value === "true") return true;
+                      if (value === "false") return false;
+                      return null; // Treat "" and "prefer_not_to_say" as null
+                    },
+                  })}
+                >
+                  {hasKidsOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {/* Relationship Status */}
+              <div>
+                <Label htmlFor="relationshipStatus">Relationship Status</Label>
+                <Select
+                  id="relationshipStatus"
+                  {...registerDemo("relationshipStatus")}
+                >
+                  {relationshipOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {/* Employment Status */}
+              <div>
+                <Label htmlFor="employmentStatus">Employment Status</Label>
+                <Select
+                  id="employmentStatus"
+                  {...registerDemo("employmentStatus")}
+                >
+                  {employmentOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {/* Education Level */}
+              <div>
+                <Label htmlFor="educationLevel">Education Level</Label>
+                <Select id="educationLevel" {...registerDemo("educationLevel")}>
+                  {educationOptions.map((option) => (
+                    <option key={option.value} value={option.value ?? ""}>
+                      {" "}
+                      {/* Ensure value is not null/undefined */}
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-3 pt-2">
                 <Button
                   color="gray"
-                  onClick={() => setIsEditingDemographics(false)}
+                  onClick={() => {
+                    setIsEditingDemographics(false);
+                    resetDemoForm();
+                  }}
                   disabled={isMutating}
                 >
-                  Cancel
+                  <HiX className="mr-1 h-4 w-4" /> Cancel
                 </Button>
-                <Button type="submit" disabled={isMutating || !isDemoDirty}>
+                <Button
+                  type="submit"
+                  disabled={isUpdatingProfile || !isDemoDirty}
+                >
                   {isUpdatingProfile ? (
                     <>
                       <Spinner size="sm" className="mr-2" /> Saving...
                     </>
                   ) : (
-                    "Save Changes"
+                    <>
+                      <HiCheck className="mr-1 h-4 w-4" /> Save Changes
+                    </>
                   )}
                 </Button>
               </div>
             </form>
           ) : (
-            <div className="mt-4 space-y-3 text-sm">
+            // --- DISPLAY VIEW (Combined User-Provided and Inferred) ---
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* User Provided or Verified */}
               <DemoInfoCard
                 icon={HiOutlineUserCircle}
                 label="Gender"
-                value={userProfile?.gender}
+                value={formatEnum(
+                  userProfile?.demographicData?.gender,
+                  genderOptions,
+                )}
                 isLoading={profileLoading}
+                // If user provided is null, show inferred with verify button
+                isInferred={
+                  !userProfile?.demographicData?.gender &&
+                  !!userProfile?.demographicData?.inferredGender
+                }
+                fieldName="gender"
+                onVerify={handleVerify}
               />
               <DemoInfoCard
                 icon={HiOutlineCake}
                 label="Age"
-                value={userProfile?.age}
+                value={userProfile?.demographicData?.age} // Age is number, no enum formatting
                 isLoading={profileLoading}
+                // No inferred age currently, so no verify needed here
               />
               <DemoInfoCard
                 icon={HiOutlineGlobeAlt}
                 label="Country"
-                value={userProfile?.country}
+                value={formatEnum(
+                  userProfile?.demographicData?.country,
+                  countryOptions,
+                )}
                 isLoading={profileLoading}
+                // No inferred country currently
               />
               <DemoInfoCard
                 icon={HiOutlineCash}
                 label="Income"
-                value={userProfile?.incomeBracket}
+                value={formatEnum(
+                  userProfile?.demographicData?.incomeBracket,
+                  incomeOptions,
+                )}
                 isLoading={profileLoading}
+                // No inferred income currently
               />
+              <DemoInfoCard
+                icon={HiOutlineHeart}
+                label="Has Children"
+                // Use formatEnum with hasKidsOptions (convert boolean/null to string value first)
+                value={formatEnum(
+                  userProfile?.demographicData?.hasKids === true
+                    ? "true"
+                    : userProfile?.demographicData?.hasKids === false
+                      ? "false"
+                      : userProfile?.demographicData?.hasKids === null &&
+                          userProfile?.demographicData?.relationshipStatus ===
+                            "prefer_not_to_say" // Check if explicitly 'prefer_not_to_say' was saved
+                        ? "prefer_not_to_say" // Map null back to prefer_not_to_say if appropriate (might need adjustment based on API save logic)
+                        : "", // Default to empty string for "Not set" or other null cases
+                  hasKidsOptions,
+                )}
+                isLoading={profileLoading}
+                // Show inferred if user provided is null (and not explicitly 'prefer_not_to_say')
+                isInferred={
+                  userProfile?.demographicData?.hasKids === null &&
+                  userProfile?.demographicData?.inferredHasKids !== null &&
+                  userProfile?.demographicData?.relationshipStatus !==
+                    "prefer_not_to_say" // Don't show inferred if user chose 'prefer not to say'
+                }
+                fieldName="hasKids"
+                onVerify={handleVerify}
+              />
+              <DemoInfoCard
+                icon={HiOutlineUsers}
+                label="Relationship"
+                value={formatEnum(
+                  userProfile?.demographicData?.relationshipStatus,
+                  relationshipOptions,
+                )}
+                isLoading={profileLoading}
+                // Show inferred if user provided is null
+                isInferred={
+                  !userProfile?.demographicData?.relationshipStatus &&
+                  !!userProfile?.demographicData?.inferredRelationshipStatus
+                }
+                fieldName="relationshipStatus"
+                onVerify={handleVerify}
+              />
+              <DemoInfoCard
+                icon={HiOutlineBriefcase}
+                label="Employment"
+                value={formatEnum(
+                  userProfile?.demographicData?.employmentStatus,
+                  employmentOptions,
+                )}
+                isLoading={profileLoading}
+                // Show inferred if user provided is null
+                isInferred={
+                  !userProfile?.demographicData?.employmentStatus &&
+                  !!userProfile?.demographicData?.inferredEmploymentStatus
+                }
+                fieldName="employmentStatus"
+                onVerify={handleVerify}
+              />
+              <DemoInfoCard
+                icon={HiOutlineAcademicCap}
+                label="Education"
+                value={formatEnum(
+                  userProfile?.demographicData?.educationLevel,
+                  educationOptions,
+                )}
+                isLoading={profileLoading}
+                // Show inferred if user provided is null
+                isInferred={
+                  !userProfile?.demographicData?.educationLevel &&
+                  !!userProfile?.demographicData?.inferredEducationLevel
+                }
+                fieldName="educationLevel"
+                onVerify={handleVerify}
+              />
+
+              {/* Display inferred values ONLY if user hasn't provided one */}
+              {!userProfile?.demographicData?.gender &&
+                userProfile?.demographicData?.inferredGender && (
+                  <DemoInfoCard
+                    icon={HiOutlineUserCircle}
+                    label="Gender" // Re-use label, it will show (inferred)
+                    value={formatEnum(
+                      userProfile?.demographicData?.inferredGender,
+                      genderOptions,
+                    )}
+                    isLoading={profileLoading}
+                    isInferred={true}
+                    fieldName="gender"
+                    onVerify={handleVerify}
+                  />
+                )}
+              {!userProfile?.demographicData?.hasKids &&
+                userProfile?.demographicData?.inferredHasKids !== null && (
+                  <DemoInfoCard
+                    icon={HiOutlineHeart}
+                    label="Has Children"
+                    value={formatBoolean(
+                      userProfile?.demographicData?.inferredHasKids,
+                    )}
+                    isLoading={profileLoading}
+                    isInferred={true}
+                    fieldName="hasKids"
+                    onVerify={handleVerify}
+                  />
+                )}
+              {!userProfile?.demographicData?.relationshipStatus &&
+                userProfile?.demographicData?.inferredRelationshipStatus && (
+                  <DemoInfoCard
+                    icon={HiOutlineUsers}
+                    label="Relationship"
+                    value={formatEnum(
+                      userProfile?.demographicData?.inferredRelationshipStatus,
+                      relationshipOptions,
+                    )}
+                    isLoading={profileLoading}
+                    isInferred={true}
+                    fieldName="relationshipStatus"
+                    onVerify={handleVerify}
+                  />
+                )}
+              {!userProfile?.demographicData?.employmentStatus &&
+                userProfile?.demographicData?.inferredEmploymentStatus && (
+                  <DemoInfoCard
+                    icon={HiOutlineBriefcase}
+                    label="Employment"
+                    value={formatEnum(
+                      userProfile?.demographicData?.inferredEmploymentStatus,
+                      employmentOptions,
+                    )}
+                    isLoading={profileLoading}
+                    isInferred={true}
+                    fieldName="employmentStatus"
+                    onVerify={handleVerify}
+                  />
+                )}
+              {!userProfile?.demographicData?.educationLevel &&
+                userProfile?.demographicData?.inferredEducationLevel && (
+                  <DemoInfoCard
+                    icon={HiOutlineAcademicCap}
+                    label="Education"
+                    value={formatEnum(
+                      userProfile?.demographicData?.inferredEducationLevel,
+                      educationOptions,
+                    )}
+                    isLoading={profileLoading}
+                    isInferred={true}
+                    fieldName="educationLevel"
+                    onVerify={handleVerify}
+                  />
+                )}
             </div>
           )}
         </Card>
 
-        {/* --- Preferences Section (Right Column on Large Screens) --- */}
+        {/* --- Your Interests Card (Right) */}
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center text-xl font-semibold text-gray-900 dark:text-white">
@@ -474,77 +983,61 @@ const UserPreferencesPage: React.FC = () => {
           <div className="mt-4">
             {preferencesData?.preferences &&
             preferencesData.preferences.length > 0 ? (
-              <List unstyled className="space-y-3">
+              <List unstyled>
                 {preferencesData.preferences.map((pref, index) => {
-                  // Extract attribute display logic
-                  const attributesDisplay =
-                    pref.attributes &&
-                    Object.entries(pref.attributes).map(([key, valueObj]) => {
-                      let displayValue = "[Complex Value]";
-                      if (typeof valueObj === "object" && valueObj !== null) {
-                        const firstKey = Object.keys(valueObj)[0];
-                        if (firstKey) displayValue = firstKey;
-                      } else if (typeof valueObj === "string") {
-                        displayValue = valueObj;
-                      }
-                      return { key, displayValue };
-                    });
+                  const categoryName =
+                    categoryMap.get(pref.category)?.name || pref.category;
+                  const attributeEntries = Object.entries(
+                    pref.attributes || {},
+                  );
 
                   return (
                     <ListItem
                       key={index}
-                      className="flex flex-col items-start rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-700"
+                      className="mb-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
                     >
-                      <div className="mb-3 flex-grow sm:mb-0">
-                        <span className="block text-base font-semibold text-gray-800 dark:text-gray-200">
-                          {categoryMap.get(pref.category || "")?.name ||
-                            "Unknown Category"}
-                        </span>
-                        <span className="block text-sm text-gray-600 dark:text-gray-400">
-                          Score:{" "}
-                          {pref.score !== null && pref.score !== undefined
-                            ? Math.round(pref.score * 100)
-                            : "N/A"}
-                        </span>
-                        {attributesDisplay && attributesDisplay.length > 0 && (
-                          <div className="mt-1 text-xs">
-                            {attributesDisplay.map(({ key, displayValue }) => (
-                              <span
-                                key={key}
-                                className="mt-1 mr-1.5 inline-block rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-600 dark:text-gray-200"
-                              >
-                                <span className="font-medium">
-                                  {attributeMap
-                                    .get(pref.category || "")
-                                    ?.get(key) || key}
-                                  :
-                                </span>{" "}
-                                {displayValue}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-shrink-0 gap-2 self-end sm:self-center">
-                        <Button
-                          size="xs"
-                          color="light"
-                          onClick={() => openEditModal(index)}
-                          disabled={isMutating}
-                          aria-label="Edit interest"
-                        >
-                          <HiPencil />
-                        </Button>
-                        <Button
-                          size="xs"
-                          color="failure"
-                          outline
-                          onClick={() => handleRemovePreference(index)}
-                          disabled={isMutating}
-                          aria-label="Delete interest"
-                        >
-                          <HiTrash />
-                        </Button>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {categoryName}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Score:{" "}
+                            {pref.score !== null && pref.score !== undefined
+                              ? `${Math.round(pref.score * 100)}%`
+                              : "N/A"}
+                          </p>
+                          {attributeEntries.length > 0 && (
+                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Attributes:{" "}
+                              {attributeEntries
+                                .map(([attrKey, valueObj]) => {
+                                  // Get the first key (value) from the inner object
+                                  const attrValue = Object.keys(valueObj)[0];
+                                  return `${attrKey}: ${attrValue}`;
+                                })
+                                .join(", ")}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            color="light"
+                            size="xs"
+                            onClick={() => openEditModal(index)}
+                            disabled={isMutating}
+                          >
+                            <HiPencil />
+                          </Button>
+                          <Button
+                            color="failure"
+                            size="xs"
+                            onClick={() => handleRemovePreference(index)}
+                            disabled={isMutating}
+                          >
+                            <HiTrash />
+                          </Button>
+                        </div>
                       </div>
                     </ListItem>
                   );
@@ -552,8 +1045,7 @@ const UserPreferencesPage: React.FC = () => {
               </List>
             ) : (
               <p className="text-center text-gray-500 dark:text-gray-400">
-                You haven't added any specific interests yet. Click "Add
-                Interest" to get started.
+                You haven't added any interests yet.
               </p>
             )}
           </div>
@@ -589,6 +1081,7 @@ const UserPreferencesPage: React.FC = () => {
                   Select a category...
                 </option>
                 {Array.from(categoryMap.values())
+                  .filter((cat) => cat.id) // Ensure category has an ID
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -622,7 +1115,13 @@ const UserPreferencesPage: React.FC = () => {
                         <TextInput
                           id={`attr-${attrName}`}
                           {...registerPref(`attributes.${attrName}`)}
-                          placeholder={`e.g., ${attrName === "color" ? "Blue" : attrName === "brand" ? "Acme" : "Any"}`}
+                          placeholder={`e.g., ${
+                            attrName === "color"
+                              ? "Blue"
+                              : attrName === "brand"
+                                ? "Acme"
+                                : "Any"
+                          }`}
                           className="text-sm"
                         />
                       </div>
