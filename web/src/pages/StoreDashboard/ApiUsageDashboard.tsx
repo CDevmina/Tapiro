@@ -86,7 +86,8 @@ export function ApiUsageDashboard() {
     data: usageStats,
     isLoading: usageStatsLoading,
     error: usageStatsError,
-  } = useApiKeyUsage(usageFilters.keyId || "all", {
+  } = useApiKeyUsage(usageFilters.keyId, {
+    // Pass usageFilters.keyId directly (can be undefined)
     startDate: usageFilters.startDate,
     endDate: usageFilters.endDate,
   });
@@ -211,19 +212,28 @@ export function ApiUsageDashboard() {
         <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Usage Statistics
         </h4>
+        {/* Show loading spinner ONLY if the query is actually running */}
         {usageStatsLoading ? (
           <div className="flex justify-center py-8">
             <Spinner size="lg" />
           </div>
-        ) : usageStatsError ? (
+        ) : usageStatsError ? ( // Show error if the query failed
           <Alert color="failure" icon={HiInformationCircle}>
             Failed to load usage statistics: {usageStatsError.message}
           </Alert>
-        ) : !usageStats || usageStats.totalRequests === 0 ? (
+        ) : // Add a specific check for when no key is selected (stats are undefined but not loading/error)
+        !usageFilters.keyId ? (
           <p className="py-4 text-center text-gray-500 dark:text-gray-400">
-            No usage data found for the selected filters.
+            Select an API key from the filter above to view its usage
+            statistics.
+          </p>
+        ) : // Original check for no data *after* a key was selected and the query ran
+        !usageStats || usageStats.totalRequests === 0 ? (
+          <p className="py-4 text-center text-gray-500 dark:text-gray-400">
+            No usage data found for the selected key and date range.
           </p>
         ) : (
+          // Render the stats and charts only when data is available
           <div className="space-y-6">
             <p className="text-gray-700 dark:text-gray-400">
               Total Requests:{" "}
@@ -299,7 +309,7 @@ export function ApiUsageDashboard() {
         )}
       </Card>
 
-      {/* Detailed Log Section */}
+      {/* Detailed Log Section (Should be okay as is) */}
       <Card>
         <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Detailed Request Log

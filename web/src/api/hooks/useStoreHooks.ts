@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClients } from "../apiClient";
 import { cacheKeys, cacheSettings, CACHE_TIMES } from "../utils/cache";
-import {
+import type {
+  // Use type-only import for Error
   ApiKeyCreate,
   StoreUpdate,
   StoreBasicInfo,
   Error,
   SearchStoresParams,
-  GetApiKeyUsagePayload, // <-- Import payload type for usage stats
-  GetApiUsageLogParams, // <-- Import params type for usage log
-  ApiUsageLogEntry, // <-- Import log entry type
-  PaginationInfo, // <-- Import pagination info type
+  GetApiKeyUsagePayload,
+  GetApiUsageLogParams,
+  ApiUsageLogEntry,
+  PaginationInfo,
+  ApiKeyUsage, // <-- Add ApiKeyUsage import
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -90,24 +92,45 @@ export function useRevokeApiKey() {
 
 // Update useApiKeyUsage to accept payload
 export function useApiKeyUsage(
-  keyId: string,
-  payload?: GetApiKeyUsagePayload, // Accept payload
+  keyId: string | undefined, // Allow undefined here
+  payload?: GetApiKeyUsagePayload,
 ) {
   const { apiClients, clientsReady } = useApiClients();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Include payload in the query key if present
-  // This object now matches the expected parameter type for the updated cache key
-  const queryKeyParams = { keyId, ...payload };
+  // Determine if the query should be enabled
+  // It should only run if a specific keyId is provided (not undefined, null, or "all")
+  const isEnabled =
+    isAuthenticated &&
+    !authLoading &&
+    clientsReady &&
+    !!keyId && // Ensure keyId is truthy (not undefined, null, or empty string)
+    keyId !== "all"; // Explicitly disable if it's "all"
 
-  return useQuery({
-    // This call should now be valid
-    queryKey: cacheKeys.stores.apiKeyUsage(queryKeyParams),
-    queryFn: () =>
-      // Pass payload to the API call
-      apiClients.stores.getApiKeyUsage(keyId, payload).then((res) => res.data),
-    enabled: !!keyId && isAuthenticated && !authLoading && clientsReady,
-    ...cacheSettings.apiKeys, // Consider specific cache settings for usage
+  return useQuery<ApiKeyUsage, Error>({
+    // Use a more specific query key that includes the keyId and payload
+    queryKey: cacheKeys.stores.apiKeyUsage({
+      // Pass a single object argument
+      keyId: keyId || "all",
+      startDate: payload?.startDate,
+      endDate: payload?.endDate,
+    }),
+    queryFn: () => {
+      // Add a check here just in case, although 'enabled' should prevent it
+      if (!keyId || keyId === "all") {
+        // Should not happen if 'enabled' works correctly, but good failsafe
+        return Promise.reject(
+          new Error("No specific API key ID provided for usage stats."),
+        );
+      }
+      return apiClients.stores
+        .getApiKeyUsage(keyId, payload) // Pass keyId and payload
+        .then((res) => res.data);
+    },
+    enabled: isEnabled, // Use the calculated enabled state
+    // Optional: Add placeholderData or staleTime if desired
+    // placeholderData: (previousData) => previousData,
+    // staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
