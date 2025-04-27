@@ -40,7 +40,7 @@ export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
           id="product-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 pl-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 pl-10 pr-20 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 [&::-webkit-search-cancel-button]:appearance-none" // Added arbitrary variant to hide the 'x'
           placeholder="Search for products..."
         />
         <button
