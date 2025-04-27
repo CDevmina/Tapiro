@@ -916,24 +916,12 @@ components:
         dataSharingConsent:
           type: boolean
           description: User consent to share aggregated/anonymized data.
-        allowInference: # <-- Add allowInference here
+        allowInference:
           type: boolean
           description: Allow Tapiro to infer demographic data based on user activity.
           default: true
-        optInStores:
-          type: array
-          items:
-            type: string
-            format: objectId # Assuming store IDs are ObjectIds represented as strings
-          description: List of store IDs the user explicitly allows data sharing with.
-        optOutStores:
-          type: array
-          items:
-            type: string
-            format: objectId # Assuming store IDs are ObjectIds represented as strings
-          description: List of store IDs the user explicitly blocks data sharing with.
       required:
-        - dataSharingConsent # Only this is strictly required on creation
+        - dataSharingConsent
 
     Store:
       type: object
