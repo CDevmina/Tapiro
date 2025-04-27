@@ -8,9 +8,8 @@ import {
   ModalBody,
   ModalFooter,
   Popover,
-  Select, // Already imported
+  Select,
   TextInput,
-  Tooltip, // <-- Import ToggleSwitch if you prefer it over Checkbox
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -113,6 +112,17 @@ export function UserRegistrationForm({
     setConsentAccepted(false); // Mark as not accepted (or reset)
     setShowConsentModal(false);
   };
+
+  // Define content for the inference popover
+  const inferencePopoverContent = (
+    <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
+      <p>
+        Tapiro can estimate demographic details like age group or interests
+        based on your activity to improve personalization, even if you don't
+        provide them directly. You can disable this anytime.
+      </p>
+    </div>
+  );
 
   const popoverContent = (
     <div className="w-64 p-3 text-sm text-gray-500 dark:text-gray-400">
@@ -255,7 +265,6 @@ export function UserRegistrationForm({
 
           {/* --- Allow Inference Toggle --- */}
           <div className="flex items-center gap-2">
-            {/* Using Checkbox for consistency, but ToggleSwitch is also an option */}
             <Checkbox
               id="allow-inference"
               checked={allowInference}
@@ -263,12 +272,14 @@ export function UserRegistrationForm({
             />
             <Label
               htmlFor="allow-inference"
-              className="flex text-gray-700 dark:text-gray-300"
+              className="flex items-center text-gray-700 dark:text-gray-300" // Added items-center
             >
-              Allow Tapiro to infer demographic insights{" "}
-              <Tooltip content="Tapiro can estimate demographic details like age group or interests based on your activity to improve personalization, even if you don't provide them directly. You can disable this anytime.">
+              Allow Tapiro to infer demographic insights
+              {/* Replace Tooltip with Popover */}
+              <Popover content={inferencePopoverContent} trigger="hover">
+                {/* Icon is the trigger */}
                 <HiInformationCircle className="ml-1 h-4 w-4 cursor-help text-gray-400" />
-              </Tooltip>
+              </Popover>
             </Label>
           </div>
           {/* --- End Allow Inference Toggle --- */}

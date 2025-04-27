@@ -730,7 +730,7 @@ const UserPreferencesPage: React.FC = () => {
                   color="gray"
                   onClick={() => {
                     setIsEditingDemographics(false);
-                    resetDemoForm(); // Reset to original values on cancel
+                    resetDemoForm();
                   }}
                   disabled={isMutating}
                 >
@@ -738,7 +738,6 @@ const UserPreferencesPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  color="success"
                   disabled={isUpdatingProfile || !isDemoDirty}
                 >
                   {isUpdatingProfile ? (
