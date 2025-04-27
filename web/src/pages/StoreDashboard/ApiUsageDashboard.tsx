@@ -323,11 +323,13 @@ export function ApiUsageDashboard() {
             >
               <Table hoverable>
                 <TableHead>
-                  <TableHeadCell>Timestamp</TableHeadCell>
-                  <TableHeadCell>Method</TableHeadCell>
-                  <TableHeadCell>Endpoint</TableHeadCell>
-                  <TableHeadCell>Key Prefix</TableHeadCell>
-                  <TableHeadCell>User Agent</TableHeadCell>
+                  <TableRow>
+                    <TableHeadCell>Timestamp</TableHeadCell>
+                    <TableHeadCell>Method</TableHeadCell>
+                    <TableHeadCell>Endpoint</TableHeadCell>
+                    <TableHeadCell>Key Prefix</TableHeadCell>
+                    <TableHeadCell>User Agent</TableHeadCell>
+                  </TableRow>
                 </TableHead>
                 <TableBody className="divide-y">
                   {usageLogData.logs.map((log) => (
