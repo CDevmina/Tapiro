@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"; // Added useMemo
 import { UserEmailModal } from "./components/UserEmailModal";
+import { ApiKeyModal } from "./components/ApiKeyModal"; // Import ApiKeyModal
 import { SearchBar } from "./components/SearchBar";
 import { ProductList } from "./components/ProductList"; // Import ProductList
 import { sampleProducts, Product } from "./data/products"; // Import products and type
@@ -20,7 +21,9 @@ interface UserPreferences {
 
 function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string | null>(null); // State for API Key
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false); // State for API Key Modal
   const [searchQuery, setSearchQuery] = useState<string>("");
   // --- Product and Preference State ---
   const [allProducts] = useState<Product[]>(sampleProducts); // Keep original list
@@ -33,33 +36,42 @@ function App() {
     null
   );
 
-  // Get API details from environment variables
+  // Get API details from environment variables (only URL now)
   const apiUrl = import.meta.env.VITE_TAPIRO_API_URL;
-  const apiKey = import.meta.env.VITE_STORE_API_KEY;
+  // const apiKey = import.meta.env.VITE_STORE_API_KEY; // Removed: Get from state
 
   // --- Effects ---
   useEffect(() => {
-    const storedEmail = localStorage.getItem("tapiroDemoUserEmail");
-    if (storedEmail) {
-      setUserEmail(storedEmail);
+    // Check for stored API Key first
+    const storedApiKey = localStorage.getItem("tapiroDemoApiKey");
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+      // Then check for stored Email
+      const storedEmail = localStorage.getItem("tapiroDemoUserEmail");
+      if (storedEmail) {
+        setUserEmail(storedEmail);
+      } else {
+        setIsEmailModalOpen(true); // Open email modal if API key exists but email doesn't
+      }
     } else {
-      setIsModalOpen(true);
+      setIsApiKeyModalOpen(true); // Open API key modal if it's not stored
     }
   }, []);
 
-  // Fetch preferences when userEmail changes
+  // Fetch preferences when userEmail and apiKey change
   useEffect(() => {
-    if (userEmail) {
+    if (userEmail && apiKey) {
+      // Check for both email and apiKey
       fetchPreferences(userEmail);
     } else {
-      // Reset when email is cleared
+      // Reset when email or apiKey is cleared
       setPreferences(null);
       setDisplayedProducts(allProducts); // Show default order
       setApiError(null);
       setApiSuccessMessage(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail]); // Dependency on userEmail
+  }, [userEmail, apiKey]); // Dependency on userEmail and apiKey
 
   // Filter/Sort products based on preferences and search query
   useEffect(() => {
@@ -111,7 +123,7 @@ function App() {
   // --- Handlers ---
   const handleEmailSubmit = (email: string) => {
     setUserEmail(email);
-    setIsModalOpen(false);
+    setIsEmailModalOpen(false);
     if (email) {
       localStorage.setItem("tapiroDemoUserEmail", email);
     } else {
@@ -119,18 +131,33 @@ function App() {
     }
   };
 
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    setIsApiKeyModalOpen(false);
+    localStorage.setItem("tapiroDemoApiKey", key);
+    // After setting API key, check if we need to ask for email
+    if (!userEmail) {
+      const storedEmail = localStorage.getItem("tapiroDemoUserEmail");
+      if (!storedEmail) {
+        setIsEmailModalOpen(true);
+      } else {
+        setUserEmail(storedEmail);
+      }
+    }
+  };
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Submit search data if user is set
-    if (userEmail && query) {
+    // Submit search data if user and key are set
+    if (userEmail && apiKey && query) {
       submitSearchData(userEmail, query);
     }
   };
 
   const handleProductClick = (product: Product) => {
     console.log(`Product clicked: ${product.name}`); // Placeholder
-    // Submit view data if user is set
-    if (userEmail) {
+    // Submit view data if user and key are set
+    if (userEmail && apiKey) {
       submitInteractionData(userEmail, "view", product); // Using 'view' as dataType
     }
   };
@@ -147,8 +174,12 @@ function App() {
     setApiSuccessMessage(null);
 
     if (!apiKey || !apiUrl) {
-      const errorMsg = "API Key or URL is missing. Check .env file.";
+      // Check apiKey from state
+      const errorMsg = !apiUrl
+        ? "API URL is missing."
+        : "API Key is missing. Please set it.";
       setApiError(errorMsg);
+      setIsApiKeyModalOpen(!apiKey); // Re-open modal if key is missing
       return { success: false, error: errorMsg };
     }
 
@@ -157,7 +188,7 @@ function App() {
         method: method,
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": apiKey,
+          "X-API-Key": apiKey, // Use apiKey from state
         },
         body: body ? JSON.stringify(body) : undefined,
       });
@@ -169,6 +200,15 @@ function App() {
           responseData?.message ||
           response.statusText ||
           `HTTP error ${response.status}`;
+        // If unauthorized, prompt for API key again
+        if (response.status === 401) {
+          setApiError(`API Error: ${errorMessage}. Please check your API Key.`);
+          localStorage.removeItem("tapiroDemoApiKey"); // Clear potentially invalid key
+          setApiKey(null);
+          setIsApiKeyModalOpen(true);
+        } else {
+          setApiError(`API Error: ${errorMessage}`);
+        }
         throw new Error(errorMessage);
       }
 
@@ -185,7 +225,11 @@ function App() {
       const message =
         error instanceof Error ? error.message : "An unknown error occurred";
       console.error(`API call failed: ${message}`);
-      setApiError(`API Error: ${message}`);
+      // Error is already set in the try block for specific cases like 401
+      if (!apiError) {
+        // Avoid overwriting specific errors
+        setApiError(`API Error: ${message}`);
+      }
       return { success: false, error: message };
     } finally {
       setIsLoadingPrefs(false);
@@ -193,6 +237,7 @@ function App() {
   };
 
   const fetchPreferences = async (email: string) => {
+    // No need to check apiKey here, makeApiCall does it
     const result = await makeApiCall(
       `/users/${encodeURIComponent(email)}/preferences`,
       "GET"
@@ -214,7 +259,7 @@ function App() {
     dataType: "search" | "purchase" | "view",
     data: Product | string
   ) => {
-    if (!email) return;
+    if (!email || !apiKey) return; // Check apiKey here too
 
     let payload;
     const timestamp = new Date().toISOString();
@@ -304,25 +349,62 @@ function App() {
     return ids;
   }, [preferences, displayedProducts]);
 
+  // Helper to display API Key (show prefix only for brevity/security)
+  const displayApiKey = apiKey ? `${apiKey.substring(0, 8)}...` : "Not Set";
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <UserEmailModal isOpen={isModalOpen} onSubmit={handleEmailSubmit} />
+      {/* Render Modals */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onSubmit={handleApiKeySubmit}
+        currentApiKey={apiKey}
+      />
+      <UserEmailModal
+        isOpen={isEmailModalOpen && !isApiKeyModalOpen} // Only open if API key modal is closed
+        onSubmit={handleEmailSubmit}
+      />
 
       <header className="sticky top-0 z-10 bg-white p-4 shadow-md dark:bg-gray-800">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Tapiro Demo Store
           </h1>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {userEmail ? `Simulating as: ${userEmail}` : "Not signed in"}
-            {userEmail && (
+          {/* User and API Key Info */}
+          <div className="flex flex-col items-end gap-1 text-xs text-gray-600 dark:text-gray-400 md:text-sm">
+            <div>
+              API Key: <span className="font-mono">{displayApiKey}</span>
               <button
-                onClick={() => handleEmailSubmit("")}
-                className="ml-2 text-xs text-red-500 hover:underline"
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="ml-2 text-xs text-blue-500 hover:underline"
               >
-                (Change User)
+                (Change Key)
               </button>
-            )}
+            </div>
+            <div>
+              {userEmail ? `Simulating as: ${userEmail}` : "User Email Not Set"}
+              {userEmail && (
+                <button
+                  onClick={() => {
+                    setUserEmail(null);
+                    localStorage.removeItem("tapiroDemoUserEmail");
+                    setIsEmailModalOpen(true); // Ask for email again
+                  }}
+                  className="ml-2 text-xs text-red-500 hover:underline"
+                >
+                  (Change User)
+                </button>
+              )}
+              {!userEmail &&
+                apiKey && ( // Show button to set email if key is set but email isn't
+                  <button
+                    onClick={() => setIsEmailModalOpen(true)}
+                    className="ml-2 text-xs text-blue-500 hover:underline"
+                  >
+                    (Set User)
+                  </button>
+                )}
+            </div>
           </div>
           <div className="w-full md:w-auto">
             {" "}
@@ -348,9 +430,16 @@ function App() {
         <div className="mt-6 rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
             {searchQuery ? `Search Results for "${searchQuery}"` : "Products"}
-            {isLoadingPrefs && (
-              <span className="ml-2 text-sm text-gray-500">
-                (Loading Preferences...)
+            {isLoadingPrefs &&
+              apiKey &&
+              userEmail && ( // Only show loading if key and email are set
+                <span className="ml-2 text-sm text-gray-500">
+                  (Loading Preferences...)
+                </span>
+              )}
+            {(!apiKey || !userEmail) && ( // Show message if key or email is missing
+              <span className="ml-2 text-sm text-yellow-600 dark:text-yellow-400">
+                (Set API Key and User Email to see personalized results)
               </span>
             )}
           </h2>
