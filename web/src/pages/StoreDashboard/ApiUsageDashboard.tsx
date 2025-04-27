@@ -167,8 +167,12 @@ export function ApiUsageDashboard() {
             <Datepicker
               id="startDateFilter"
               icon={HiCalendar}
-              value={usageFilters.startDate}
-              onSelectedDateChanged={(date) =>
+              value={
+                usageFilters.startDate
+                  ? new Date(usageFilters.startDate)
+                  : undefined
+              }
+              onChange={(date: Date | null) =>
                 handleFilterChange("startDate", date)
               }
               maxDate={
@@ -183,8 +187,13 @@ export function ApiUsageDashboard() {
             <Datepicker
               id="endDateFilter"
               icon={HiCalendar}
-              value={usageFilters.endDate}
-              onSelectedDateChanged={(date) =>
+              // Convert string back to Date for the component's value prop
+              value={
+                usageFilters.endDate
+                  ? new Date(usageFilters.endDate)
+                  : undefined
+              }
+              onChange={(date: Date | null) =>
                 handleFilterChange("endDate", date)
               }
               minDate={
@@ -272,7 +281,7 @@ export function ApiUsageDashboard() {
                           }
                         >
                           {Object.entries(usageStats.methodBreakdown).map(
-                            (entry, index) => (
+                            (_, index) => (
                               <Cell
                                 key={`cell-${index}`}
                                 fill={COLORS[index % COLORS.length]}
