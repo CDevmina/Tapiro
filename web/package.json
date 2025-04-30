@@ -11,7 +11,10 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "postinstall": "flowbite-react patch",
-    "generate-api": "swagger-typescript-api generate -p ../api-service/api/openapi.yaml -o ./src/api/types -n apiClient.ts --axios --modular --extract-request-params --extract-request-body --responses"
+    "generate-api": "swagger-typescript-api generate -p ../api-service/api/openapi.yaml -o ./src/api/types -n apiClient.ts --axios --modular --extract-request-params --extract-request-body --responses",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
@@ -28,19 +31,26 @@
   "devDependencies": {
     "@eslint/js": "^9.23.0",
     "@tailwindcss/vite": "^4.0.17",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
+    "@types/testing-library__jest-dom": "^5.14.9",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.23.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "jsdom": "^26.1.0",
+    "msw": "^2.7.5",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "swagger-typescript-api": "^13.1.1",
     "tailwindcss": "^4.0.17",
     "typescript": "~5.8.2",
     "typescript-eslint": "^8.28.0",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^3.1.2"
   }
 }

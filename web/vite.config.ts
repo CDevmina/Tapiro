@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import flowbiteReact from "flowbite-react/plugin/vite";
 
 // https://vite.dev/config/
@@ -12,5 +12,11 @@ export default defineConfig({
       clientPort: 5173, // Match the exposed port
       host: "localhost",
     },
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "./src/setupTests.ts", // Path to your setup file
+    css: false, // Optional: if you don't need CSS processing in tests
   },
 });
