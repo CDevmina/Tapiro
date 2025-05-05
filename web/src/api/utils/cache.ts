@@ -1,10 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
-// Import GetRecentUserDataParams if not already imported
 import {
   User,
   GetRecentUserDataParams,
-  GetApiUsageLogParams, // <-- Add this import
-  GetApiKeyUsagePayload, // <-- Import payload type
+  GetApiUsageLogParams,
+  GetApiKeyUsagePayload,
 } from "../types/data-contracts";
 
 // Cache time configurations (in milliseconds)
@@ -18,10 +17,10 @@ export const CACHE_TIMES = {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: CACHE_TIMES.MEDIUM, // Default stale time
-      gcTime: CACHE_TIMES.MEDIUM * 2, // Default cache time
-      retry: 1, // Retry failed queries once
-      refetchOnWindowFocus: true, // Refetch when window regains focus
+      staleTime: CACHE_TIMES.MEDIUM,
+      gcTime: CACHE_TIMES.MEDIUM * 2,
+      retry: 1,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -33,15 +32,13 @@ export const cacheKeys = {
     profile: () => [...cacheKeys.users.all, "profile"] as const,
     preferences: () => [...cacheKeys.users.all, "preferences"] as const,
     storeConsent: () => [...cacheKeys.users.all, "storeConsent"] as const,
-    // Pass params object for recent data
     recentData: (params: GetRecentUserDataParams = {}) =>
       [
         ...cacheKeys.users.all,
         "recentData",
-        // Create a stable object key based on params
         {
-          limit: params.limit ?? 10, // Default limit
-          page: params.page ?? 1, // Default page
+          limit: params.limit ?? 10,
+          page: params.page ?? 1,
           dataType: params.dataType ?? "all",
           storeId: params.storeId ?? "all",
           startDate: params.startDate ?? "all",
@@ -49,40 +46,29 @@ export const cacheKeys = {
           searchTerm: params.searchTerm ?? "",
         },
       ] as const,
-    // Pass dates for spending analytics
     spendingAnalytics: (startDate?: string, endDate?: string) =>
       [
         ...cacheKeys.users.all,
         "spendingAnalytics",
-        { startDate: startDate ?? "all", endDate: endDate ?? "all" }, // Use 'all' if undefined
+        { startDate: startDate ?? "all", endDate: endDate ?? "all" },
       ] as const,
   },
   stores: {
     all: ["stores"] as const,
     profile: () => [...cacheKeys.stores.all, "profile"] as const,
     apiKeys: () => [...cacheKeys.stores.all, "apiKeys"] as const,
-    // Update apiKeyUsage to accept an object with keyId and optional dates
-    apiKeyUsage: (
-      params: { keyId: string } & GetApiKeyUsagePayload, // <-- Accept object
-    ) =>
+    apiKeyUsage: (params: { keyId: string } & GetApiKeyUsagePayload) =>
       [
         ...cacheKeys.stores.all,
         "apiKeyUsage",
-        // Create a stable object key
         {
           keyId: params.keyId,
           startDate: params.startDate ?? "all",
           endDate: params.endDate ?? "all",
         },
       ] as const,
-    // Add key for API usage log, accepting filter params
     apiUsageLog: (params: GetApiUsageLogParams) =>
-      [
-        // <-- New Key
-        ...cacheKeys.stores.all,
-        "apiUsageLog",
-        params,
-      ] as const,
+      [...cacheKeys.stores.all, "apiUsageLog", params] as const,
     lookup: (ids: string[]) =>
       [...cacheKeys.stores.all, "lookup", ids] as const,
     search: (query: string) =>
@@ -111,11 +97,11 @@ export const cacheSettings = {
     gcTime: CACHE_TIMES.MEDIUM * 2,
   },
   metadata: {
-    staleTime: CACHE_TIMES.MEDIUM, // Consider fresh for 5 mins
-    gcTime: CACHE_TIMES.MEDIUM * 2, // Keep in cache for 10 mins after inactive
+    staleTime: CACHE_TIMES.MEDIUM,
+    gcTime: CACHE_TIMES.MEDIUM * 2,
   },
   apiKeys: {
-    staleTime: CACHE_TIMES.SHORT, // More frequent updates for security
+    staleTime: CACHE_TIMES.SHORT,
     gcTime: CACHE_TIMES.SHORT * 2,
   },
   system: {
@@ -123,7 +109,6 @@ export const cacheSettings = {
     gcTime: CACHE_TIMES.SHORT * 2,
   },
   taxonomy: {
-    // <-- Add specific settings for taxonomy (cache longer)
     staleTime: CACHE_TIMES.LONG,
     gcTime: CACHE_TIMES.LONG * 2,
   },
@@ -131,16 +116,14 @@ export const cacheSettings = {
 
 // Helper for optimistic updates
 export const optimisticUpdates = {
-  // Add a store to opt-in list and remove from opt-out list within the User profile cache
   optInStore: (storeId: string) => {
     queryClient.setQueryData(
       cacheKeys.users.profile(),
       (oldData: User | undefined) => {
         if (!oldData) return oldData;
-        // Ensure privacySettings exists, initialize if not
         const privacySettings = oldData.privacySettings || {
           dataSharingConsent: false,
-        }; // Default consent if needed
+        };
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
 
@@ -165,28 +148,23 @@ export const optimisticUpdates = {
     );
   },
 
-  // Remove store from opt-in list and add to opt-out list within the User profile cache
   optOutStore: (storeId: string) => {
     queryClient.setQueryData(
-      cacheKeys.users.profile(), // <--- Target user profile cache
+      cacheKeys.users.profile(),
       (oldData: User | undefined) => {
-        // <--- Use User type
         if (!oldData) return oldData;
 
-        // Ensure privacySettings exists, initialize if not
         const privacySettings = oldData.privacySettings || {
           dataSharingConsent: false,
-        }; // Default consent if needed
+        };
         const optInStores = [...(privacySettings.optInStores || [])];
         const optOutStores = [...(privacySettings.optOutStores || [])];
 
-        // Remove from opt-in list if present
         const optInIndex = optInStores.indexOf(storeId);
         if (optInIndex >= 0) {
           optInStores.splice(optInIndex, 1);
         }
 
-        // Add to opt-out list if not already there
         if (!optOutStores.includes(storeId)) {
           optOutStores.push(storeId);
         }

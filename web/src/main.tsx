@@ -69,7 +69,7 @@ const router = createBrowserRouter([
       },
       // --- Catch-all 404 Route ---
       {
-        path: "*", // This matches any path not matched above
+        path: "*",
         element: <NotFoundPage />,
       },
     ],
