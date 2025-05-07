@@ -271,6 +271,7 @@ exports.registerStore = async function (req, body) {
     await updateUserMetadata(userData.sub, {
       registrationType: 'store',
       registrationComplete: true,
+      nickname: name, // <-- Add store name as nickname
     });
 
     return respondWithCode(201, { ...store, storeId: result.insertedId });
