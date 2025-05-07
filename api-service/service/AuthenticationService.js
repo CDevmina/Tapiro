@@ -1,8 +1,13 @@
 const { getDB } = require('../utils/mongoUtil');
-const { setCache} = require('../utils/redisUtil');
+const { setCache } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const { assignUserRole, linkAccounts, updateUserMetadata, getUserMetadata } = require('../utils/auth0Util');
+const {
+  assignUserRole,
+  linkAccounts,
+  updateUserMetadata,
+  getUserMetadata,
+} = require('../utils/auth0Util');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
@@ -13,8 +18,9 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    // Destructure new demographic fields AND allowInference
+    // Destructure new demographic fields AND allowInference AND username
     const {
+      username, // <-- Add username
       preferences,
       dataSharingConsent,
       allowInference, // <-- Add allowInference
@@ -74,7 +80,7 @@ exports.registerUser = async function (req, body) {
 
     // Check if username already exists
     const existingUserByUsername = await db.collection('users').findOne({
-      username: userData.nickname,
+      username: username,
     });
 
     if (existingUserByUsername) {
@@ -98,7 +104,7 @@ exports.registerUser = async function (req, body) {
     // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: userData.username || userData.nickname || userData.sub,
+      username: username || null, // <-- Set username
       email: userData.email,
       phone: userData.phone_number || null,
       demographicData: {
@@ -162,7 +168,8 @@ exports.registerUser = async function (req, body) {
     // Update user metadata
     await updateUserMetadata(userData.sub, {
       registrationType: 'user',
-      registrationComplete: true
+      registrationComplete: true,
+      nickname: username,
     });
 
     return respondWithCode(201, { ...user, userId: result.insertedId });
@@ -263,7 +270,7 @@ exports.registerStore = async function (req, body) {
     // Update store metadata
     await updateUserMetadata(userData.sub, {
       registrationType: 'store',
-      registrationComplete: true
+      registrationComplete: true,
     });
 
     return respondWithCode(201, { ...store, storeId: result.insertedId });
@@ -281,7 +288,7 @@ exports.getUserMetadata = async function (req) {
   try {
     // Get user data from middleware or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-    
+
     // Get user metadata from Auth0 using Management API
     const metadata = await getUserMetadata(userData.sub);
 

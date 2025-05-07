@@ -975,7 +975,14 @@ components:
       type: object
       required:
         - dataSharingConsent
+        - username # Add username to required fields
       properties:
+        username: # Add username property
+          type: string
+          minLength: 3
+          maxLength: 15
+          pattern: "^[a-zA-Z0-9_-]+$"
+          description: User's unique username, chosen during registration.
         preferences:
           type: array
           items:

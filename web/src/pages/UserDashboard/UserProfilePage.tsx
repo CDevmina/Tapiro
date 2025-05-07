@@ -102,22 +102,28 @@ export default function UserProfilePage() {
   // Show toasts based on UPDATE mutation state
   useEffect(() => {
     if (isUpdateSuccess) {
+      setShowErrorToast(false); // Ensure error toast is hidden
       setShowSuccessToast(true);
       setToastMessage("Profile updated successfully!");
-      resetUpdateMutation();
-      const timer = setTimeout(() => setShowSuccessToast(false), 5000);
+      const timer = setTimeout(() => {
+        setShowSuccessToast(false);
+        resetUpdateMutation(); // Reset mutation state after toast is hidden
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isUpdateSuccess, resetUpdateMutation]);
 
   useEffect(() => {
     if (updateError) {
+      setShowSuccessToast(false); // Ensure success toast is hidden
       setShowErrorToast(true);
       setToastMessage(
         updateError.message || "Failed to update profile. Please try again.",
       );
-      resetUpdateMutation();
-      const timer = setTimeout(() => setShowErrorToast(false), 5000);
+      const timer = setTimeout(() => {
+        setShowErrorToast(false);
+        resetUpdateMutation(); // Reset mutation state after toast is hidden
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [updateError, resetUpdateMutation]);
@@ -133,8 +139,12 @@ export default function UserProfilePage() {
         "showPostLogoutToast",
         "User account deleted successfully.",
       ); // <-- Set flag
-      resetDeleteMutation();
-      logout(); // <-- Call logout directly
+      const timer = setTimeout(() => {
+        // Added a delay for reset similar to update toasts
+        resetDeleteMutation();
+        logout();
+      }, 100); // Short delay to ensure state updates propagate if needed before logout
+      return () => clearTimeout(timer);
     }
   }, [isDeleteSuccess, resetDeleteMutation, logout]); // Keep dependencies
 
@@ -147,8 +157,10 @@ export default function UserProfilePage() {
         deleteError.message ||
           "Failed to delete user account. Please try again.",
       );
-      resetDeleteMutation();
-      const timer = setTimeout(() => setShowErrorToast(false), 5000);
+      const timer = setTimeout(() => {
+        setShowErrorToast(false);
+        resetDeleteMutation();
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [deleteError, resetDeleteMutation]);
@@ -156,7 +168,7 @@ export default function UserProfilePage() {
   const onSubmit: SubmitHandler<UserProfileFormData> = (data) => {
     const updatePayload: UserUpdate = {
       username: data.username,
-      phone: data.phone,
+      phone: data.phone || undefined, // If phone is empty string, send undefined
       privacySettings: {
         dataSharingConsent: data.privacySettings_dataSharingConsent ?? false,
         allowInference: data.privacySettings_allowInference ?? true, // Default to true if undefined
