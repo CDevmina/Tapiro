@@ -1529,7 +1529,9 @@ components:
             registrationComplete:
               type: boolean
               description: Whether registration process is complete
-          description: User metadata from Auth0
+            nickname:
+              type: string
+              description: User or store display name
 
     TaxonomyAttribute:
       type: object

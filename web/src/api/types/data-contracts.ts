@@ -393,12 +393,13 @@ export interface PingStatus {
 export interface UserMetadataResponse {
   /** Whether metadata was updated successfully */
   updated?: boolean;
-  /** User metadata from Auth0 */
   metadata?: {
     /** The type of registration */
     registrationType?: "user" | "store";
     /** Whether registration process is complete */
     registrationComplete?: boolean;
+    /** User or store display name */
+    nickname?: string;
   };
 }
 
