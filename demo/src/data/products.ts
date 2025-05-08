@@ -376,15 +376,6 @@ export const sampleProducts: Product[] = [
     },
     description: "A timeless science fiction masterpiece on Blu-ray.",
   },
-  {
-    id: "p28",
-    name: "Video Streaming Subscription",
-    price: 15,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Streaming",
-    categoryId: "503",
-    attributes: { service_type: "video", provider: "Netflix" },
-    description: "Monthly subscription for unlimited movies and TV shows.",
-  },
 
   // --- Health & Wellness (600) ---
   {
