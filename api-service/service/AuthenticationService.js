@@ -2,12 +2,7 @@ const { getDB } = require('../utils/mongoUtil');
 const { setCache } = require('../utils/redisUtil');
 const { checkExistingRegistration } = require('../utils/helperUtil');
 const { respondWithCode } = require('../utils/writer');
-const {
-  assignUserRole,
-  linkAccounts,
-  updateUserMetadata,
-  getUserMetadata,
-} = require('../utils/auth0Util');
+const { assignUserRole, updateUserMetadata, getUserMetadata } = require('../utils/auth0Util'); // Removed linkAccounts
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 
@@ -18,22 +13,19 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 exports.registerUser = async function (req, body) {
   try {
     const db = getDB();
-    // Destructure new demographic fields AND allowInference AND username
     const {
-      username, // <-- Add username
+      username,
       preferences,
       dataSharingConsent,
-      allowInference, // <-- Add allowInference
+      allowInference,
       gender,
       incomeBracket,
       country,
       age,
     } = body;
 
-    // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
-    // Check if already registered as a user or store
     const registration = await checkExistingRegistration(userData.sub);
     if (registration.exists) {
       return respondWithCode(409, {
@@ -42,43 +34,17 @@ exports.registerUser = async function (req, body) {
       });
     }
 
-    // Check if email already exists in our database
-    const existingUserByEmail = await db.collection('users').findOne({
-      email: userData.email,
-    });
-
-    // Handle account linking if the email exists but with a different auth0Id
-    if (existingUserByEmail && existingUserByEmail.auth0Id !== userData.sub) {
-      try {
-        // Link the accounts in Auth0
-        await linkAccounts(existingUserByEmail.auth0Id, userData.sub);
-
-        // Cache the linked user data
-        await setCache(
-          `${CACHE_KEYS.USER_DATA}${userData.sub}`,
-          JSON.stringify(existingUserByEmail),
-          {
-            EX: CACHE_TTL.USER_DATA,
-          },
-        );
-
-        // Return the existing user
-        return respondWithCode(200, {
-          ...existingUserByEmail,
-          message: 'Account linked successfully',
-          accountLinked: true,
-        });
-      } catch (linkError) {
-        console.error('Account linking failed:', linkError);
-        return respondWithCode(400, {
-          code: 400,
-          message: 'Failed to link accounts. Please contact support.',
-          details: linkError.message,
-        });
-      }
+    // Check if email already exists in users or stores collection
+    const existingEmail =
+      (await db.collection('users').findOne({ email: userData.email })) ||
+      (await db.collection('stores').findOne({ email: userData.email }));
+    if (existingEmail) {
+      return respondWithCode(409, {
+        code: 409,
+        message: 'Email is already registered with another account.',
+      });
     }
 
-    // Check if username already exists
     const existingUserByUsername = await db.collection('users').findOne({
       username: username,
     });
@@ -90,52 +56,33 @@ exports.registerUser = async function (req, body) {
       });
     }
 
-    // Add user role assignment
-    try {
-      await assignUserRole(userData.sub, 'user');
-    } catch (error) {
-      console.error('Role assignment failed:', error);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to assign role',
-      });
-    }
+    await assignUserRole(userData.sub, 'user');
 
-    // Create user in database
     const user = {
       auth0Id: userData.sub,
-      username: username || null, // <-- Set username
+      username: username || null,
       email: userData.email,
       phone: userData.phone_number || null,
       demographicData: {
-        // User provided (initialize as null unless provided in registration body)
         gender: gender || null,
         incomeBracket: incomeBracket || null,
         country: country || null,
         age: age || null,
-        hasKids: null, // NEW user-provided, init null
-        relationshipStatus: null, // NEW user-provided, init null
-        employmentStatus: null, // NEW user-provided, init null
-        educationLevel: null, // NEW user-provided, init null
-        // Inferred (initialize as null)
+        hasKids: null,
+        relationshipStatus: null,
+        employmentStatus: null,
+        educationLevel: null,
         inferredHasKids: null,
-        // REMOVED hasKidsIsVerified
         inferredRelationshipStatus: null,
-        // REMOVED relationshipStatusIsVerified
         inferredEmploymentStatus: null,
-        // REMOVED employmentStatusIsVerified
         inferredEducationLevel: null,
-        // REMOVED educationLevelIsVerified
-        // REMOVED inferredAgeBracket
-        // REMOVED ageBracketIsVerified
         inferredGender: null,
-        // REMOVED genderIsVerified
       },
       preferences: preferences || [],
       privacySettings: {
         dataSharingConsent,
         anonymizeData: false,
-        allowInference: allowInference !== undefined ? allowInference : true, // <-- Set allowInference, default true
+        allowInference: allowInference !== undefined ? allowInference : true,
         optInStores: [],
         optOutStores: [],
       },
@@ -147,17 +94,14 @@ exports.registerUser = async function (req, body) {
 
     const result = await db.collection('users').insertOne(user);
 
-    // Cache the newly created user data
     const userWithId = { ...user, _id: result.insertedId };
     await setCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`, JSON.stringify(userWithId), {
       EX: CACHE_TTL.USER_DATA,
     });
 
-    // Also cache user preferences
-    // Note: Demographic data is NOT typically included in the preferences cache
     const cachePreferences = {
       userId: user._id.toString(),
-      preferences: user.preferences || [], // Fixed: consistent naming
+      preferences: user.preferences || [],
       updatedAt: user.updatedAt || new Date(),
     };
 
@@ -165,7 +109,6 @@ exports.registerUser = async function (req, body) {
       EX: CACHE_TTL.USER_DATA,
     });
 
-    // Update user metadata
     await updateUserMetadata(userData.sub, {
       registrationType: 'user',
       registrationComplete: true,
@@ -188,10 +131,8 @@ exports.registerStore = async function (req, body) {
     const db = getDB();
     const { name, address, webhooks } = body;
 
-    // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
-    // Check if already registered
     const registration = await checkExistingRegistration(userData.sub);
     if (registration.exists) {
       return respondWithCode(409, {
@@ -200,54 +141,19 @@ exports.registerStore = async function (req, body) {
       });
     }
 
-    // Check if a store with the same email exists but with different auth0Id
-    const existingStoreByEmail = await db.collection('stores').findOne({
-      email: userData.email,
-    });
-
-    // Handle account linking if the email exists but with a different auth0Id
-    if (existingStoreByEmail && existingStoreByEmail.auth0Id !== userData.sub) {
-      try {
-        // Link the accounts in Auth0
-        await linkAccounts(existingStoreByEmail.auth0Id, userData.sub);
-
-        // Cache the linked store data
-        await setCache(
-          `${CACHE_KEYS.STORE_DATA}${userData.sub}`,
-          JSON.stringify(existingStoreByEmail),
-          {
-            EX: CACHE_TTL.STORE_DATA,
-          },
-        );
-
-        // Return the existing store
-        return respondWithCode(200, {
-          ...existingStoreByEmail,
-          message: 'Account linked successfully',
-          accountLinked: true,
-        });
-      } catch (linkError) {
-        console.error('Account linking failed:', linkError);
-        return respondWithCode(400, {
-          code: 400,
-          message: 'Failed to link accounts. Please contact support.',
-          details: linkError.message,
-        });
-      }
-    }
-
-    // Assign store role
-    try {
-      await assignUserRole(userData.sub, 'store');
-    } catch (error) {
-      console.error('Role assignment failed:', error);
-      return respondWithCode(500, {
-        code: 500,
-        message: 'Failed to assign role',
+    // Check if email already exists in users or stores collection
+    const existingEmail =
+      (await db.collection('users').findOne({ email: userData.email })) ||
+      (await db.collection('stores').findOne({ email: userData.email }));
+    if (existingEmail) {
+      return respondWithCode(409, {
+        code: 409,
+        message: 'Email is already registered with another account.',
       });
     }
 
-    // Create store in database
+    await assignUserRole(userData.sub, 'store');
+
     const store = {
       auth0Id: userData.sub,
       name,
@@ -261,17 +167,15 @@ exports.registerStore = async function (req, body) {
 
     const result = await db.collection('stores').insertOne(store);
 
-    // Cache the newly created store data
     const storeWithId = { ...store, _id: result.insertedId };
     await setCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`, JSON.stringify(storeWithId), {
       EX: CACHE_TTL.STORE_DATA,
     });
 
-    // Update store metadata
     await updateUserMetadata(userData.sub, {
       registrationType: 'store',
       registrationComplete: true,
-      nickname: name, // <-- Add store name as nickname
+      nickname: name,
     });
 
     return respondWithCode(201, { ...store, storeId: result.insertedId });

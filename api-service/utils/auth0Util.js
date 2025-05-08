@@ -63,56 +63,6 @@ async function assignUserRole(userId, role) {
 }
 
 /**
- * Links two user accounts in Auth0
- * @param {string} primaryUserId - The main user ID (to keep)
- * @param {string} secondaryUserId - The user ID to link to primary
- * @returns {Promise<Object>} - The linked user data
- */
-async function linkAccounts(primaryUserId, secondaryUserId) {
-  try {
-    const token = await getManagementToken();
-
-    // Get the secondary user's identity provider data
-    const secondaryUserResponse = await axios.get(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${secondaryUserId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    const secondaryUser = secondaryUserResponse.data;
-    if (!secondaryUser.identities || !secondaryUser.identities.length) {
-      throw new Error('No identities found on secondary account');
-    }
-
-    // Get the provider connection info
-    const identity = secondaryUser.identities[0];
-    const provider = identity.provider;
-    const userId = identity.user_id;
-
-    // Link the accounts
-    const response = await axios.post(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${primaryUserId}/identities`,
-      { provider, user_id: userId },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error('Account linking failed:', error?.response?.data || error);
-    throw error;
-  }
-}
-
-/**
  * Update Auth0 user metadata
  * @param {string} userId - Auth0 user ID
  * @param {Object} metadata - Metadata to update
@@ -122,9 +72,9 @@ async function linkAccounts(primaryUserId, secondaryUserId) {
 async function updateUserMetadata(userId, metadata, invalidateUserCache = false) {
   try {
     const token = await getManagementToken();
-    
+
     const metadataUpdate = {
-      user_metadata: metadata
+      user_metadata: metadata,
     };
 
     // Update user metadata in Auth0
@@ -136,16 +86,16 @@ async function updateUserMetadata(userId, metadata, invalidateUserCache = false)
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      }
+      },
     );
-    
+
     // Invalidate cache if requested
     if (invalidateUserCache) {
       const { invalidateCache } = require('../utils/redisUtil');
       const { CACHE_KEYS } = require('../utils/cacheConfig');
       await invalidateCache(`${CACHE_KEYS.USER_DATA}${userId}`);
     }
-    
+
     return response.data.user_metadata || {};
   } catch (error) {
     console.error('Failed to update user metadata:', error?.response?.data || error);
@@ -178,12 +128,15 @@ async function updateUserPhone(userId, phone) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      }
+      },
     );
 
     return response.data;
   } catch (error) {
-    console.error(`Failed to update Auth0 phone number for ${userId}:`, error?.response?.data || error.message);
+    console.error(
+      `Failed to update Auth0 phone number for ${userId}:`,
+      error?.response?.data || error.message,
+    );
     // Re-throw the error so the calling service can decide how to handle it
     throw error;
   }
@@ -197,7 +150,7 @@ async function updateUserPhone(userId, phone) {
 async function getUserMetadata(userId) {
   try {
     const token = await getManagementToken();
-    
+
     // Get user with metadata from Auth0 Management API
     const response = await axios.get(
       `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
@@ -206,9 +159,9 @@ async function getUserMetadata(userId) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      }
+      },
     );
-    
+
     return response.data.user_metadata || {};
   } catch (error) {
     console.error('Failed to get user metadata:', error?.response?.data || error);
@@ -241,14 +194,17 @@ async function updateAuth0Username(userId, newUsername) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      }
+      },
     );
 
     console.log(`Successfully updated Auth0 username for ${userId}.`);
     return response.data;
   } catch (error) {
     // Log the specific error (e.g., username already exists)
-    console.error(`Failed to update Auth0 username for ${userId}:`, error?.response?.data || error.message);
+    console.error(
+      `Failed to update Auth0 username for ${userId}:`,
+      error?.response?.data || error.message,
+    );
     // Re-throw the error so the calling service knows the update failed
     throw error;
   }
@@ -264,27 +220,26 @@ async function deleteAuth0User(userId) {
     const token = await getManagementToken();
 
     // Delete user from Auth0
-    await axios.delete(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    await axios.delete(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     console.log(`Successfully deleted user ${userId} from Auth0.`);
   } catch (error) {
     // Log error but don't throw, allowing the calling service to continue if needed
-    console.error(`Auth0 deletion failed for user ${userId}:`, error?.response?.data || error.message);
+    console.error(
+      `Auth0 deletion failed for user ${userId}:`,
+      error?.response?.data || error.message,
+    );
     // If you want the deletion failure to stop the process in the service, re-throw the error:
     // throw error;
   }
 }
 
-module.exports = { 
-  getManagementToken, 
-  assignUserRole, 
-  linkAccounts,
+module.exports = {
+  getManagementToken,
+  assignUserRole,
   updateUserMetadata,
   updateUserPhone,
   getUserMetadata,
