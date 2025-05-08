@@ -1,0 +1,262 @@
+openapi: 3.0.0
+info:
+  title: Tapiro Store Operations API
+  description: API for external services to interact with Tapiro's Store Operations.
+  version: 1.0.0
+  contact:
+    name: Tapiro Support
+    email: tapirosupport@gmail.com
+servers:
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/Tapiro/1.0.0
+  - url: https://api.tapiro.com/v1
+    description: Production API
+  - url: http://localhost:3000
+    description: Development API
+paths:
+  /users/data:
+    post:
+      tags: [Data Collection]
+      summary: Submit user data
+      description: Submit purchase/search history for a user (authenticated via API key)
+      operationId: submitUserData
+      security:
+        - apiKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserData"
+        required: true
+      responses:
+        "202":
+          description: Data accepted for processing
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{userId}/preferences:
+    get:
+      tags: [Data Retrieval]
+      summary: Get user preferences
+      description: Retrieve preferences for targeted advertising
+      operationId: getUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - apiKey: []
+      responses:
+        "200":
+          description: UserPreferences retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  schemas:
+    UserData:
+      type: object
+      required:
+        - email
+        - dataType
+        - entries
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        dataType:
+          type: string
+          enum: [purchase, search]
+          description: Type of data being submitted
+        entries:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/PurchaseEntry"
+              - $ref: "#/components/schemas/SearchEntry"
+    UserPreferences:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreferenceItem"
+    PurchaseEntry:
+      type: object
+      required:
+        - timestamp
+        - items
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the purchase occurred.
+        items:
+          type: array
+          description: List of items included in the purchase.
+          items:
+            $ref: "#/components/schemas/PurchaseItem"
+        totalValue:
+          type: number
+          format: float
+          description: Optional total value of the purchase event.
+
+    PurchaseItem:
+      type: object
+      required:
+        - name
+        - category
+      properties:
+        sku:
+          type: string
+          description: Stock Keeping Unit or unique product identifier.
+        name:
+          type: string
+          description: Name of the purchased item.
+        category:
+          type: string
+          description: Category ID or name matching the taxonomy.
+        price:
+          type: number
+          format: float
+          description: Price of a single unit of the item.
+        quantity:
+          type: integer
+          description: Number of units purchased.
+          default: 1
+        attributes:
+          type: object
+          description: Key-value pairs representing product attributes.
+          additionalProperties:
+            type: string
+
+    SearchEntry:
+      type: object
+      required:
+        - timestamp
+        - query
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the search occurred.
+        query:
+          type: string
+          description: The search query string entered by the user.
+        category:
+          type: string
+          description: Optional category context provided during the search.
+        results:
+          type: integer
+          description: Optional number of results returned for the search query.
+        clicked:
+          type: array
+          description: Optional list of product IDs or SKUs clicked from the search results.
+          items:
+            type: string
+
+    PreferenceItem:
+      type: object
+      required:
+        - category
+        - score
+      properties:
+        category:
+          type: string
+          description: Category ID or name.
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Preference score (0.0-1.0).
+        attributes:
+          type: object
+          description: Category-specific attribute preferences.
+          additionalProperties:
+            type: string
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP status code of the error
+          example: 400
+        message:
+          type: string
+          description: Description of the error
+          example: "Bad request - invalid input"
+        details:
+          type: object
+          description: Additional details about the error (optional)
+          additionalProperties: true
+          example: { field: "username", issue: "already taken" }
+
+  responses:
+    BadRequestError:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    UnauthorizedError:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    ForbiddenError:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    NotFoundError:
+      description: Not found - resource doesn't exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    ConflictError:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
