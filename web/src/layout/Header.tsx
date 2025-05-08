@@ -141,6 +141,14 @@ export function Header() {
         >
           API Docs
         </NavbarLink>
+        <NavbarLink
+          as="a"
+          href="http://localhost:5173"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Demo App
+        </NavbarLink>
       </NavbarCollapse>
     </Navbar>
   );
