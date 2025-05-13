@@ -13,7 +13,7 @@ const serverPort = process.env.PORT;
 
 // CORS configuration
 const corsOptions = {
-  origin: [process.env.FRONTEND_URL],
+  origin: [process.env.FRONTEND_URL, 'http://localhost:5174'], // Added demo app origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   credentials: true,
