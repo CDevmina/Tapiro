@@ -11,12 +11,8 @@ tags:
     description: User profile and data management operations
   - name: Store Management
     description: Store profile, API key, and integration management
-  - name: Data Collection
-    description: Operations for submitting user data for targeted advertising
   - name: Preference Management
     description: Operations for managing user preferences and opt-in/out settings
-  - name: Data Retrival
-    description: Operations for retrieving user preferences and data
   - name: Health
     description: Health and uptime monitoring
   - name: Admin
@@ -232,62 +228,6 @@ paths:
       security:
         - oauth2: [store:write]
       x-swagger-router-controller: StoreProfile
-
-  /users/data:
-    post:
-      tags: [Data Collection]
-      summary: Submit user data
-      description: Submit purchase/search history for a user (authenticated via API key)
-      operationId: submitUserData
-      security:
-        - apiKey: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UserData"
-        required: true
-      responses:
-        "202":
-          description: Data accepted for processing
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "400":
-          $ref: "#/components/responses/BadRequestError"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-      x-swagger-router-controller: StoreOperations
-
-  /users/{userId}/preferences:
-    get:
-      tags: [Data Retrival]
-      summary: Get user preferences
-      description: Retrieve preferences for targeted advertising
-      operationId: getUserPreferences
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-      security:
-        - apiKey: []
-      responses:
-        "200":
-          description: UserPreferences retrieved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserPreferences"
-        "403":
-          $ref: "#/components/responses/ForbiddenError"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-      x-swagger-router-controller: StoreOperations
 
   /users/preferences:
     get:
@@ -1876,10 +1816,6 @@ components:
             message: Internal server error
 
   securitySchemes:
-    apiKey:
-      type: apiKey
-      in: header
-      name: X-API-Key
     oauth2:
       type: oauth2
       flows:

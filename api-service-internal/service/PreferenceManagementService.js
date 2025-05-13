@@ -6,7 +6,7 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { ObjectId } = require('mongodb');
 // Removed AIService require as it's no longer used here
 // const AIService = require('../clients/AIService');
-const TaxonomyService = require('../service/TaxonomyService'); // Import TaxonomyService
+const TaxonomyService = require('./TaxonomyService'); // Import TaxonomyService
 
 exports.getUserOwnPreferences = async function (req) {
   try {

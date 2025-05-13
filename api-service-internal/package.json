@@ -1,0 +1,49 @@
+{
+  "name": "tapiro-api",
+  "version": "1.0.0",
+  "description": "API for AI-Driven Personalized Advertising System",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "npm install",
+    "start": "node index.js",
+    "lint": "eslint --fix .",
+    "test": "jest",
+    "test:unit": "jest --testMatch='**/__tests__/unit/**/*.test.js'",
+    "test:integration": "jest --testMatch='**/__tests__/integration/**/*.test.js'",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "swagger"
+  ],
+  "license": "Unlicense",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.7.9",
+    "axios-retry": "^4.5.0",
+    "connect": "^3.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-oauth2-jwt-bearer": "^1.6.0",
+    "express-openid-connect": "^2.17.1",
+    "js-yaml": "^3.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.13.0",
+    "oas3-tools": "^2.2.3",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.3",
+    "jest": "^29.7.0",
+    "nock": "^14.0.1",
+    "prettier": "^3.5.0",
+    "supertest": "^7.0.0"
+  }
+}

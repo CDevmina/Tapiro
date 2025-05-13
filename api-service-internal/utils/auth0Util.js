@@ -91,8 +91,8 @@ async function updateUserMetadata(userId, metadata, invalidateUserCache = false)
 
     // Invalidate cache if requested
     if (invalidateUserCache) {
-      const { invalidateCache } = require('../utils/redisUtil');
-      const { CACHE_KEYS } = require('../utils/cacheConfig');
+      const { invalidateCache } = require('./redisUtil');
+      const { CACHE_KEYS } = require('./cacheConfig');
       await invalidateCache(`${CACHE_KEYS.USER_DATA}${userId}`);
     }
 

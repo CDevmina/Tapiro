@@ -1,8 +1,8 @@
 const utils = require('../utils/writer.js');
-const StoreOperations = require('../service/StoreOperationsService');
+const Health = require('../service/HealthService');
 
-module.exports.getUserPreferences = function getUserPreferences(req, res, next, userId) {
-  StoreOperations.getUserPreferences(req, userId)
+module.exports.healthCheck = function healthCheck(req, res, next) {
+  Health.healthCheck(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
@@ -11,8 +11,8 @@ module.exports.getUserPreferences = function getUserPreferences(req, res, next, 
     });
 };
 
-module.exports.submitUserData = function submitUserData(req, res, next, body) {
-  StoreOperations.submitUserData(req, body)
+module.exports.ping = function ping(req, res, next) {
+  Health.ping(req)
     .then((response) => {
       utils.writeJson(res, response);
     })
