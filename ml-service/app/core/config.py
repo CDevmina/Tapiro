@@ -23,14 +23,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-for-development-only")
     
     # Node.js Backend API
-    BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://backend:3000")
+    BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://backend:3001")
     
     # CORS Settings
     BACKEND_CORS_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://backend:3000",
-        "http://web:5173"
+        "http://localhost:3001",
     ]
     
     # Redis settings

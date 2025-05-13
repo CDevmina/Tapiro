@@ -1,5 +1,5 @@
 const utils = require('../utils/writer.js');
-const Health = require('../service/HealthService');
+const Health = require('../service/HealthService.js');
 
 module.exports.healthCheck = function healthCheck(req, res, next) {
   Health.healthCheck(req)

@@ -1,5 +1,5 @@
 {
-  "name": "tapiro-api",
+  "name": "tapiro-external-api",
   "version": "1.0.0",
   "description": "API for AI-Driven Personalized Advertising System",
   "main": "index.js",
@@ -26,8 +26,6 @@
     "connect": "^3.2.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "express-oauth2-jwt-bearer": "^1.6.0",
-    "express-openid-connect": "^2.17.1",
     "js-yaml": "^3.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.13.0",

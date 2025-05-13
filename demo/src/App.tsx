@@ -37,8 +37,7 @@ function App() {
   );
 
   // Get API details from environment variables (only URL now)
-  const apiUrl = import.meta.env.VITE_TAPIRO_API_URL;
-  // const apiKey = import.meta.env.VITE_STORE_API_KEY; // Removed: Get from state
+  const apiUrl = import.meta.env.VITE_STORE_API_URL || "http://localhost:3001";
 
   // --- Effects ---
   useEffect(() => {

@@ -1,24 +1,22 @@
 const { getDB } = require('../utils/mongoUtil');
-const { pingRedis } = require('../utils/redisUtil'); // Use pingRedis instead
+const { pingRedis } = require('../utils/redisUtil');
 const { respondWithCode } = require('../utils/writer');
-const axios = require('axios');
+const AIService = require('../clients/AIService');
 
 /**
- * Comprehensive health check that verifies API and dependencies
- *
- * @param {Object} req - Express request object
- * @returns {Promise} - Response object with health status
+ * Simplified health check for external API
  */
 exports.healthCheck = async function (req) {
   try {
     const response = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'tapiro-api',
+      service: 'tapiro-external-api',
+      version: '1.0.0',
       dependencies: {
         database: 'disconnected',
         cache: 'disconnected',
-        auth: 'unknown',
+        ai_service: 'disconnected'
       },
     };
 
@@ -32,7 +30,7 @@ exports.healthCheck = async function (req) {
       response.status = 'degraded';
     }
 
-    // Check Redis connection - Updated to use pingRedis
+    // Check Redis connection
     try {
       const pingResult = await pingRedis();
       response.dependencies.cache = pingResult === 'PONG' ? 'connected' : 'degraded';
@@ -41,16 +39,12 @@ exports.healthCheck = async function (req) {
       response.status = 'degraded';
     }
 
-    // Optional: Check Auth0 connection
+    // Check AI service connection
     try {
-      const auth0Domain = process.env.AUTH0_DOMAIN;
-      const auth0Response = await axios.get(`https://${auth0Domain}/.well-known/jwks.json`, {
-        timeout: 3000,
-      });
-      response.dependencies.auth = auth0Response.status === 200 ? 'connected' : 'degraded';
+      const aiHealth = await AIService.checkHealth();
+      response.dependencies.ai_service = aiHealth.status;
     } catch (error) {
-      console.error('Auth0 health check failed:', error);
-      response.dependencies.auth = 'disconnected';
+      console.error('AI service health check failed:', error);
       response.status = 'degraded';
     }
 
@@ -67,13 +61,11 @@ exports.healthCheck = async function (req) {
 
 /**
  * Simple ping endpoint for uptime monitoring
- *
- * @param {Object} req - Express request object
- * @returns {Promise} - Simple response indicating the API is up
  */
 exports.ping = async function (req) {
   return respondWithCode(200, {
     status: 'ok',
     timestamp: new Date().toISOString(),
+    service: 'tapiro-external-api'
   });
 };

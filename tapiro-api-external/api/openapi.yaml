@@ -6,14 +6,53 @@ info:
   contact:
     name: Tapiro Support
     email: tapirosupport@gmail.com
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Data Collection
+    description: Endpoints for data collection and submission
+  - name: Data Retrieval
+    description: Endpoints for retrieving user preferences and data
 servers:
   - description: SwaggerHub API Auto Mocking
     url: https://virtserver.swaggerhub.com/CHAMATHDEWMINA25/Tapiro/1.0.0
   - url: https://api.tapiro.com/v1
     description: Production API
-  - url: http://localhost:3000
+  - url: http://localhost:3001
     description: Development API
 paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health Check
+      description: Comprehensive health check that verifies API and dependencies
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Health status information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: Health
+
+  /ping:
+    get:
+      tags: [Health]
+      summary: Simple Uptime Check
+      description: Simple ping endpoint for uptime monitoring
+      operationId: ping
+      responses:
+        "200":
+          description: Simple response indicating the API is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingStatus"
+      x-swagger-router-controller: Health
+
   /users/data:
     post:
       tags: [Data Collection]
@@ -37,6 +76,7 @@ paths:
           $ref: "#/components/responses/BadRequestError"
         "500":
           $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: StoreOperations
 
   /users/{userId}/preferences:
     get:
@@ -67,6 +107,7 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "500":
           $ref: "#/components/responses/InternalServerError"
+      x-swagger-router-controller: StoreOperations
 
 components:
   schemas:
@@ -192,6 +233,44 @@ components:
           description: Category-specific attribute preferences.
           additionalProperties:
             type: string
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall health status of the Health
+        timestamp:
+          type: string
+          format: date-time
+          description: Time of health check
+        service:
+          type: string
+          description: Service name
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [connected, disconnected, degraded]
+            cache:
+              type: string
+              enum: [connected, disconnected, degraded]
+            auth:
+              type: string
+              enum: [connected, disconnected, degraded, unknown]
+
+    PingStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+
     Error:
       type: object
       required:
