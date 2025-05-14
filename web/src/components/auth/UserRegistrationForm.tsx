@@ -10,6 +10,7 @@ import {
   Popover,
   Select,
   TextInput,
+  HelperText, // <-- Import HelperText
 } from "flowbite-react";
 import { UserCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -77,6 +78,32 @@ export function UserRegistrationForm({
   const [incomeBracket, setIncomeBracket] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [age, setAge] = useState<number | null>(null);
+  // --- Add state for username ---
+  const [username, setUsername] = useState<string>("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  const validateUsername = (value: string): boolean => {
+    if (!value) {
+      setUsernameError("Username is required.");
+      return false;
+    }
+    if (value.length < 3) {
+      setUsernameError("Username must be at least 3 characters.");
+      return false;
+    }
+    if (value.length > 15) {
+      setUsernameError("Username cannot exceed 15 characters.");
+      return false;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+      setUsernameError(
+        "Username can only contain letters, numbers, underscores, and hyphens.",
+      );
+      return false;
+    }
+    setUsernameError(null);
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +115,12 @@ export function UserRegistrationForm({
       // return;
     }
 
+    if (!validateUsername(username)) {
+      return;
+    }
+
     const userData: UserCreate = {
+      username: username, // <-- Include username
       dataSharingConsent: dataSharingConsent,
       allowInference: allowInference, // <-- Include allowInference
       preferences: [],
@@ -139,6 +171,27 @@ export function UserRegistrationForm({
         <h3 className="text-center text-xl font-medium text-gray-900 dark:text-white">
           Complete User Registration
         </h3>
+
+        {/* Username Input */}
+        <div>
+          <div className="mb-2 block">
+            <Label htmlFor="username">Username</Label>
+          </div>
+          <TextInput
+            id="username"
+            placeholder="Choose a username"
+            required
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              validateUsername(e.target.value);
+            }}
+            color={usernameError ? "failure" : "gray"}
+          />
+          {usernameError && (
+            <HelperText color="failure">{usernameError}</HelperText>
+          )}
+        </div>
 
         {/* Demographic Information Section */}
         <div className="space-y-4 rounded border border-gray-200 p-4 dark:border-gray-600">

@@ -15,11 +15,13 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { Link, useLocation } from "react-router";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { useUserMetadata } from "../api/hooks/useAuthHooks";
 
 export function Header() {
   const { isLoading, isAuthenticated, user, userRoles, login, logout } =
-    useAuth(); // Use the auth context
-  const location = useLocation(); // Get current location for active links
+    useAuth();
+  const { data: userMetadata, isLoading: metadataLoading } = useUserMetadata();
+  const location = useLocation();
 
   // Determine dashboard link based on role
   const getDashboardLink = () => {
@@ -43,6 +45,15 @@ export function Header() {
     return "/";
   };
 
+  // Get display name from metadata or user object
+  const getDisplayName = () => {
+    // First try to get custom nickname from metadata (set during registration)
+    if (userMetadata?.metadata?.nickname) {
+      return userMetadata.metadata.nickname;
+    }
+    return user?.nickname || user?.name || "User";
+  };
+
   const handleLogin = () => login();
   const handleLogout = () => logout();
 
@@ -50,7 +61,6 @@ export function Header() {
     <Navbar fluid rounded>
       <NavbarBrand as={Link} to="/">
         {" "}
-        {/* Use Link for internal navigation */}
         <img
           src="/flowbite-react.svg"
           className="mr-3 h-6 sm:h-9"
@@ -62,7 +72,7 @@ export function Header() {
       </NavbarBrand>
       <div className="flex items-center gap-3 md:order-2">
         <DarkThemeToggle />
-        {isLoading ? (
+        {isLoading || metadataLoading ? (
           <LoadingSpinner
             size="sm"
             message=""
@@ -72,18 +82,16 @@ export function Header() {
           <Dropdown
             arrowIcon={false}
             inline
-            label={<Avatar alt="User settings" img={user?.picture} rounded />} // Use user picture from Auth0
+            label={<Avatar alt="User settings" img={user?.picture} rounded />}
           >
             <DropdownHeader>
               <span className="block text-sm">
-                {user?.name || user?.nickname}
-              </span>{" "}
-              {/* Use name or nickname */}
+                {getDisplayName()} {/* Use the new function */}
+              </span>
               <span className="block truncate text-sm font-medium">
                 {user?.email}
               </span>
             </DropdownHeader>
-            {/* Add Profile Link */}
             <DropdownItem as={Link} to={getProfileLink()}>
               Profile
             </DropdownItem>
@@ -92,7 +100,6 @@ export function Header() {
           </Dropdown>
         ) : (
           <>
-            {/* Use onClick for Auth0 actions */}
             <Button onClick={handleLogin} size="sm">
               Login
             </Button>
@@ -133,6 +140,14 @@ export function Header() {
           active={location.pathname === "/api-docs"}
         >
           API Docs
+        </NavbarLink>
+        <NavbarLink
+          as="a"
+          href="http://localhost:5173"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Demo App
         </NavbarLink>
       </NavbarCollapse>
     </Navbar>

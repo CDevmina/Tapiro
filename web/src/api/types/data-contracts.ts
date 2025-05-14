@@ -45,10 +45,6 @@ export interface PrivacySettings {
    * @default true
    */
   allowInference?: boolean;
-  /** List of store IDs the user explicitly allows data sharing with. */
-  optInStores?: string[];
-  /** List of store IDs the user explicitly blocks data sharing with. */
-  optOutStores?: string[];
 }
 
 export interface Store {
@@ -71,6 +67,13 @@ export interface Store {
 }
 
 export interface UserCreate {
+  /**
+   * User's unique username, chosen during registration.
+   * @minLength 3
+   * @maxLength 15
+   * @pattern ^[a-zA-Z0-9_-]+$
+   */
+  username: string;
   preferences?: PreferenceItem[];
   /** User's consent for data sharing */
   dataSharingConsent: boolean;
@@ -390,12 +393,13 @@ export interface PingStatus {
 export interface UserMetadataResponse {
   /** Whether metadata was updated successfully */
   updated?: boolean;
-  /** User metadata from Auth0 */
   metadata?: {
     /** The type of registration */
     registrationType?: "user" | "store";
     /** Whether registration process is complete */
     registrationComplete?: boolean;
+    /** User or store display name */
+    nickname?: string;
   };
 }
 

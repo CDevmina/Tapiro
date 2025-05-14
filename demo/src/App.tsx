@@ -37,8 +37,7 @@ function App() {
   );
 
   // Get API details from environment variables (only URL now)
-  const apiUrl = import.meta.env.VITE_TAPIRO_API_URL;
-  // const apiKey = import.meta.env.VITE_STORE_API_KEY; // Removed: Get from state
+  const apiUrl = import.meta.env.VITE_STORE_API_URL || "http://localhost:3001";
 
   // --- Effects ---
   useEffect(() => {
@@ -90,26 +89,47 @@ function App() {
 
     // Sort by preference score if preferences are loaded
     if (preferences && preferences.length > 0) {
-      const prefMap = new Map(
-        preferences.map((p) => [p.category, p.score ?? 0])
-      );
       const getScore = (product: Product): number => {
-        // Basic score: category match
-        let score = prefMap.get(product.categoryId) ?? 0;
+        const categoryPreference = preferences.find(
+          (p) => p.category === product.categoryId
+        );
 
-        // Bonus for attribute matches (simple example)
-        if (product.attributes && prefMap.has(product.categoryId)) {
-          const categoryPrefs = preferences.find(
-            (p) => p.category === product.categoryId
-          );
-          if (categoryPrefs?.attributes) {
-            for (const attrKey in product.attributes) {
-              if (
-                categoryPrefs.attributes[attrKey]?.[product.attributes[attrKey]]
-              ) {
-                score += 0.1; // Small bonus for each matching attribute value
+        if (!categoryPreference) {
+          return 0; // No preference for this category
+        }
+
+        let score = categoryPreference.score; // Base score from category
+
+        // Add bonus for attribute matches
+        if (product.attributes && categoryPreference.attributes) {
+          let attributeBonus = 0;
+          let matchingAttributes = 0;
+          const prefAttributes = categoryPreference.attributes;
+
+          for (const attrKey in product.attributes) {
+            const productAttrValue = String(
+              product.attributes[attrKey]
+            ).toLowerCase();
+            if (prefAttributes[attrKey]) {
+              // Check if the specific product attribute value has a score
+              if (prefAttributes[attrKey][productAttrValue]) {
+                attributeBonus += prefAttributes[attrKey][productAttrValue]; // Add the specific attribute value's score
+                matchingAttributes++;
+              } else {
+                // If the exact value isn't scored, check if the attribute key itself has a general preference
+                // This handles cases where preference is for "brand: Apple" but product has "brand: Apple, color: Red"
+                // and "brand" itself might have a score in preferences if not specific value.
+                // For simplicity, let's assume if the attribute key (e.g., "brand") exists in preferences, it's a partial match.
+                // A more complex logic could assign a smaller bonus here.
+                // For now, we only reward exact value matches from prefAttributes.
               }
             }
+          }
+          // Normalize bonus by number of matching attributes to avoid overly penalizing products with many attributes
+          if (matchingAttributes > 0) {
+            // Example: Add average bonus of matched attributes.
+            // You might want a different logic, e.g., sum of bonuses, or cap the bonus.
+            score += attributeBonus / matchingAttributes;
           }
         }
         return score;
@@ -334,20 +354,65 @@ function App() {
   // --- Recommended Product IDs ---
   const recommendedProductIds = useMemo(() => {
     const ids = new Set<string>();
-    if (preferences && preferences.length > 0) {
-      const prefMap = new Map(
-        preferences.map((p) => [p.category, p.score ?? 0])
-      );
-      displayedProducts.forEach((p) => {
-        const score = prefMap.get(p.categoryId) ?? 0;
-        if (score > 0.5) {
-          // Example threshold for "recommended"
-          ids.add(p.id);
+    if (preferences && preferences.length > 0 && displayedProducts.length > 0) {
+      // Get scores for all currently displayed products
+      const productScores = displayedProducts.map((product) => {
+        const categoryPreference = preferences.find(
+          (p) => p.category === product.categoryId
+        );
+        if (!categoryPreference) return { id: product.id, score: 0 };
+
+        let score = categoryPreference.score;
+        if (product.attributes && categoryPreference.attributes) {
+          let attributeBonus = 0;
+          let matchingAttributes = 0;
+          const prefAttributes = categoryPreference.attributes;
+          for (const attrKey in product.attributes) {
+            const productAttrValue = String(
+              product.attributes[attrKey]
+            ).toLowerCase();
+            if (
+              prefAttributes[attrKey] &&
+              prefAttributes[attrKey][productAttrValue]
+            ) {
+              attributeBonus += prefAttributes[attrKey][productAttrValue];
+              matchingAttributes++;
+            }
+          }
+          if (matchingAttributes > 0) {
+            score += attributeBonus / matchingAttributes; // Average bonus
+          }
+        }
+        return { id: product.id, score };
+      });
+
+      // Sort products by score to find the top ones
+      productScores.sort((a, b) => b.score - a.score);
+
+      // Recommend top N products or products above a certain score threshold
+      // For example, recommend products with a score > 0.6 (adjust as needed)
+      // Or recommend the top 3-5 products if there are enough.
+      const recommendationThreshold = 0.6; // Adjusted threshold
+      productScores.forEach((ps) => {
+        if (ps.score > recommendationThreshold) {
+          ids.add(ps.id);
         }
       });
+
+      // If no products are above the threshold, maybe recommend the top 1-2 anyway if scores are positive
+      if (
+        ids.size === 0 &&
+        productScores.length > 0 &&
+        productScores[0].score > 0.1
+      ) {
+        ids.add(productScores[0].id);
+        if (productScores.length > 1 && productScores[1].score > 0.1) {
+          ids.add(productScores[1].id);
+        }
+      }
     }
     return ids;
-  }, [preferences, displayedProducts]);
+  }, [preferences, displayedProducts]); // Recalculate when preferences or displayed products change
 
   // Helper to display API Key (show prefix only for brevity/security)
   const displayApiKey = apiKey ? `${apiKey.substring(0, 8)}...` : "Not Set";

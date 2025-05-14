@@ -1,12 +1,12 @@
 services:
-  api-service:
+  tapiro-api-internal:
     build:
-      context: ./api-service
+      context: ./tapiro-api-internal
       dockerfile: dockerfile
       target: development
-    container_name: tapiro-API
+    container_name: tapiro-api-internal
     volumes:
-      - ./api-service:/app
+      - ./tapiro-api-internal:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
@@ -30,6 +30,7 @@ services:
       - AI_SERVICE_URL=http://ml-service:8000/api
       - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
       - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - EXTERNAL_API_URL=http://tapiro-api-external:3001
     ports:
       - "3000:3000"
     depends_on:
@@ -39,6 +40,41 @@ services:
       - tapiro-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  tapiro-api-external:
+    build:
+      context: ./tapiro-api-external
+      dockerfile: dockerfile
+      target: development
+    container_name: tapiro-api-external
+    volumes:
+      - ./tapiro-api-external:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=${MONGODB_URI}
+      - DB_NAME=tapiro
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3001
+      - AI_SERVICE_URL=http://ml-service:8000/api
+      - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
+      - ALLOWED_ORIGINS=http://localhost:5174
+    ports:
+      - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+      tapiro-api-internal:
+        condition: service_started
+    networks:
+      - tapiro-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -55,9 +91,9 @@ services:
       - ml-model-cache:/app/model_cache
     environment:
       - MONGODB_URI=${MONGODB_URI}
-      - API_BASE_URL=http://api-service:3000
+      - API_BASE_URL=http://tapiro-api-internal:3000
+      - EXTERNAL_API_URL=http://tapiro-api-external:3001
       - MONGODB_DB_NAME=tapiro
-      - BACKEND_API_URL=http://api-service:3000
       - SECRET_KEY=${AI_SERVICE_API_KEY}
       - DEBUG=true
       - REDIS_HOST=redis
@@ -97,13 +133,27 @@ services:
     networks:
       - tapiro-net
     depends_on:
-      - api-service
+      - tapiro-api-internal
     healthcheck:
       test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:5173"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  demo-store:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+    container_name: demo
+    environment:
+      - VITE_STORE_API_URL=http://localhost:3001
+    ports:
+      - "5174:80"
+    networks:
+      - tapiro-net
+    depends_on:
+      - tapiro-api-external
 
   redis:
     image: redis:alpine
@@ -121,18 +171,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-
-  demo-store:
-    build:
-      context: ./demo
-      dockerfile: Dockerfile
-    container_name: demo
-    ports:
-      - "5174:80"
-    networks:
-      - tapiro-net
-    depends_on:
-      - api-service
 
 networks:
   tapiro-net:

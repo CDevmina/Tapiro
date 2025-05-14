@@ -420,10 +420,12 @@ const UserAnalyticsPage: React.FC = () => {
             <div className="overflow-x-auto">
               <Table hoverable>
                 <TableHead>
-                  <TableHeadCell>Date</TableHeadCell>
-                  <TableHeadCell>Type</TableHeadCell>
-                  <TableHeadCell>Store</TableHeadCell>
-                  <TableHeadCell>Details</TableHeadCell>
+                  <TableRow>
+                    <TableHeadCell>Date</TableHeadCell>
+                    <TableHeadCell>Type</TableHeadCell>
+                    <TableHeadCell>Store</TableHeadCell>
+                    <TableHeadCell>Details</TableHeadCell>
+                  </TableRow>
                 </TableHead>
                 <TableBody className="divide-y">
                   {activityData.map((entry: RecentUserDataEntry) => {

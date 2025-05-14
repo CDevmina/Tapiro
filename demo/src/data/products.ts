@@ -3,7 +3,7 @@ export interface Product {
   id: string;
   name: string;
   price: number;
-  imageUrl: string; // Using placeholders
+  imageUrl: string; // Using actual images
   categoryId: string; // Crucial: Match IDs from ml-service/app/data/taxonomy.yaml
   attributes?: Record<string, string | number>; // Optional attributes
   description?: string; // Optional description
@@ -16,7 +16,7 @@ export const sampleProducts: Product[] = [
     id: "p1",
     name: "Pro Smartphone X",
     price: 999,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Smartphone",
+    imageUrl: "/products/iphonex.webp",
     categoryId: "101",
     attributes: { brand: "Apple", color: "black", storage: "256GB", os: "iOS" },
     description: "Latest generation smartphone with advanced camera.",
@@ -25,7 +25,7 @@ export const sampleProducts: Product[] = [
     id: "p2",
     name: "Budget Android Phone",
     price: 249,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Budget+Phone",
+    imageUrl: "/products/samsung.webp",
     categoryId: "101",
     attributes: {
       brand: "Samsung",
@@ -39,7 +39,7 @@ export const sampleProducts: Product[] = [
     id: "p3",
     name: 'UltraBook Pro 14"',
     price: 1399,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Laptop",
+    imageUrl: "/products/dell-laptop.webp",
     categoryId: "102",
     attributes: {
       brand: "Dell",
@@ -55,7 +55,7 @@ export const sampleProducts: Product[] = [
     id: "p4",
     name: 'Gaming Beast Laptop 16"',
     price: 1999,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Gaming+Laptop",
+    imageUrl: "/products/gaming-laptop.webp",
     categoryId: "102",
     attributes: {
       brand: "Asus",
@@ -71,7 +71,7 @@ export const sampleProducts: Product[] = [
     id: "p5",
     name: 'Creative Tablet 11"',
     price: 799,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Tablet",
+    imageUrl: "/products/ipad.webp",
     categoryId: "103",
     attributes: {
       brand: "Apple",
@@ -85,7 +85,7 @@ export const sampleProducts: Product[] = [
     id: "p6",
     name: "Fitness Tracker Watch",
     price: 149,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Smartwatch",
+    imageUrl: "/products/smartwatch.webp",
     categoryId: "104",
     attributes: {
       brand: "Fitbit",
@@ -98,7 +98,7 @@ export const sampleProducts: Product[] = [
     id: "p7",
     name: "Noise Cancelling Headphones",
     price: 349,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Headphones",
+    imageUrl: "/products/headphones.webp",
     categoryId: "105",
     attributes: {
       brand: "Sony",
@@ -113,7 +113,7 @@ export const sampleProducts: Product[] = [
     id: "p8",
     name: "Portable Bluetooth Speaker",
     price: 89,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Speaker",
+    imageUrl: "/products/genpens.webp",
     categoryId: "105",
     attributes: {
       brand: "JBL",
@@ -129,7 +129,7 @@ export const sampleProducts: Product[] = [
     id: "p9",
     name: "Classic Cotton T-Shirt",
     price: 25,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=T-Shirt",
+    imageUrl: "/products/tshirt.webp",
     categoryId: "201",
     attributes: {
       type: "t-shirts",
@@ -144,7 +144,7 @@ export const sampleProducts: Product[] = [
     id: "p10",
     name: "Slim Fit Jeans",
     price: 69,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Jeans",
+    imageUrl: "/products/jeans.webp",
     categoryId: "201",
     attributes: {
       type: "jeans",
@@ -159,7 +159,7 @@ export const sampleProducts: Product[] = [
     id: "p11",
     name: "Summer Maxi Dress",
     price: 89,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Dress",
+    imageUrl: "/products/dress.webp",
     categoryId: "201",
     attributes: {
       type: "dresses",
@@ -175,7 +175,7 @@ export const sampleProducts: Product[] = [
     id: "p12",
     name: "Leather Ankle Boots",
     price: 149,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Boots",
+    imageUrl: "/products/boots.webp",
     categoryId: "202",
     attributes: {
       type: "boots",
@@ -190,7 +190,7 @@ export const sampleProducts: Product[] = [
     id: "p13",
     name: "Running Sneakers",
     price: 119,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Sneakers",
+    imageUrl: "/products/sneakers.jpg.webp",
     categoryId: "202",
     attributes: {
       type: "athletic",
@@ -205,7 +205,7 @@ export const sampleProducts: Product[] = [
     id: "p14",
     name: "Kids Graphic Tee",
     price: 15,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Kids+Tee",
+    imageUrl: "/products/kidstshirt.webp",
     categoryId: "702",
     attributes: {
       age_group: "kids",
@@ -214,23 +214,23 @@ export const sampleProducts: Product[] = [
       type: "t-shirt",
     },
     description: "Fun graphic t-shirt for kids.",
-  }, // Kids Clothing
+  },
   {
     id: "p15",
     name: "Men's Business Suit",
     price: 399,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Suit",
+    imageUrl: "/products/suit.webp",
     categoryId: "802",
     attributes: { type: "suit", gender: "men", occasion: "business_formal" },
     description: "Classic two-piece suit for formal business settings.",
-  }, // Business Wear
+  },
 
   // --- Home (300) ---
   {
     id: "p16",
     name: "Modern Sofa",
     price: 899,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Sofa",
+    imageUrl: "/products/sofa.webp",
     categoryId: "301",
     attributes: {
       type: "sofa",
@@ -245,13 +245,13 @@ export const sampleProducts: Product[] = [
     id: "p17",
     name: "Wooden Dining Table",
     price: 499,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Table",
+    imageUrl: "/products/tabel.webp",
     categoryId: "301",
     attributes: {
       type: "table",
       material: "wood",
       color: "brown",
-      room: "kitchen",
+      room: "dining_room",
       style: "farmhouse",
     },
     description: "Solid wood dining table for family meals.",
@@ -260,7 +260,7 @@ export const sampleProducts: Product[] = [
     id: "p18",
     name: "Stainless Steel Cookware Set",
     price: 199,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Cookware",
+    imageUrl: "/products/steelpan.webp",
     categoryId: "302",
     attributes: {
       type: "cookware",
@@ -273,7 +273,7 @@ export const sampleProducts: Product[] = [
     id: "p19",
     name: "Smart Coffee Maker",
     price: 129,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Coffee+Maker",
+    imageUrl: "/products/coffee.webp",
     categoryId: "302",
     attributes: {
       type: "small_appliance",
@@ -286,7 +286,7 @@ export const sampleProducts: Product[] = [
     id: "p20",
     name: "Gardening Tool Set",
     price: 45,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Garden+Tools",
+    imageUrl: "/products/garden-tools.webp",
     categoryId: "303",
     attributes: { type: "tools" },
     description: "Essential tools for your gardening tasks.",
@@ -295,7 +295,7 @@ export const sampleProducts: Product[] = [
     id: "p21",
     name: "Cordless Power Drill",
     price: 99,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Drill",
+    imageUrl: "/products/drill.webp",
     categoryId: "304",
     attributes: { type: "power_tool", brand: "DeWalt" },
     description: "Versatile cordless drill for home improvement.",
@@ -306,7 +306,7 @@ export const sampleProducts: Product[] = [
     id: "p22",
     name: "Hydrating Face Cleanser",
     price: 15,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Cleanser",
+    imageUrl: "/products/cleanser.webp",
     categoryId: "401",
     attributes: {
       type: "cleanser",
@@ -319,7 +319,7 @@ export const sampleProducts: Product[] = [
     id: "p23",
     name: "Vitamin C Serum",
     price: 35,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Serum",
+    imageUrl: "/products/vitaminc.webp",
     categoryId: "401",
     attributes: { type: "serum", concern: "dullness", ingredient: "vitamin_c" },
     description: "Brightening serum to improve skin radiance.",
@@ -328,7 +328,7 @@ export const sampleProducts: Product[] = [
     id: "p24",
     name: "Matte Liquid Foundation",
     price: 40,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Foundation",
+    imageUrl: "/products/mattfoundation.webp",
     categoryId: "402",
     attributes: {
       type: "foundation",
@@ -342,7 +342,7 @@ export const sampleProducts: Product[] = [
     id: "p25",
     name: "Red Lipstick",
     price: 22,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Lipstick",
+    imageUrl: "/products/lipstick.webp",
     categoryId: "402",
     attributes: {
       type: "lipstick",
@@ -358,7 +358,7 @@ export const sampleProducts: Product[] = [
     id: "p26",
     name: "Bestseller Fiction Novel",
     price: 18,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Book",
+    imageUrl: "/products/fictionnoval.webp",
     categoryId: "501",
     attributes: { format: "paperback", genre: "mystery", bestseller: "yes" },
     description: "A thrilling mystery novel topping the charts.",
@@ -367,7 +367,7 @@ export const sampleProducts: Product[] = [
     id: "p27",
     name: "Classic Sci-Fi Movie (Blu-ray)",
     price: 25,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Movie",
+    imageUrl: "/products/sciencefiction.webp",
     categoryId: "502",
     attributes: {
       format: "blu_ray",
@@ -376,31 +376,22 @@ export const sampleProducts: Product[] = [
     },
     description: "A timeless science fiction masterpiece on Blu-ray.",
   },
-  {
-    id: "p28",
-    name: "Video Streaming Subscription",
-    price: 15,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Streaming",
-    categoryId: "503",
-    attributes: { service_type: "video", provider: "Netflix" },
-    description: "Monthly subscription for unlimited movies and TV shows.",
-  },
 
   // --- Health & Wellness (600) ---
   {
-    id: "p29",
+    id: "p28",
     name: "Daily Multivitamin Gummies",
     price: 20,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Vitamins",
+    imageUrl: "/products/vitamin.webp",
     categoryId: "601",
     attributes: { type: "multivitamin", form: "gummy" },
     description: "Easy-to-take daily multivitamins.",
   },
   {
-    id: "p30",
+    id: "p29",
     name: "Electric Toothbrush",
     price: 75,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Toothbrush",
+    imageUrl: "/products/toothbrush.webp",
     categoryId: "602",
     attributes: { type: "oral_care" },
     description: "Advanced cleaning for healthier gums.",
@@ -408,19 +399,19 @@ export const sampleProducts: Product[] = [
 
   // --- Toys & Games (700) ---
   {
-    id: "p31",
+    id: "p30",
     name: "Building Blocks Set (Large)",
     price: 55,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Blocks",
+    imageUrl: "/products/buildingblocks.webp",
     categoryId: "700",
     attributes: { type: "building_blocks", age_range: "3-5" },
     description: "Large building blocks set for creative play.",
   },
   {
-    id: "p32",
+    id: "p31",
     name: "Baby Stroller System",
     price: 299,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Stroller",
+    imageUrl: "/products/babystroller.webp",
     categoryId: "701",
     attributes: { type: "stroller", brand: "Graco" },
     description: "Versatile stroller system for infants and toddlers.",
@@ -428,10 +419,10 @@ export const sampleProducts: Product[] = [
 
   // --- Office Supplies (800) ---
   {
-    id: "p33",
+    id: "p32",
     name: "Gel Pens (12-Pack)",
     price: 12,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Pens",
+    imageUrl: "/products/genpens.webp",
     categoryId: "801",
     attributes: { type: "pen" },
     description: "Smooth writing gel pens in assorted colors.",
@@ -439,19 +430,19 @@ export const sampleProducts: Product[] = [
 
   // --- Gaming (900) ---
   {
-    id: "p34",
+    id: "p33",
     name: "Wireless Gaming Mouse",
     price: 59,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Gaming+Mouse",
+    imageUrl: "/products/gamgingmouse.webp",
     categoryId: "900",
     attributes: { type: "accessory", platform: "pc" },
     description: "High-precision wireless mouse for gaming.",
   },
   {
-    id: "p35",
+    id: "p34",
     name: "Indie Puzzle Game (PC)",
     price: 19,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=PC+Game",
+    imageUrl: "/products/indiegame.webp",
     categoryId: "900",
     attributes: { type: "game", platform: "pc", genre: "puzzle" },
     description: "Challenging and unique indie puzzle game.",
@@ -459,10 +450,10 @@ export const sampleProducts: Product[] = [
 
   // --- Travel (1000) ---
   {
-    id: "p36",
+    id: "p35",
     name: "Carry-On Suitcase",
     price: 120,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Suitcase",
+    imageUrl: "/products/suitecase.webp",
     categoryId: "1000",
     attributes: { type: "luggage", travel_style: "business" },
     description: "Durable carry-on suitcase for business trips.",
@@ -470,30 +461,30 @@ export const sampleProducts: Product[] = [
 
   // --- Grocery (1100) ---
   {
-    id: "p37",
+    id: "p36",
     name: "Organic Apples (3lb Bag)",
     price: 6,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Apples",
+    imageUrl: "/products/apples.webp",
     categoryId: "1100",
     attributes: { category: "fresh_produce", dietary_preference: "organic" },
     description: "Fresh, crisp organic apples.",
   },
   {
-    id: "p38",
+    id: "p37",
     name: "Canned Tuna Value Pack",
     price: 5,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Tuna",
+    imageUrl: "/products/tuna.webp",
     categoryId: "1101",
     attributes: { type: "canned_goods" },
     description: "Value pack of canned tuna.",
-  }, // Budget Food
+  },
 
   // --- Jewelry & Watches (1200) ---
   {
-    id: "p39",
+    id: "p38",
     name: "Silver Necklace",
     price: 75,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Necklace",
+    imageUrl: "/products/necklace.webp",
     categoryId: "1200",
     attributes: {
       type: "necklace",
@@ -506,10 +497,10 @@ export const sampleProducts: Product[] = [
 
   // --- Gifts (1300) ---
   {
-    id: "p40",
+    id: "p39",
     name: "Birthday Gift Basket",
     price: 50,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Gift+Basket",
+    imageUrl: "/products/giftbasket.webp",
     categoryId: "1300",
     attributes: {
       occasion: "birthday",
@@ -521,10 +512,10 @@ export const sampleProducts: Product[] = [
 
   // --- Software (1400) ---
   {
-    id: "p41",
+    id: "p40",
     name: "Productivity Suite (Subscription)",
     price: 99,
-    imageUrl: "https://via.placeholder.com/300x200/eee/aaa?text=Software",
+    imageUrl: "/products/productivitysuite.webp",
     categoryId: "1400",
     attributes: {
       type: "productivity",

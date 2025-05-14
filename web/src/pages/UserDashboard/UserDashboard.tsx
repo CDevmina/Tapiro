@@ -23,7 +23,6 @@ import {
   HiOutlineNewspaper,
   HiOutlineCurrencyDollar,
   HiOutlineShare,
-  HiOutlineAdjustments,
   HiCalendar,
   HiOutlineGlobeAlt,
   HiOutlineCake,
@@ -205,6 +204,12 @@ export default function UserDashboard() {
   // --- State for Date Range ---
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+
+  // --- Function to clear date filters ---
+  const clearDates = () => {
+    setStartDate(null);
+    setEndDate(null);
+  };
 
   // --- Fetch Data (Hooks called unconditionally at the top) ---
   const {
@@ -413,272 +418,213 @@ export default function UserDashboard() {
   return (
     <>
       <div className="container mx-auto px-4 py-12">
-        {/* Control Tabs with state */}
         <Tabs
           aria-label="User dashboard tabs"
           variant="underline"
           onActiveTabChange={(tab) => setActiveTab(tab)}
         >
-          {/* Overview Tab (Existing Content) */}
+          {/* Overview Tab */}
           <TabItem
             active={activeTab === 0}
             title="Overview"
             icon={HiOutlineViewGrid}
           >
-            {/* Show loading/error specific to overview if needed, or rely on main checks */}
-            {profileLoading ||
-            activityLoading ||
-            spendingLoading ||
-            consentLoading ||
-            preferencesLoading ||
-            storesLoading ||
-            taxonomyLoading ? (
-              <div className="pt-4">
-                <LoadingSpinner message="Loading overview data..." />
-              </div>
-            ) : profileError ||
-              activityError ||
-              spendingError ||
-              consentError ||
-              preferencesError ||
-              storesError ||
-              taxonomyError ? (
-              <div className="pt-4">
-                <ErrorDisplay
-                  title="Error Loading Overview"
-                  message="Some overview data could not be loaded."
-                  error={
-                    profileError ||
-                    activityError ||
-                    spendingError ||
-                    consentError ||
-                    preferencesError ||
-                    storesError ||
-                    taxonomyError
-                  }
-                />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* --- Recent Activity Card --- */}
-                <Card className="col-span-1 flex flex-col lg:col-span-1">
-                  <div className="flex-grow">
-                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                      <HiOutlineNewspaper className="mr-2 h-5 w-5" />
-                      Recent Activity
-                    </h3>
-                    {activityLoading ? (
-                      <div className="flex h-full min-h-[150px] items-center justify-center">
-                        <Spinner size="md" />
-                      </div>
-                    ) : activityError ? (
-                      <Alert color="failure" icon={HiInformationCircle}>
-                        Could not load recent activity.
-                      </Alert>
-                    ) : !recentActivity || recentActivity.length === 0 ? (
-                      <p className="text-gray-500 dark:text-gray-400">
-                        No recent activity recorded.
-                      </p>
-                    ) : (
-                      <div className="p-4">
-                        <Timeline>
-                          {recentActivity.map((entry) => (
-                            <TimelineItem key={entry._id}>
-                              <TimelinePoint icon={HiClock} />
-                              <TimelineContent>
-                                <TimelineTime>
-                                  {formatDate(entry.timestamp)}
-                                </TimelineTime>
-                                <TimelineTitle className="capitalize">
-                                  {entry.dataType}
-                                  {entry.storeId &&
-                                    ` at ${storeNameMap.get(entry.storeId) || "a store"}`}
-                                </TimelineTitle>
-                                {/* Add more details if needed */}
-                              </TimelineContent>
-                            </TimelineItem>
-                          ))}
-                        </Timeline>
-                      </div>
-                    )}
+            {activeTab === 0 && ( // Conditionally render Overview tab content
+              <>
+                {profileLoading ||
+                activityLoading ||
+                spendingLoading ||
+                consentLoading ||
+                preferencesLoading ||
+                storesLoading ||
+                taxonomyLoading ? (
+                  <div className="pt-4">
+                    <LoadingSpinner message="Loading overview data..." />
                   </div>
-                  {/* Update Link to Button to change tab */}
-                  <Button
-                    color="light"
-                    size="sm"
-                    className="mt-4 self-start"
-                    onClick={() => setActiveTab(4)} // 4 = Analytics Tab Index
-                  >
-                    View All Activity <HiArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Card>
-
-                {/* --- Spending Overview Card --- */}
-                <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-2">
-                  <div className="flex-grow">
-                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                      <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
-                      Spending Overview
-                    </h3>
-                    {/* Date Filters */}
-                    <div className="mb-4 flex flex-wrap items-center gap-4">
-                      <Datepicker
-                        icon={HiCalendar}
-                        value={startDate || undefined} // Use || undefined
-                        onChange={(date: Date | null) => setStartDate(date)}
-                        maxDate={endDate || undefined}
-                        placeholder="Start Date"
-                      />
-                      <Datepicker
-                        icon={HiCalendar}
-                        value={endDate || undefined} // Use || undefined
-                        onChange={(date: Date | null) => setEndDate(date)}
-                        minDate={startDate || undefined}
-                        placeholder="End Date"
-                      />
-                      {(startDate || endDate) && (
-                        <Button
-                          size="xs"
-                          color="light"
-                          onClick={() => {
-                            setStartDate(null);
-                            setEndDate(null);
-                          }}
-                        >
-                          Clear Dates
-                        </Button>
-                      )}
-                    </div>
-                    {/* Chart Area */}
-                    {spendingError ? (
-                      <Alert color="failure" icon={HiInformationCircle}>
-                        Could not load spending data.
-                      </Alert>
-                    ) : spendingLoading ? (
-                      <div className="flex h-[300px] items-center justify-center">
-                        <Spinner size="lg" />
-                      </div>
-                    ) : !lineChartData || lineChartData.length === 0 ? (
-                      <p className="py-4 text-center text-gray-500 dark:text-gray-400">
-                        No spending data available
-                        {startDate || endDate ? " for this period" : " yet"}.
-                      </p>
-                    ) : (
-                      <div style={{ width: "100%", height: 300 }}>
-                        <ResponsiveContainer>
-                          <LineChart
-                            data={lineChartData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              dataKey="month"
-                              tickFormatter={formatMonth}
-                            />
-                            <YAxis tickFormatter={formatCurrency} />
-                            <RechartsTooltip
-                              formatter={(value: number) =>
-                                formatCurrency(value)
-                              }
-                              labelFormatter={formatMonth}
-                            />
-                            <RechartsLegend />
-                            {categories.map((category, index) => (
-                              <Line
-                                key={category}
-                                type="monotone"
-                                dataKey={category}
-                                stroke={LINE_COLORS[index % LINE_COLORS.length]}
-                                strokeWidth={2}
-                                dot={false}
-                                activeDot={{ r: 6 }}
-                              />
-                            ))}
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
+                ) : profileError ||
+                  activityError ||
+                  spendingError ||
+                  consentError ||
+                  preferencesError ||
+                  storesError ||
+                  taxonomyError ? (
+                  <div className="pt-4">
+                    <ErrorDisplay
+                      title="Error Loading Overview"
+                      message="Some overview data could not be loaded."
+                      error={
+                        profileError ||
+                        activityError ||
+                        spendingError ||
+                        consentError ||
+                        preferencesError ||
+                        storesError ||
+                        taxonomyError
+                      }
+                    />
                   </div>
-                  {/* Update Link to Button to change tab */}
-                  <Button
-                    color="light"
-                    size="sm"
-                    className="mt-4 self-start"
-                    onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
-                  >
-                    View Detailed Analytics{" "}
-                    <HiArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Card>
-
-                {/* --- Data Sharing Card --- */}
-                <Card className="col-span-1 flex flex-col">
-                  <div className="flex-grow">
-                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                      <HiOutlineShare className="mr-2 h-5 w-5" />
-                      Data Sharing
-                    </h3>
-                    {consentLoading || storesLoading ? (
-                      <div className="flex h-full min-h-[100px] items-center justify-center py-4">
-                        <Spinner size="md" />
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                    {/* --- Recent Activity Card --- */}
+                    <Card className="col-span-1 flex flex-col lg:col-span-1">
+                      <div className="flex-grow">
+                        <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                          <HiOutlineNewspaper className="mr-2 h-5 w-5" />
+                          Recent Activity
+                        </h3>
+                        {activityLoading ? (
+                          <div className="flex h-full min-h-[150px] items-center justify-center">
+                            <Spinner size="md" />
+                          </div>
+                        ) : activityError ? (
+                          <Alert color="failure" icon={HiInformationCircle}>
+                            Could not load recent activity.
+                          </Alert>
+                        ) : !recentActivity || recentActivity.length === 0 ? (
+                          <p className="text-gray-500 dark:text-gray-400">
+                            No recent activity recorded.
+                          </p>
+                        ) : (
+                          <div className="p-4">
+                            <Timeline>
+                              {recentActivity.map((entry) => (
+                                <TimelineItem key={entry._id}>
+                                  <TimelinePoint icon={HiClock} />
+                                  <TimelineContent>
+                                    <TimelineTime>
+                                      {formatDate(entry.timestamp)}
+                                    </TimelineTime>
+                                    <TimelineTitle className="capitalize">
+                                      {entry.dataType}
+                                      {entry.storeId &&
+                                        ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
+                                    </TimelineTitle>
+                                    {/* Further details can be added here if needed */}
+                                  </TimelineContent>
+                                </TimelineItem>
+                              ))}
+                            </Timeline>
+                          </div>
+                        )}
                       </div>
-                    ) : consentError || storesError ? (
-                      <Alert color="failure" icon={HiInformationCircle}>
-                        Could not load sharing settings.
-                      </Alert>
-                    ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
-                      <p className="text-gray-500 dark:text-gray-400">
-                        You are not currently sharing data with any stores.
-                      </p>
-                    ) : (
-                      <>
-                        <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
-                          You are sharing data with{" "}
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {consentLists?.optInStores?.length}
-                          </span>{" "}
-                          store(s):
-                        </p>
-                        <List unstyled className="max-h-24 overflow-y-auto">
-                          {(consentLists?.optInStores || [])
-                            .slice(0, 3) // Show first 3
-                            .map((storeId) => (
-                              <ListItem key={storeId} className="text-sm">
-                                {storeNameMap.get(storeId) ||
-                                  `Store ID: ${storeId}`}
-                              </ListItem>
-                            ))}
-                          {(consentLists?.optInStores?.length ?? 0) > 3 && (
-                            <ListItem className="text-sm text-gray-500">
-                              ...and more
-                            </ListItem>
+                      <Button
+                        color="light"
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                      >
+                        View Full Activity Log{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </Card>
+
+                    {/* --- Spending Overview Card --- */}
+                    <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-2">
+                      <div className="flex-grow">
+                        <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                          <HiOutlineCurrencyDollar className="mr-2 h-5 w-5" />
+                          Spending Overview
+                        </h3>
+                        {/* Date Filters */}
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                          <Datepicker
+                            icon={HiCalendar}
+                            value={startDate ?? undefined}
+                            onChange={(date: Date | null) => setStartDate(date)}
+                            maxDate={endDate || undefined}
+                            placeholder="Start Date"
+                            inputMode="none" // Prevent keyboard on mobile
+                          />
+                          <Datepicker
+                            icon={HiCalendar}
+                            value={endDate ?? undefined}
+                            onChange={(date: Date | null) => setEndDate(date)}
+                            minDate={startDate || undefined}
+                            placeholder="End Date"
+                            inputMode="none" // Prevent keyboard on mobile
+                          />
+                          {(startDate || endDate) && (
+                            <Button
+                              size="xs"
+                              color="light"
+                              onClick={clearDates}
+                            >
+                              Clear Dates
+                            </Button>
                           )}
-                        </List>
-                      </>
-                    )}
-                  </div>
-                  {/* Update Link to Button to change tab */}
-                  <Button
-                    color="light"
-                    size="sm"
-                    className="mt-4 self-start"
-                    onClick={() => setActiveTab(2)}
-                  >
-                    Manage Sharing Settings{" "}
-                    <HiArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Card>
+                        </div>
+                        {/* Chart Area */}
+                        {spendingError ? (
+                          <Alert color="failure" icon={HiInformationCircle}>
+                            Could not load spending data.
+                          </Alert>
+                        ) : spendingLoading ? (
+                          <div className="flex h-[300px] items-center justify-center">
+                            <Spinner size="lg" />
+                          </div>
+                        ) : !lineChartData || lineChartData.length === 0 ? (
+                          <p className="py-4 text-center text-gray-500 dark:text-gray-400">
+                            No spending data available
+                            {startDate || endDate ? " for this period" : " yet"}
+                            .
+                          </p>
+                        ) : (
+                          <div style={{ width: "100%", height: 300 }}>
+                            <ResponsiveContainer>
+                              <LineChart
+                                data={lineChartData}
+                                margin={{
+                                  top: 5,
+                                  right: 30,
+                                  left: 20,
+                                  bottom: 5,
+                                }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis
+                                  dataKey="month"
+                                  tickFormatter={formatMonth}
+                                />
+                                <YAxis tickFormatter={formatCurrency} />
+                                <RechartsTooltip
+                                  formatter={(value: number) =>
+                                    formatCurrency(value)
+                                  }
+                                  labelFormatter={formatMonth}
+                                />
+                                <RechartsLegend />
+                                {categories.map((category, index) => (
+                                  <Line
+                                    key={category}
+                                    type="monotone"
+                                    dataKey={category}
+                                    stroke={
+                                      LINE_COLORS[index % LINE_COLORS.length]
+                                    }
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 6 }}
+                                  />
+                                ))}
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        color="light"
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                      >
+                        View Detailed Analytics{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </Card>
 
-                {/* --- Preferences & Demographics Card --- */}
-                <Card className="col-span-1 flex flex-col md:col-span-2">
-                  <div className="flex-grow">
-                    <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
-                      <HiOutlineAdjustments className="mr-2 h-5 w-5" />
-                      Preference & Profile Overview
-                    </h3>
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      {/* Pie Chart Section */}
-                      <div className="flex flex-col">
+                    {/* --- Top Interests Card --- */}
+                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-1">
+                      <div className="flex-grow">
                         <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
                           Top Interests
                         </h4>
@@ -708,8 +654,8 @@ export default function UserDashboard() {
                                   label={renderCustomizedLabel}
                                   outerRadius={100}
                                   fill="#8884d8"
-                                  dataKey="value" // Use 'value' as dataKey
-                                  nameKey="name" // Use 'name' as nameKey
+                                  dataKey="value"
+                                  nameKey="name"
                                 >
                                   {preferencesPieChartData.map(
                                     (_entry, index) => (
@@ -734,19 +680,68 @@ export default function UserDashboard() {
                             </ResponsiveContainer>
                           </div>
                         )}
-                        {/* Update Link to Button to change tab */}
-                        <Button
-                          color="light"
-                          size="sm"
-                          className="mt-4 self-start"
-                          onClick={() => setActiveTab(2)} // 2 = Preferences Tab Index
-                        >
-                          Manage All Preferences{" "}
-                          <HiArrowRight className="ml-1 h-4 w-4" />
-                        </Button>
                       </div>
+                      <Button
+                        color="light"
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index
+                      >
+                        Manage All Preferences{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </Card>
 
-                      {/* Demographics Section */}
+                    {/* --- Data Sharing Card --- */}
+                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-2">
+                      <div className="flex-grow">
+                        <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
+                          <HiOutlineShare className="mr-2 h-5 w-5" />
+                          Data Sharing
+                        </h3>
+                        {consentLoading || storesLoading ? (
+                          <div className="flex h-full min-h-[100px] items-center justify-center py-4">
+                            <Spinner size="md" />
+                          </div>
+                        ) : consentError || storesError ? (
+                          <Alert color="failure" icon={HiInformationCircle}>
+                            Could not load sharing settings.
+                          </Alert>
+                        ) : (consentLists?.optInStores?.length ?? 0) === 0 ? (
+                          <p className="text-gray-500 dark:text-gray-400">
+                            You are not currently sharing data with any stores.
+                          </p>
+                        ) : (
+                          <List unstyled className="space-y-2">
+                            {(consentLists?.optInStores ?? []).map(
+                              (storeId) => (
+                                <ListItem
+                                  key={storeId}
+                                  className="text-sm text-gray-700 dark:text-gray-300"
+                                >
+                                  Sharing with{" "}
+                                  <span className="font-semibold">
+                                    {storeNameMap.get(storeId) || storeId}
+                                  </span>
+                                </ListItem>
+                              ),
+                            )}
+                          </List>
+                        )}
+                      </div>
+                      <Button
+                        color="light"
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => setActiveTab(2)} // 2 = Sharing Tab Index
+                      >
+                        Manage Sharing Settings{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </Card>
+
+                    {/* Demographics Section */}
+                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-3">
                       <div className="flex flex-col">
                         <h4 className="mb-6 text-base font-medium text-gray-700 dark:text-gray-300">
                           About You
@@ -770,7 +765,7 @@ export default function UserDashboard() {
                             <DemoInfoCard
                               icon={HiOutlineCake}
                               label="Age"
-                              value={profile?.demographicData?.age}
+                              value={profile?.demographicData?.age?.toString()}
                               isLoading={profileLoading}
                             />
                             <DemoInfoCard
@@ -781,17 +776,17 @@ export default function UserDashboard() {
                             />
                             <DemoInfoCard
                               icon={HiOutlineCash}
-                              label="Income"
+                              label="Income Bracket"
                               value={profile?.demographicData?.incomeBracket}
                               isLoading={profileLoading}
                             />
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Card>
                   </div>
-                </Card>
-              </div>
+                )}
+              </>
             )}
           </TabItem>
 
@@ -801,8 +796,7 @@ export default function UserDashboard() {
             title="Preferences"
             icon={HiOutlineSparkles}
           >
-            {/* Render UserPreferencesPage directly */}
-            <UserPreferencesPage />
+            {activeTab === 1 && <UserPreferencesPage />}
           </TabItem>
 
           {/* Sharing Tab */}
@@ -811,8 +805,7 @@ export default function UserDashboard() {
             title="Sharing"
             icon={HiOutlineShare}
           >
-            {/* Render UserDataSharingPage directly */}
-            <UserDataSharingPage />
+            {activeTab === 2 && <UserDataSharingPage />}
           </TabItem>
 
           {/* Analytics Tab */}
@@ -821,8 +814,7 @@ export default function UserDashboard() {
             title="Analytics"
             icon={HiOutlineChartPie}
           >
-            {/* Render UserAnalyticsPage directly */}
-            <UserAnalyticsPage />
+            {activeTab === 3 && <UserAnalyticsPage />}
           </TabItem>
         </Tabs>
       </div>
