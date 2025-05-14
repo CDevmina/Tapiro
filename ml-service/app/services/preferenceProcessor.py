@@ -335,14 +335,14 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     if user_id_from_meta and ObjectId.is_valid(user_id_from_meta):
         user = await db.users.find_one({"_id": ObjectId(user_id_from_meta)})
         if user and user.get("email") != email:
-            logger.warning(f"User ID {user_id_from_meta} from metadata belongs to a different email ({user.get('email')}) than {email}. Finding user by email.")
+            logger.warning(f"User ID {user_id_from_meta} from metadata does not match email {email}. Falling back to email lookup.")
             user = None
 
     if not user:
         user = await db.users.find_one({"email": email})
         if not user:
             logger.error(f"User not found with email {email}. Cannot process data.")
-            await mark_processing_failed(db, email, submission_id)
+            await mark_processing_failed(db, email, submission_id) # Mark as failed before raising
             raise HTTPException(status_code=404, detail=f"User not found: {email}")
 
     user_id = str(user["_id"])
@@ -482,7 +482,8 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
     if allow_inference_setting:
         try:
             logger.info(f"Running demographic inference for user {email} ({user_id})")
-            inference_updated_user = await run_inference_for_user(user_id, email, db)
+            # Pass the fetched user document and taxonomy_service instance
+            inference_updated_user = await run_inference_for_user(user, taxonomy, db)
             if inference_updated_user:
                 logger.info(f"Demographic inference updated user document for {email}.")
         except Exception as inference_error:

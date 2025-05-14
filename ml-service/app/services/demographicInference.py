@@ -6,7 +6,7 @@ from datetime import datetime
 from app.utils.redis_util import invalidate_cache, CACHE_KEYS
 from sentence_transformers import util
 import numpy as np
-from app.services.taxonomyService import get_taxonomy_service
+from app.services.taxonomyService import TaxonomyService
 
 logger = logging.getLogger(__name__)
 
@@ -301,20 +301,21 @@ async def _run_hybrid_inference_for_attribute(
     return inferred_value
 
 # --- Main Inference Runner (Updated) ---
-async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) -> bool:
+async def run_inference_for_user(user: Dict[str, Any], taxonomy_service: TaxonomyService, db, limit: int = 50) -> bool:
     """
     Runs HYBRID demographic inference based on recent user data and updates
     the user document if changes are found AND the user has not provided their own value.
     Returns True if the user document was updated, False otherwise.
     """
+    user_id = str(user["_id"]) # Get user_id from the passed user object
+    email = user["email"]      # Get email from the passed user object
     logger.info(f"Running HYBRID demographic inference for user {user_id} ({email})")
     updated = False
     try:
-        user_object_id = ObjectId(user_id)
-        user = await db.users.find_one({"_id": user_object_id})
-        if not user:
-            logger.error(f"Inference: User not found by ID {user_id}")
-            return False
+        user_object_id = user["_id"] # user["_id"] is already an ObjectId
+
+        # User document is now passed as an argument, no need to fetch again.
+        # taxonomy_service is now passed as an argument, no need to fetch again via get_taxonomy_service here.
 
         # Fetch recent userData entries
         recent_data = await db.userData.find(
@@ -326,9 +327,6 @@ async def run_inference_for_user(user_id: str, email: str, db, limit: int = 50) 
             return False
 
         logger.info(f"Inference: Found {len(recent_data)} recent data entries for user {user_id}")
-
-        # Get Taxonomy Service (needed for embeddings)
-        taxonomy_service = await get_taxonomy_service(db)
 
         current_demographics = user.get("demographicData", {})
 
