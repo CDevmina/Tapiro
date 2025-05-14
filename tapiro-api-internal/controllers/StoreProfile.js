@@ -31,8 +31,8 @@ module.exports.deleteStoreProfile = function deleteStoreProfile(req, res, next) 
     });
 };
 
-module.exports.lookupStores = function lookupStores(req, res, next, ids) {
-  StoreProfile.lookupStores(req, ids)
+module.exports.searchStores = function searchStores(req, res, next, ids) {
+  StoreProfile.searchStores(req, ids)
     .then((response) => {
       utils.writeJson(res, response);
     })
