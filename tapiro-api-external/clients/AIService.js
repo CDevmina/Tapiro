@@ -21,6 +21,7 @@ exports.processUserData = async function (userData) {
       email: userData.email,
       data_type: userData.data_type,
       userId: userData.metadata?.userId,
+      entriesHash: JSON.stringify(userData.entries)
     };
     const cacheKey = `${CACHE_KEYS.AI_REQUEST}${JSON.stringify(keyData)}`;
     const cachedResponse = await getCache(cacheKey);
