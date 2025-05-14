@@ -448,10 +448,26 @@ const UserPreferencesPage: React.FC = () => {
 
   const handleRemovePreference = (indexToRemove: number) => {
     const currentPreferences = preferencesData?.preferences || [];
-    const updatedPreferences = currentPreferences.filter(
+    const filteredPreferences = currentPreferences.filter(
       (_, index) => index !== indexToRemove,
     );
-    updatePreferences({ preferences: updatedPreferences });
+
+    const sanitizedPreferences = filteredPreferences.map((pref) => {
+      const newScore =
+        pref.score === null || pref.score === undefined ? 0.5 : pref.score;
+      const newAttributes =
+        pref.attributes === null || pref.attributes === undefined
+          ? {}
+          : pref.attributes;
+
+      return {
+        ...pref,
+        score: newScore,
+        attributes: newAttributes,
+      };
+    });
+
+    updatePreferences({ preferences: sanitizedPreferences });
   };
 
   const openAddModal = () => {
