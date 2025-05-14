@@ -17,7 +17,8 @@ const CACHE_TTL = {
 const CACHE_KEYS = {
   USER_DATA: 'userdata:', // User data from Auth0
   STORE_DATA: 'store:', // Store data from DB
-  API_KEY: 'apikey:', // API key to store ID mapping
+  API_KEY: 'apikey:', // Original key for storeId mapping (can be phased out or kept for other uses)
+  API_KEY_DETAILS: 'apikey_details:', // New key for caching full API key info
   SCOPES: 'scopes:', // Token to scopes mapping
   ADMIN_TOKEN: 'auth0_management_token', // Auth0 management token
   PREFERENCES: 'preferences:', // User preferences

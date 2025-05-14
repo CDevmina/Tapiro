@@ -102,7 +102,6 @@ exports.submitUserData = async function (req, body) {
     const db = getDB();
     const { email, dataType, entries, metadata } = body;
 
-    
     if (!Array.isArray(entries)) {
       return respondWithCode(400, {
         code: 400,
@@ -200,44 +199,57 @@ exports.submitUserData = async function (req, body) {
       timestamp: new Date(),
     });
 
+    const insertedId = result.insertedId; // Get the ID of the inserted document
+
     // Invalidate the preferences cache
     await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${req.storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
-    // SINGLE API CALL to the AI service
-    try {
-      const aiResponse = await AIService.processUserData({
-        email,
-        data_type: dataType,
-        entries,
-        metadata: {
-          ...metadata,
-          storeId: req.storeId,
-          userId: user._id.toString(),
-          timestamp: new Date(),
-        },
-      });
+    // Call AI service but DO NOT await it.
+    // Fire-and-forget:
+    AIService.processUserData({
+      email,
+      data_type: dataType,
+      entries, // Send original entries as AI service might have its own processing
+      metadata: {
+        ...metadata,
+        storeId: req.storeId,
+        userId: user._id.toString(),
+        submissionId: insertedId.toString(), // Pass the userData document ID
+        timestamp: new Date(),
+      },
+    }).then(aiResponse => {
+      // Successfully queued with AI service.
+      // Optionally, update the userData document status if AI service confirms receipt,
+      // but this happens in the background.
+      // For now, the ML service handles updating its own status or the userData status.
+      console.log(`AI processing initiated for submission ${insertedId.toString()}: ${aiResponse.status}`);
+    }).catch(async aiError => {
+      // AI service call failed even to initiate.
+      // Mark the specific userData entry as 'failed' to indicate an issue with AI queuing.
+      console.error(`AI service initiation failed for submission ${insertedId.toString()}:`, aiError);
+      try {
+        await db.collection('userData').updateOne(
+          { _id: insertedId },
+          { $set: { processedStatus: 'ai_submission_failed' } } // New status
+        );
+      } catch (updateError) {
+        console.error(`Failed to mark userData ${insertedId.toString()} as ai_submission_failed:`, updateError);
+      }
+    });
 
-      return respondWithCode(202, {
-        message: 'Data accepted for processing',
-        aiProcessing: aiResponse.status,
-      });
-    } catch (aiError) {
-      console.error('AI service processing failed, but data was stored:', aiError);
+    // Return 202 Accepted immediately
+    return respondWithCode(202, {
+      message: 'Data accepted for processing',
+      submissionId: insertedId.toString(),
+    });
 
-      // Update status to failed
-      await db
-        .collection('userData')
-        .updateOne({ _id: result.insertedId }, { $set: { processedStatus: 'failed' } });
-
-      // Still return 202 since we saved the data and can process it later
-      return respondWithCode(202, {
-        message: 'Data accepted but AI processing delayed',
-        retryScheduled: true,
-      });
-    }
   } catch (error) {
     console.error('Submit user data failed:', error);
+    // Ensure a 500 is returned for unexpected errors during the synchronous part
+    if (error.code && error.message) { // If it's already a respondWithCode structure
+        return error;
+    }
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
   }
 };
