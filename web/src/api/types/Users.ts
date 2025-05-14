@@ -19,7 +19,6 @@ import {
   StoreConsentList,
   User,
   UserCreate,
-  UserData,
   UserMetadataResponse,
   UserPreferences,
   UserPreferencesUpdate,
@@ -116,50 +115,6 @@ export class Users<
       path: `/users/profile`,
       method: "DELETE",
       secure: true,
-      ...params,
-    });
-  /**
-   * @description Submit purchase/search history for a user (authenticated via API key)
-   *
-   * @tags Data Collection
-   * @name SubmitUserData
-   * @summary Submit user data
-   * @request POST:/users/data
-   * @secure
-   * @response `202` `void` Data accepted for processing
-   * @response `400` `Error`
-   * @response `401` `Error`
-   * @response `500` `Error`
-   */
-  submitUserData = (data: UserData, params: RequestParams = {}) =>
-    this.request<void, Error>({
-      path: `/users/data`,
-      method: "POST",
-      body: data,
-      secure: true,
-      type: ContentType.Json,
-      ...params,
-    });
-  /**
-   * @description Retrieve preferences for targeted advertising
-   *
-   * @tags Data Retrival
-   * @name GetUserPreferences
-   * @summary Get user preferences
-   * @request GET:/users/{userId}/preferences
-   * @secure
-   * @response `200` `UserPreferences` UserPreferences retrieved
-   * @response `401` `Error`
-   * @response `403` `Error`
-   * @response `404` `Error`
-   * @response `500` `Error`
-   */
-  getUserPreferences = (userId: string, params: RequestParams = {}) =>
-    this.request<UserPreferences, Error>({
-      path: `/users/${userId}/preferences`,
-      method: "GET",
-      secure: true,
-      format: "json",
       ...params,
     });
   /**
