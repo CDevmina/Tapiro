@@ -4,12 +4,14 @@ import { ProductCard } from "./ProductCard"; // Import ProductCard
 interface ProductListProps {
   products: Product[];
   onProductClick?: (product: Product) => void; // Pass click handler down
+  onPurchaseClick?: (product: Product) => void; // Pass purchase click handler down
   recommendedProductIds?: Set<string>; // Set of IDs to highlight
 }
 
 export function ProductList({
   products,
   onProductClick,
+  onPurchaseClick,
   recommendedProductIds = new Set(),
 }: ProductListProps) {
   if (!products || products.length === 0) {
@@ -27,6 +29,7 @@ export function ProductList({
           key={product.id}
           product={product}
           onProductClick={onProductClick}
+          onPurchaseClick={onPurchaseClick}
           isRecommended={recommendedProductIds.has(product.id)}
         />
       ))}

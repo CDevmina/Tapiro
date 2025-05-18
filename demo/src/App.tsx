@@ -175,10 +175,16 @@ function App() {
   };
 
   const handleProductClick = (product: Product) => {
-    console.log(`Product clicked: ${product.name}`); // Placeholder
-    // Submit view data if user and key are set
+    console.log(`Product clicked (View): ${product.name}`);
     if (userEmail && apiKey) {
-      submitInteractionData(userEmail, "view", product); // Using 'view' as dataType
+      submitInteractionData(userEmail, "view", product);
+    }
+  };
+
+  const handlePurchaseClick = (product: Product) => {
+    console.log(`Product purchased: ${product.name}`);
+    if (userEmail && apiKey) {
+      submitInteractionData(userEmail, "purchase", product);
     }
   };
 
@@ -511,6 +517,7 @@ function App() {
           <ProductList
             products={displayedProducts}
             onProductClick={handleProductClick}
+            onPurchaseClick={handlePurchaseClick}
             recommendedProductIds={recommendedProductIds}
           />
         </div>

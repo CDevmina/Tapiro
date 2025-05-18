@@ -3,17 +3,26 @@ import { Product } from "../data/products"; // Make sure path is correct
 interface ProductCardProps {
   product: Product;
   onProductClick?: (product: Product) => void; // Handler for clicks
+  onPurchaseClick?: (product: Product) => void; // Handler for purchase clicks
   isRecommended?: boolean; // Optional flag for highlighting
 }
 
 export function ProductCard({
   product,
   onProductClick,
+  onPurchaseClick,
   isRecommended,
 }: ProductCardProps) {
   const handleCardClick = () => {
     if (onProductClick) {
       onProductClick(product);
+    }
+  };
+
+  const handlePurchase = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click event from firing
+    if (onPurchaseClick) {
+      onPurchaseClick(product);
     }
   };
 
@@ -54,6 +63,14 @@ export function ProductCard({
         <p className="mt-2 text-lg font-bold text-blue-600 dark:text-blue-400">
           ${product.price.toFixed(2)}
         </p>
+        {onPurchaseClick && (
+          <button
+            onClick={handlePurchase}
+            className="mt-3 w-full rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          >
+            Buy Now
+          </button>
+        )}
       </div>
     </div>
   );
