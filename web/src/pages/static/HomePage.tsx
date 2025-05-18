@@ -1,168 +1,315 @@
-import { useState, useEffect } from "react"; // <-- Import hooks
-import { Toast, ToastToggle } from "flowbite-react"; // <-- Import Toast components
-import { HiCheck } from "react-icons/hi"; // <-- Import icon
+import { useState, useEffect } from "react";
+import { Toast, ToastToggle, Button, Card } from "flowbite-react";
 import {
-  DocsIcon,
-  BlocksIcon,
-  IconsIcon,
-  IllustrationsIcon,
-} from "../../components/icons/ResourceIcons";
+  HiCheck,
+  HiOutlineArrowRight,
+  HiOutlineUserGroup,
+  HiOutlineLockClosed,
+  HiOutlineSparkles,
+  HiOutlinePuzzlePiece,
+  HiOutlineChartBar,
+} from "react-icons/hi2"; // Using Hi2 for potentially newer icons
+import { Link } from "react-router"; // Assuming react-router is used
+
+// Placeholder icons for features - replace with actual or more suitable icons
+const FeatureIconUserControl = HiOutlineUserGroup;
+const FeatureIconPersonalization = HiOutlineSparkles;
+const FeatureIconTransparency = HiOutlineLockClosed;
+const FeatureIconStoreIntegration = HiOutlinePuzzlePiece;
+const FeatureIconStoreInsights = HiOutlineChartBar;
 
 export default function HomePage() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Check for post-logout toast message on mount
   useEffect(() => {
     const message = sessionStorage.getItem("showPostLogoutToast");
     if (message) {
       setToastMessage(message);
       setShowToast(true);
-      sessionStorage.removeItem("showPostLogoutToast"); // Clear the flag
-
-      // Optional: Auto-hide toast after a delay
+      sessionStorage.removeItem("showPostLogoutToast");
       const timer = setTimeout(() => setShowToast(false), 5000);
-      return () => clearTimeout(timer); // Cleanup timer on unmount
+      return () => clearTimeout(timer);
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  const CARDS = [
-    {
-      title: "Flowbite React Docs",
-      description:
-        "Learn more on how to get started and use the Flowbite React components",
-      url: "https://flowbite-react.com/",
-      icon: <DocsIcon />,
-    },
-    {
-      title: "Flowbite Blocks",
-      description:
-        "Get started with over 450 blocks to build websites even faster",
-      url: "https://flowbite.com/blocks/",
-      icon: <BlocksIcon />,
-    },
-    {
-      title: "Flowbite Icons",
-      description:
-        "Get started with over 650+ SVG free and open-source icons for your apps",
-      url: "https://flowbite.com/icons/",
-      icon: <IconsIcon />,
-    },
-    {
-      title: "Flowbite Illustrations",
-      description:
-        "Start using over 50+ SVG illustrations in 3D style to add character to your apps",
-      url: "https://flowbite.com/illustrations/",
-      icon: <IllustrationsIcon />,
-    },
-    {
-      title: "Flowbite Pro",
-      description:
-        "Upgrade your development stack with more components and templates from Flowbite",
-      url: "https://flowbite.com/pro/",
-      icon: <img alt="Flowbite Pro logo" src="/flowbite.svg" />,
-    },
-    {
-      title: "Flowbite Figma",
-      description:
-        "Use our Figma Design System to design and collaborate better within your team",
-      url: "https://flowbite.com/figma/",
-      icon: <img alt="Figma logo" src="/figma.svg" />,
-    },
-  ];
+  }, []);
 
   return (
-    // Add relative positioning if needed for absolute toast
-    <div className="relative container mx-auto px-4 py-12">
-      {/* Success Toast */}
+    <div className="relative bg-white dark:bg-gray-900">
+      {/* Toast Notification */}
       {showToast && (
-        <Toast className="absolute top-5 right-5 z-50">
+        <Toast className="absolute top-5 right-5 z-50 shadow-lg">
           <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
             <HiCheck className="h-5 w-5" />
           </div>
-          <div className="ml-3 text-sm font-normal">{toastMessage}</div>
+          <div className="ml-3 text-sm font-normal text-gray-800 dark:text-gray-100">
+            {toastMessage}
+          </div>
           <ToastToggle onDismiss={() => setShowToast(false)} />
         </Toast>
       )}
 
-      {/* Background pattern - kept for visual style */}
-      <div className="absolute inset-0 -z-10 size-full">
-        <div className="relative h-full w-full select-none">
+      {/* Hero Section */}
+      <section className="relative py-20 lg:py-32">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
           <img
-            className="absolute right-0 min-w-dvh dark:hidden"
-            alt="Pattern Light"
-            src="/pattern-light.svg"
+            className="absolute top-0 right-0 h-full w-full object-cover opacity-50 dark:hidden"
+            alt="Abstract Light Pattern"
+            src="/pattern-light.svg" // Assuming you have these patterns
           />
           <img
-            className="absolute right-0 hidden min-w-dvh dark:block"
-            alt="Pattern Dark"
-            src="/pattern-dark.svg"
+            className="absolute top-0 right-0 hidden h-full w-full object-cover opacity-30 dark:block"
+            alt="Abstract Dark Pattern"
+            src="/pattern-dark.svg" // Assuming you have these patterns
           />
         </div>
-      </div>
-
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-12">
-        {" "}
-        {/* Centered content */}
-        <div className="relative flex flex-col items-center gap-6">
-          <h1 className="relative text-center text-4xl leading-[125%] font-bold text-gray-900 dark:text-gray-200">
-            Welcome to Tapiro {/* Updated Title */}
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl lg:text-6xl dark:text-white">
+            Tapiro: Reclaiming Your Data, Refining Your Experience.
           </h1>
-          <span className="inline-flex flex-wrap items-center justify-center gap-2.5 text-center">
-            <span className="inline text-xl text-gray-600 dark:text-gray-400">
-              Manage your preferences and data sharing easily.{" "}
-              {/* Updated Subtitle */}
-            </span>
-            {/* You can add more introductory text here */}
-          </span>
-        </div>
-        {/* Placeholder/Example Section - Kept from original App.tsx */}
-        <div className="relative flex w-full flex-col items-start gap-6 self-stretch">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Explore Resources
-          </h2>
-          <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
-            {CARDS.map((card) => (
-              <a
-                key={card.title}
-                href={card.url}
-                target="_blank"
-                rel="noopener noreferrer" // Added for security
-                className="outline-primary-600 dark:outline-primary-500 group hover:border-primary-600 dark:hover:border-primary-500 cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-gray-50 outline-offset-2 focus:outline-2 dark:border-gray-700 dark:bg-gray-800"
+          <p className="mb-8 text-lg text-gray-600 lg:text-xl dark:text-gray-300">
+            Tired of data fragmentation and lack of control? Tapiro empowers
+            users with transparency and provides businesses with ethical,
+            high-quality data for truly personalized recommendations.
+          </p>
+          <div className="flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4">
+            <Link to="/register">
+              <Button size="lg" color="blue" className="w-full sm:w-auto">
+                Get Started as a User
+                <HiOutlineArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/contact-sales">
+              {" "}
+              {/* Or a relevant page for store sign-ups */}
+              <Button
+                size="lg"
+                color="light"
+                className="w-full border sm:w-auto dark:border-gray-600"
               >
-                <div className="flex items-center gap-6 p-4">
-                  <div className="flex flex-1 items-center gap-2">
-                    <div className="size-9">{card.icon}</div>
-                    <div className="flex flex-1 flex-col items-start justify-center gap-1.5 border-l border-gray-200 pl-3.5 dark:border-gray-700">
-                      <div className="w-full font-sans text-lg leading-4 font-semibold text-gray-900 dark:text-gray-200">
-                        {card.title}
-                      </div>
-                      <div className="w-full font-sans text-sm leading-5 font-normal text-gray-500 dark:text-gray-400">
-                        {card.description}
-                      </div>
-                    </div>
-                  </div>
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="group-hover:text-primary-600 dark:group-hover:text-primary-500 h-6 w-6 text-gray-500 transition-transform group-hover:translate-x-1"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M14.2929 7.29289C14.6834 6.90237 15.3166 6.90237 15.7071 7.29289L19.7071 11.2929C19.8946 11.4804 20 11.7348 20 12C20 12.2652 19.8946 12.5196 19.7071 12.7071L15.7071 16.7071C15.3166 17.0976 14.6834 17.0976 14.2929 16.7071C13.9024 16.3166 13.9024 15.6834 14.2929 15.2929L16.5858 13H5C4.44772 13 4 12.5523 4 12C4 11.4477 4.44772 11 5 11H16.5858L14.2929 8.70711C13.9024 8.31658 13.9024 7.68342 14.2929 7.29289Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </div>
-              </a>
-            ))}
+                Partner as a Store
+              </Button>
+            </Link>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* For Users Section */}
+      <section className="bg-gray-50 py-16 lg:py-24 dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
+              Empowering{" "}
+              <span className="text-blue-600 dark:text-blue-500">Users</span>
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+              Take control of your digital footprint and enjoy experiences
+              tailored to you.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <FeatureIconUserControl className="mb-3 h-10 w-10 text-blue-600 dark:text-blue-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Full Data Control
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                View, update, and manage your data sharing consents on a
+                per-service or global basis. You decide who sees what.
+              </p>
+            </Card>
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <FeatureIconPersonalization className="mb-3 h-10 w-10 text-blue-600 dark:text-blue-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Accurate Personalization
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Benefit from more relevant recommendations and offers, thanks to
+                centralized and accurately managed preference data.
+              </p>
+            </Card>
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <FeatureIconTransparency className="mb-3 h-10 w-10 text-blue-600 dark:text-blue-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Enhanced Transparency
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Understand how your data is used with a clear view of your
+                interactions and preferences through our modern UI.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* For Stores Section */}
+      <section className="bg-white py-16 lg:py-24 dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
+              Powering{" "}
+              <span className="text-green-600 dark:text-green-500">
+                Businesses
+              </span>
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+              Access high-quality, consented data to drive engagement and growth
+              ethically.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <FeatureIconStoreInsights className="mb-3 h-10 w-10 text-green-600 dark:text-green-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Richer User Insights
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Overcome data fragmentation. Leverage sophisticated AI and
+                taxonomy systems for deeper understanding of user interests.
+              </p>
+            </Card>
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <FeatureIconStoreIntegration className="mb-3 h-10 w-10 text-green-600 dark:text-green-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Seamless API Integration
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Easily connect your services with our well-documented
+                OpenAPI-based RESTful APIs (Node.js, FastAPI).
+              </p>
+            </Card>
+            <Card className="shadow-lg transition-shadow duration-300 hover:shadow-xl dark:bg-gray-800">
+              <HiOutlineLockClosed className="mb-3 h-10 w-10 text-green-600 dark:text-green-500" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+                Ethical Data Practices
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Build trust by using a platform that prioritizes user consent
+                and data security (Auth0, 2FA, Passkeys).
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Technology Highlights Section (Optional) */}
+      <section className="bg-gray-50 py-16 lg:py-24 dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
+              Built with Cutting-Edge Technology
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+              Leveraging robust and scalable solutions for optimal performance
+              and security.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-3 lg:grid-cols-4">
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/react.svg"
+                alt="React"
+                className="mb-2 h-12 w-12"
+              />{" "}
+              {/* Replace with actual icon paths */}
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                React & Vite
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/nodejs.svg"
+                alt="Node.js"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                Node.js
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/fastapi.svg"
+                alt="FastAPI"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                FastAPI
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/auth0.svg"
+                alt="Auth0"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                Auth0 Security
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/huggingface.svg"
+                alt="Hugging Face"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                AI/ML Models
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/swagger.svg"
+                alt="OpenAPI"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                OpenAPI Specs
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/mongodb.svg"
+                alt="MongoDB"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                MongoDB
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src="/icons/tech/redis.svg"
+                alt="Redis"
+                className="mb-2 h-12 w-12"
+              />
+              <p className="font-semibold text-gray-700 dark:text-gray-200">
+                Caching
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="bg-blue-600 py-16 lg:py-24 dark:bg-blue-700">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold text-white md:text-4xl">
+            Ready to Join the Future of Data?
+          </h2>
+          <p className="mt-4 mb-8 text-lg text-blue-100 dark:text-blue-200">
+            Experience a new era of data control and personalization with
+            Tapiro.
+          </p>
+          <Link to="/register">
+            <Button
+              size="xl"
+              color="light"
+              className="dark:bg-white dark:text-blue-700 dark:hover:bg-gray-100"
+            >
+              Sign Up Now
+            </Button>
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
