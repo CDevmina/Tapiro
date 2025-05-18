@@ -509,7 +509,8 @@ export default function UserDashboard() {
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
                         onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
@@ -547,7 +548,8 @@ export default function UserDashboard() {
                           {(startDate || endDate) && (
                             <Button
                               size="xs"
-                              color="light"
+                              color="blue"
+                              outline
                               onClick={clearDates}
                             >
                               Clear Dates
@@ -613,7 +615,8 @@ export default function UserDashboard() {
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
                         onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
@@ -669,7 +672,8 @@ export default function UserDashboard() {
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
                         onClick={() => setActiveTab(2)} // 2 = Sharing Tab Index
@@ -792,7 +796,8 @@ export default function UserDashboard() {
                         {/* End of new flex container */}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
                         onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index

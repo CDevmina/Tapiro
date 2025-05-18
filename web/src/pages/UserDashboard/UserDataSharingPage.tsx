@@ -35,6 +35,7 @@ const UserDataSharingPage: React.FC = () => {
     data: consentLists,
     isLoading: consentLoading,
     error: consentError,
+    refetch: refetchConsentLists,
   } = useStoreConsentLists();
   const {
     mutate: optIn,
@@ -113,6 +114,7 @@ const UserDataSharingPage: React.FC = () => {
           message: `Successfully opted in to ${storeNameMap.get(storeId) || "store"}.`,
         });
         resetOptInMutation();
+        refetchConsentLists(); // Refetch lists to update UI
       },
       onError: (error: Error) => {
         setToastInfo({
@@ -134,6 +136,7 @@ const UserDataSharingPage: React.FC = () => {
           message: `Successfully opted out of ${storeNameMap.get(storeId) || "store"}.`,
         });
         resetOptOutMutation();
+        refetchConsentLists(); // Refetch lists to update UI
       },
       onError: (error: Error) => {
         setToastInfo({
@@ -192,7 +195,8 @@ const UserDataSharingPage: React.FC = () => {
         {/* Opt-In List (Existing) */}
         <Card>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Stores You Share Data With (Opt-In)
+            Stores You Share Data With{" "}
+            <span className="text-green-600 dark:text-green-500">(Opt-In)</span>
           </h3>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
             These stores can access your anonymized preference data based on
@@ -238,7 +242,8 @@ const UserDataSharingPage: React.FC = () => {
         {/* Opt-Out List (Existing) */}
         <Card>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Stores You Don't Share Data With (Opt-Out)
+            Stores You Don't Share Data With{" "}
+            <span className="text-red-600 dark:text-red-500">(Opt-Out)</span>
           </h3>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
             These stores cannot access your preference data.

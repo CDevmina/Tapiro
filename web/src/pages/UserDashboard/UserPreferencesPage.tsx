@@ -673,7 +673,7 @@ const UserPreferencesPage: React.FC = () => {
             </h3>
             {!isEditingDemographics && (
               <Button
-                color="gray"
+                color="blue"
                 size="sm"
                 onClick={() => setIsEditingDemographics(true)}
                 disabled={isMutating}
@@ -1128,8 +1128,9 @@ const UserPreferencesPage: React.FC = () => {
                             <HiPencil />
                           </Button>
                           <Button
-                            color="failure"
+                            color="red"
                             size="xs"
+                            outline
                             onClick={() => handleRemovePreference(index)}
                             disabled={isMutating}
                           >
