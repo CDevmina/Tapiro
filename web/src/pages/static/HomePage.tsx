@@ -63,10 +63,10 @@ export default function HomePage() {
           />
         </div>
         <div className="container mx-auto px-4 text-center">
-          <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl lg:text-6xl dark:text-white">
-            Tapiro: Reclaiming Your Data, Refining Your Experience.
+          <h1 className="max-w-8xl mx-auto mb-6 bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text pb-1 text-4xl font-extrabold text-transparent md:text-5xl lg:text-6xl dark:from-blue-500 dark:via-green-400 dark:to-indigo-300">
+            Tapiro: Centralized Data Management Platform.
           </h1>
-          <p className="mb-8 text-lg text-gray-600 lg:text-xl dark:text-gray-300">
+          <p className="mx-auto mb-8 max-w-3xl text-lg text-gray-600 lg:text-xl dark:text-gray-300">
             Tired of data fragmentation and lack of control? Tapiro empowers
             users with transparency and provides businesses with ethical,
             high-quality data for truly personalized recommendations.

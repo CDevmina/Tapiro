@@ -62,7 +62,7 @@ export function Header() {
       <NavbarBrand as={Link} to="/">
         {" "}
         <img
-          src="/flowbite-react.svg"
+          src="/icons/logo/tapiro.png"
           className="mr-3 h-6 sm:h-9"
           alt="Tapiro Logo"
         />
