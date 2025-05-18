@@ -418,7 +418,7 @@ export default function UserDashboard() {
   // --- Render Dashboard ---
   return (
     <>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 pb-12">
         <Tabs
           aria-label="User dashboard tabs"
           variant="underline"
