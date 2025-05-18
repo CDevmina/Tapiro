@@ -101,7 +101,7 @@ export default function StoreDashboard() {
                 </p>
               )}
               <Link to="/api-docs" className="mt-4 inline-block">
-                <Button color="light" size="sm">
+                <Button color="blue" outline size="sm">
                   <HiDocumentText className="mr-2 h-5 w-5" />
                   View API Documentation
                 </Button>

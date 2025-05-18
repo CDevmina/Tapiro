@@ -253,7 +253,8 @@ export function ApiKeyManagement() {
                     {key.status === "active" ? (
                       <Button
                         size="xs"
-                        color="failure"
+                        color="red"
+                        outline
                         onClick={() => openRevokeModal(key)}
                         disabled={
                           isRevokingKey && keyToRevoke?.keyId === key.keyId
@@ -268,7 +269,7 @@ export function ApiKeyManagement() {
                         Revoke
                       </Button>
                     ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-red-500 dark:text-red-400">
                         Revoked
                       </span>
                     )}
@@ -404,30 +405,40 @@ export function ApiKeyManagement() {
         <ModalHeader />
         <ModalBody>
           <div className="text-center">
-            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-red-500 dark:text-red-400" />
             <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
               Are you sure you want to revoke this API key?
             </h3>
-            {/* Display key details */}
+            {/* Display key details - Improved UI */}
             {keyToRevoke && (
-              <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-                Name:{" "}
-                <span className="font-medium">
-                  {keyToRevoke.name || (
-                    <span className="italic">Unnamed Key</span>
-                  )}
-                </span>
-                <br />
-                Prefix:{" "}
-                <span className="font-mono">{keyToRevoke.prefix}...</span>
-              </p>
+              <div className="my-4 rounded-md bg-gray-100 p-3 text-left sm:mx-auto sm:max-w-sm dark:bg-gray-700">
+                <div className="mb-1">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Name:{" "}
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {keyToRevoke.name || (
+                      <span className="italic">Unnamed Key</span>
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Prefix:{" "}
+                  </span>
+                  <span className="font-mono font-semibold text-gray-900 dark:text-white">
+                    {keyToRevoke.prefix}...
+                  </span>
+                </div>
+              </div>
             )}
             <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
               This key will immediately stop working and cannot be reactivated.
             </p>
             <div className="flex justify-center gap-4">
               <Button
-                color="failure"
+                color="red"
+                outline
                 onClick={handleRevokeConfirm}
                 disabled={isRevokingKey}
               >
@@ -442,7 +453,7 @@ export function ApiKeyManagement() {
                 )}
               </Button>
               <Button
-                color="gray"
+                color="blue"
                 onClick={() => setShowRevokeModal(false)}
                 disabled={isRevokingKey}
               >
