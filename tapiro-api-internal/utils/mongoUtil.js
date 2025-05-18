@@ -119,6 +119,7 @@ async function setupIndexes(db) {
     await db.collection('stores').createIndex({ auth0Id: 1 }, { unique: true });
     await db.collection('stores').createIndex({ email: 1 });
     await db.collection('stores').createIndex({ "apiKeys.prefix": 1 });
+    await db.collection('stores').createIndex({ name: "text" });
     
     // API usage indexes
     await db.collection('apiUsage').createIndex({ apiKeyId: 1, timestamp: -1 });

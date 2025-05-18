@@ -31,8 +31,20 @@ module.exports.deleteStoreProfile = function deleteStoreProfile(req, res, next) 
     });
 };
 
-module.exports.searchStores = function searchStores(req, res, next, ids) {
-  StoreProfile.searchStores(req, ids)
+module.exports.searchStores = function searchStores(req, res, next) {
+  const { query, limit } = req.query;
+  StoreProfile.searchStores(req, query, limit)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};
+
+module.exports.lookupStores = function lookupStores(req, res, next) {
+  const { ids } = req.query;
+  StoreProfile.lookupStores(req, ids)
     .then((response) => {
       utils.writeJson(res, response);
     })
