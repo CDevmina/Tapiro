@@ -1,8 +1,6 @@
 import {
   Card,
   Button,
-  Spinner,
-  Alert,
   Modal,
   ModalHeader,
   ModalBody,
@@ -10,9 +8,13 @@ import {
   Label,
   TextInput,
   Select,
-  RangeSlider,
   List,
   ListItem,
+  Spinner,
+  Alert,
+  RangeSlider,
+  Toast, // Added Toast
+  ToastToggle, // Added ToastToggle
 } from "flowbite-react";
 import {
   HiUser,
@@ -226,12 +228,14 @@ const UserPreferencesPage: React.FC = () => {
   const {
     mutate: updateProfile,
     isPending: isUpdatingProfile,
-    error: updateProfileError,
+    error: updateProfileError, // Keep for Alert if needed, toast will supplement
+    reset: resetUpdateProfileMutation, // Added reset
   } = useUpdateUserProfile();
   const {
     mutate: updatePreferences,
     isPending: isUpdatingPreferences,
-    error: updatePreferencesError,
+    error: updatePreferencesError, // Keep for Alert if needed, toast will supplement
+    reset: resetUpdatePreferencesMutation, // Added reset
   } = useUpdateUserPreferences();
 
   // --- State (Keep existing) ---
@@ -240,6 +244,20 @@ const UserPreferencesPage: React.FC = () => {
   const [editingPreferenceIndex, setEditingPreferenceIndex] = useState<
     number | null
   >(null);
+
+  const [toastInfo, setToastInfo] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (toastInfo) {
+      const timer = setTimeout(() => {
+        setToastInfo(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastInfo]);
 
   // --- Forms ---
   const {
@@ -388,14 +406,26 @@ const UserPreferencesPage: React.FC = () => {
       demographicData: demoPayload,
     };
 
-    console.log("Submitting demographic update:", finalPayload); // Debug log
+    // console.log("Submitting demographic update:", finalPayload); // Debug log
 
     // Only submit if the form is dirty (React Hook Form tracks this)
     if (isDemoDirty) {
       updateProfile(finalPayload, {
-        onSuccess: () => setIsEditingDemographics(false),
-        onError: (err) => {
-          console.error("Profile update failed:", err); // Log error
+        onSuccess: () => {
+          setIsEditingDemographics(false);
+          setToastInfo({
+            type: "success",
+            message: "Demographic information updated successfully.",
+          });
+          resetUpdateProfileMutation();
+        },
+        onError: (err: Error) => {
+          // console.error("Profile update failed:", err); // Log error
+          setToastInfo({
+            type: "error",
+            message: err.message || "Failed to update demographic information.",
+          });
+          resetUpdateProfileMutation();
         },
       });
     } else {
@@ -441,6 +471,25 @@ const UserPreferencesPage: React.FC = () => {
         onSuccess: () => {
           setShowPreferenceModal(false);
           setEditingPreferenceIndex(null);
+          setToastInfo({
+            type: "success",
+            message:
+              editingPreferenceIndex !== null
+                ? "Preference updated successfully."
+                : "Preference added successfully.",
+          });
+          resetUpdatePreferencesMutation();
+        },
+        onError: (err: Error) => {
+          setToastInfo({
+            type: "error",
+            message:
+              err.message ||
+              (editingPreferenceIndex !== null
+                ? "Failed to update preference."
+                : "Failed to add preference."),
+          });
+          resetUpdatePreferencesMutation();
         },
       },
     );
@@ -467,7 +516,25 @@ const UserPreferencesPage: React.FC = () => {
       };
     });
 
-    updatePreferences({ preferences: sanitizedPreferences });
+    updatePreferences(
+      { preferences: sanitizedPreferences },
+      {
+        onSuccess: () => {
+          setToastInfo({
+            type: "success",
+            message: "Preference removed successfully.",
+          });
+          resetUpdatePreferencesMutation();
+        },
+        onError: (err: Error) => {
+          setToastInfo({
+            type: "error",
+            message: err.message || "Failed to remove preference.",
+          });
+          resetUpdatePreferencesMutation();
+        },
+      },
+    );
   };
 
   const openAddModal = () => {
@@ -576,6 +643,21 @@ const UserPreferencesPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {toastInfo && (
+        <Toast className="fixed top-5 right-5 z-50">
+          <div
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toastInfo.type === "success" ? "bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200" : "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200"}`}
+          >
+            {toastInfo.type === "success" ? (
+              <HiCheck className="h-5 w-5" />
+            ) : (
+              <HiX className="h-5 w-5" />
+            )}
+          </div>
+          <div className="ml-3 text-sm font-normal">{toastInfo.message}</div>
+          <ToastToggle onDismiss={() => setToastInfo(null)} />
+        </Toast>
+      )}
       <h2 className="mb-8 text-3xl font-bold text-gray-900 dark:text-white">
         Manage Your Profile & Interests
       </h2>
