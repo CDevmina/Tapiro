@@ -17,20 +17,21 @@ import {
   TabItem,
 } from "flowbite-react";
 import {
-  HiArrowRight,
-  HiClock,
-  HiInformationCircle,
   HiOutlineNewspaper,
   HiOutlineCurrencyDollar,
   HiOutlineShare,
-  HiCalendar,
-  HiOutlineGlobeAlt,
-  HiOutlineCake,
-  HiOutlineCash,
-  HiOutlineUserCircle,
-  HiOutlineViewGrid,
+  HiArrowRight,
+  HiInformationCircle,
   HiOutlineSparkles,
   HiOutlineChartPie,
+  HiOutlineOfficeBuilding, // Added store icon
+  HiCalendar,
+  HiClock,
+  HiOutlineViewGrid,
+  HiOutlineUserCircle,
+  HiOutlineCake,
+  HiOutlineGlobeAlt,
+  HiOutlineCash,
 } from "react-icons/hi";
 import {
   ResponsiveContainer,
@@ -429,7 +430,7 @@ export default function UserDashboard() {
             title="Overview"
             icon={HiOutlineViewGrid}
           >
-            {activeTab === 0 && ( // Conditionally render Overview tab content
+            {activeTab === 0 && (
               <>
                 {profileLoading ||
                 activityLoading ||
@@ -642,17 +643,25 @@ export default function UserDashboard() {
                             You are not currently sharing data with any stores.
                           </p>
                         ) : (
-                          <List unstyled className="space-y-2">
+                          <List unstyled className="space-y-3">
+                            {" "}
+                            {/* Increased spacing */}
                             {(consentLists?.optInStores ?? []).map(
                               (storeId) => (
-                                <ListItem
-                                  key={storeId}
-                                  className="text-sm text-gray-700 dark:text-gray-300"
-                                >
-                                  Sharing with{" "}
-                                  <span className="font-semibold">
-                                    {storeNameMap.get(storeId) || storeId}
-                                  </span>
+                                <ListItem key={storeId} className="w-full">
+                                  {" "}
+                                  {/* Ensure ListItem takes full width */}
+                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                    <HiOutlineOfficeBuilding className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />
+                                    <div className="flex-grow">
+                                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        Sharing data with
+                                      </p>
+                                      <p className="text-md font-semibold text-gray-900 dark:text-white">
+                                        {storeNameMap.get(storeId) || storeId}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </ListItem>
                               ),
                             )}
