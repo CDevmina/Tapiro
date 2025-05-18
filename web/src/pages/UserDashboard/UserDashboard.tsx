@@ -622,78 +622,8 @@ export default function UserDashboard() {
                       </Button>
                     </Card>
 
-                    {/* --- Top Interests Card --- */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-1">
-                      <div className="flex-grow">
-                        <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
-                          Top Interests
-                        </h4>
-                        {preferencesError || taxonomyError ? (
-                          <Alert color="failure" icon={HiInformationCircle}>
-                            Could not load preference data.
-                          </Alert>
-                        ) : preferencesLoading || taxonomyLoading ? (
-                          <div className="flex h-[250px] items-center justify-center">
-                            <Spinner>Loading preferences...</Spinner>
-                          </div>
-                        ) : !preferencesPieChartData ||
-                          preferencesPieChartData.length === 0 ? (
-                          <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                            No preference data available yet. Add interests to
-                            see insights.
-                          </p>
-                        ) : (
-                          <div className="h-[300px] w-full">
-                            <ResponsiveContainer>
-                              <PieChart>
-                                <Pie
-                                  data={preferencesPieChartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={renderCustomizedLabel}
-                                  outerRadius={100}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {preferencesPieChartData.map(
-                                    (_entry, index) => (
-                                      <Cell
-                                        key={`cell-${index}`}
-                                        fill={
-                                          LINE_COLORS[
-                                            index % LINE_COLORS.length
-                                          ]
-                                        }
-                                      />
-                                    ),
-                                  )}
-                                </Pie>
-                                <RechartsTooltip
-                                  formatter={(value: number) =>
-                                    `${Math.round(value * 100)}% Interest`
-                                  }
-                                />
-                                <RechartsLegend />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        color="light"
-                        size="sm"
-                        className="mt-4 self-start"
-                        onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index
-                      >
-                        Manage All Preferences{" "}
-                        <HiArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    </Card>
-
                     {/* --- Data Sharing Card --- */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-2">
+                    <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-1">
                       <div className="flex-grow">
                         <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
                           <HiOutlineShare className="mr-2 h-5 w-5" />
@@ -740,49 +670,127 @@ export default function UserDashboard() {
                       </Button>
                     </Card>
 
-                    {/* Demographics Section */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-3">
-                      <div className="flex flex-col">
-                        <h4 className="mb-6 text-base font-medium text-gray-700 dark:text-gray-300">
-                          About You
-                        </h4>
-                        {profileError ? (
-                          <Alert color="failure" icon={HiInformationCircle}>
-                            Could not load profile information.
-                          </Alert>
-                        ) : profileLoading ? (
-                          <div className="flex h-[250px] items-center justify-center">
-                            <Spinner>Loading profile...</Spinner>
+                    {/* --- Top Interests Card --- */}
+                    <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-2">
+                      <div className="flex-grow">
+                        {/* New flex container for horizontal layout on md screens and up, vertical on sm */}
+                        <div className="flex flex-col md:flex-row md:gap-6">
+                          {/* Section 1: Top Interests */}
+                          <div className="flex-1">
+                            <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
+                              Top Interests
+                            </h4>
+                            {preferencesError || taxonomyError ? (
+                              <Alert color="failure" icon={HiInformationCircle}>
+                                Could not load preference data.
+                              </Alert>
+                            ) : preferencesLoading || taxonomyLoading ? (
+                              <div className="flex h-[250px] items-center justify-center">
+                                <Spinner>Loading preferences...</Spinner>
+                              </div>
+                            ) : !preferencesPieChartData ||
+                              preferencesPieChartData.length === 0 ? (
+                              <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                                No preference data available yet. Add interests
+                                to see insights.
+                              </p>
+                            ) : (
+                              <div className="h-[300px] w-full">
+                                <ResponsiveContainer>
+                                  <PieChart>
+                                    <Pie
+                                      data={preferencesPieChartData}
+                                      cx="50%"
+                                      cy="50%"
+                                      labelLine={false}
+                                      label={renderCustomizedLabel}
+                                      outerRadius={100}
+                                      fill="#8884d8"
+                                      dataKey="value"
+                                      nameKey="name"
+                                    >
+                                      {preferencesPieChartData.map(
+                                        (_entry, index) => (
+                                          <Cell
+                                            key={`cell-${index}`}
+                                            fill={
+                                              LINE_COLORS[
+                                                index % LINE_COLORS.length
+                                              ]
+                                            }
+                                          />
+                                        ),
+                                      )}
+                                    </Pie>
+                                    <RechartsTooltip
+                                      formatter={(value: number) =>
+                                        `${Math.round(value * 100)}% Interest`
+                                      }
+                                    />
+                                    <RechartsLegend />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <DemoInfoCard
-                              icon={HiOutlineUserCircle}
-                              label="Gender"
-                              value={profile?.demographicData?.gender}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineCake}
-                              label="Age"
-                              value={profile?.demographicData?.age?.toString()}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineGlobeAlt}
-                              label="Country"
-                              value={profile?.demographicData?.country}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineCash}
-                              label="Income Bracket"
-                              value={profile?.demographicData?.incomeBracket}
-                              isLoading={profileLoading}
-                            />
+
+                          {/* Section 2: About You */}
+                          {/* Removed original mt-6, border-t, pt-6 wrapper. Added mt-6 for small screens, md:mt-0 for larger */}
+                          <div className="mt-6 flex-1 md:mt-0">
+                            <h4 className="mb-4 text-base font-medium text-gray-700 dark:text-gray-300">
+                              About You
+                            </h4>
+                            {profileError ? (
+                              <Alert color="failure" icon={HiInformationCircle}>
+                                Could not load profile information.
+                              </Alert>
+                            ) : profileLoading ? (
+                              <div className="flex h-[250px] items-center justify-center">
+                                <Spinner>Loading profile...</Spinner>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <DemoInfoCard
+                                  icon={HiOutlineUserCircle}
+                                  label="Gender"
+                                  value={profile?.demographicData?.gender}
+                                  isLoading={profileLoading}
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineCake}
+                                  label="Age"
+                                  value={profile?.demographicData?.age?.toString()}
+                                  isLoading={profileLoading}
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineGlobeAlt}
+                                  label="Country"
+                                  value={profile?.demographicData?.country}
+                                  isLoading={profileLoading}
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineCash}
+                                  label="Income Bracket"
+                                  value={
+                                    profile?.demographicData?.incomeBracket
+                                  }
+                                  isLoading={profileLoading}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>{" "}
+                        {/* End of new flex container */}
                       </div>
+                      <Button
+                        color="light"
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index
+                      >
+                        Manage All Preferences{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
                     </Card>
                   </div>
                 )}
