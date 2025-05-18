@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"; // <-- Import useState, useEffect
+import React, { useState, useMemo, useEffect, useRef } from "react"; // <-- Added useRef
 import {
   Card,
   Alert,
@@ -15,6 +15,7 @@ import {
   Spinner,
   Tabs,
   TabItem,
+  type TabsRef, // <-- Added TabsRef type import
 } from "flowbite-react";
 import {
   HiOutlineNewspaper,
@@ -60,6 +61,8 @@ import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   StoreBasicInfo,
   MonthlySpendingItem,
+  RecentUserDataEntry, // Keep this import
+  TaxonomyCategory, // Keep this import
 } from "../../api/types/data-contracts";
 import { InterestFormModal } from "../../components/auth/InterestFormModal";
 
@@ -136,6 +139,7 @@ interface CustomizedLabelProps {
   innerRadius: number;
   outerRadius: number;
   percent: number;
+  name: string;
 }
 
 const renderCustomizedLabel = ({
@@ -160,6 +164,7 @@ const renderCustomizedLabel = ({
       textAnchor={x > cx ? "start" : "end"}
       dominantBaseline="central"
       fontSize={12}
+      fontWeight="bold"
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
@@ -201,6 +206,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
 export default function UserDashboard() {
   // --- State for Active Tab ---
   const [activeTab, setActiveTab] = useState(0); // 0 = Overview, 1 = Profile, etc.
+  const tabsRef = useRef<TabsRef>(null); // <-- Added ref for Tabs component
 
   // --- State for Date Range ---
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -222,7 +228,7 @@ export default function UserDashboard() {
     data: recentActivity,
     isLoading: activityLoading,
     error: activityError,
-  } = useRecentUserData({ limit: 3 });
+  } = useRecentUserData({ limit: 3 }); // Fetch 3 for overview
   const {
     data: spendingData,
     isLoading: spendingLoading,
@@ -313,7 +319,7 @@ export default function UserDashboard() {
     // Build helper maps from taxonomy
     const categoryNameMap = new Map<string, string>();
     const parentMap = new Map<string, string | null>();
-    taxonomyData.categories.forEach((cat) => {
+    taxonomyData.categories.forEach((cat: TaxonomyCategory) => {
       categoryNameMap.set(cat.id, cat.name);
       parentMap.set(cat.id, cat.parent_id || null);
     });
@@ -349,9 +355,9 @@ export default function UserDashboard() {
         if (topLevelCat) {
           const current = aggregatedScores.get(topLevelCat.id) || {
             name: topLevelCat.name,
-            value: 0, // Use 'value'
+            value: 0,
           };
-          current.value += pref.score; // Add score to value
+          current.value += pref.score; // Sum scores (assuming score is 0-1)
           aggregatedScores.set(topLevelCat.id, current);
         }
       }
@@ -359,9 +365,6 @@ export default function UserDashboard() {
 
     // Convert map to array suitable for PieChart
     const chartData = Array.from(aggregatedScores.values());
-
-    // Optional: Normalize scores to percentages if needed, or just use raw scores
-    // For PieChart, raw values usually work fine as it calculates percentages internally.
 
     // Filter out items with zero or negative score if necessary
     return chartData.filter((item) => item.value > 0);
@@ -420,6 +423,7 @@ export default function UserDashboard() {
     <>
       <div className="container mx-auto px-4 pb-12">
         <Tabs
+          ref={tabsRef} // <-- Assign ref to Tabs
           aria-label="User dashboard tabs"
           variant="underline"
           onActiveTabChange={(tab) => setActiveTab(tab)}
@@ -488,22 +492,24 @@ export default function UserDashboard() {
                         ) : (
                           <div className="p-4">
                             <Timeline>
-                              {recentActivity.map((entry) => (
-                                <TimelineItem key={entry._id}>
-                                  <TimelinePoint icon={HiClock} />
-                                  <TimelineContent>
-                                    <TimelineTime>
-                                      {formatDate(entry.timestamp)}
-                                    </TimelineTime>
-                                    <TimelineTitle className="capitalize">
-                                      {entry.dataType}
-                                      {entry.storeId &&
-                                        ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
-                                    </TimelineTitle>
-                                    {/* Further details can be added here if needed */}
-                                  </TimelineContent>
-                                </TimelineItem>
-                              ))}
+                              {recentActivity.map(
+                                (entry: RecentUserDataEntry) => (
+                                  <TimelineItem key={entry._id}>
+                                    <TimelinePoint icon={HiClock} />
+                                    <TimelineContent>
+                                      <TimelineTime>
+                                        {formatDate(entry.timestamp)}
+                                      </TimelineTime>
+                                      <TimelineTitle className="capitalize">
+                                        {entry.dataType}
+                                        {entry.storeId &&
+                                          ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
+                                      </TimelineTitle>
+                                      {/* Further details can be added here if needed */}
+                                    </TimelineContent>
+                                  </TimelineItem>
+                                ),
+                              )}
                             </Timeline>
                           </div>
                         )}
@@ -513,7 +519,7 @@ export default function UserDashboard() {
                         outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(3)} // 3 = Analytics Tab Index
                       >
                         View Full Activity Log{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
@@ -619,7 +625,7 @@ export default function UserDashboard() {
                         outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(3)} // 3 = Analytics Tab Index
                       >
                         View Detailed Analytics{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
@@ -676,7 +682,7 @@ export default function UserDashboard() {
                         outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(2)} // 2 = Sharing Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(2)} // 2 = Sharing Tab Index
                       >
                         Manage Sharing Settings{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
@@ -800,7 +806,7 @@ export default function UserDashboard() {
                         outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(1)} // 1 = Preferences Tab Index
                       >
                         Manage All Preferences{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
