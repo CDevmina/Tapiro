@@ -48,6 +48,7 @@ import {
   PreferenceItem,
   TaxonomyCategory,
   DemographicData, // <-- Import DemographicData type
+  TaxonomyAttribute, // <-- Import TaxonomyAttribute if not already (assuming it exists based on usage)
 } from "../../api/types/data-contracts";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorDisplay from "../../components/common/ErrorDisplay";
@@ -341,15 +342,15 @@ const UserPreferencesPage: React.FC = () => {
   ]);
 
   // --- Memos ---
-  const { categoryMap, attributeMap } = useMemo(() => {
+  const { categoryMap, fullAttributeMap } = useMemo(() => {
     const catMap = new Map<string, TaxonomyCategory>();
-    const attrMap = new Map<string, Map<string, string>>(); // categoryId -> Map<attrName, attrDescription>
+    const attrFullMap = new Map<string, Map<string, TaxonomyAttribute>>(); // Changed type
     if (taxonomyData?.categories) {
       taxonomyData.categories.forEach((cat) => {
         catMap.set(cat.id, cat);
-        const catAttrs = new Map<string, string>();
+        const catAttrs = new Map<string, TaxonomyAttribute>(); // Changed type
         cat.attributes?.forEach((attr) => {
-          catAttrs.set(attr.name, attr.description || attr.name);
+          catAttrs.set(attr.name, attr); // Store the whole attribute object
         });
         // Include parent attributes (simple one-level for now)
         if (cat.parent_id) {
@@ -359,20 +360,23 @@ const UserPreferencesPage: React.FC = () => {
           parentCat?.attributes?.forEach((attr) => {
             if (!catAttrs.has(attr.name)) {
               // Avoid overwriting child attributes
-              catAttrs.set(attr.name, attr.description || attr.name);
+              catAttrs.set(attr.name, attr); // Store the whole attribute object
             }
           });
         }
-        attrMap.set(cat.id, catAttrs);
+        attrFullMap.set(cat.id, catAttrs);
       });
     }
-    return { categoryMap: catMap, attributeMap: attrMap };
+    return { categoryMap: catMap, fullAttributeMap: attrFullMap };
   }, [taxonomyData]);
 
   const selectedCategoryId = watchPref("category");
-  const availableAttributes = useMemo(() => {
-    return attributeMap.get(selectedCategoryId) || new Map();
-  }, [selectedCategoryId, attributeMap]);
+  const attributesForForm = useMemo(() => {
+    return (
+      fullAttributeMap.get(selectedCategoryId) ||
+      new Map<string, TaxonomyAttribute>()
+    );
+  }, [selectedCategoryId, fullAttributeMap]);
 
   // --- Handlers ---
   // Update onDemoSubmit to handle all fields and nest payload
@@ -1196,35 +1200,48 @@ const UserPreferencesPage: React.FC = () => {
             </div>
 
             {/* Attributes */}
-            {selectedCategoryId && availableAttributes.size > 0 && (
+            {selectedCategoryId && attributesForForm.size > 0 && (
               <fieldset className="rounded border p-4 dark:border-gray-600">
                 <legend className="-ml-1 px-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Refine Interest (Optional)
                 </legend>
                 <div className="grid grid-cols-1 gap-4 pt-3 sm:grid-cols-2">
-                  {Array.from(availableAttributes.entries()).map(
-                    ([attrName, attrDesc]) => (
-                      <div key={attrName}>
-                        <Label
-                          htmlFor={`attr-${attrName}`}
-                          className="mb-1 text-xs"
-                        >
-                          {attrDesc || attrName}
-                        </Label>
-                        <TextInput
-                          id={`attr-${attrName}`}
-                          {...registerPref(`attributes.${attrName}`)}
-                          placeholder={`e.g., ${
-                            attrName === "color"
-                              ? "Blue"
-                              : attrName === "brand"
-                                ? "Acme"
-                                : "Any"
-                          }`}
-                          className="text-sm"
-                        />
-                      </div>
-                    ),
+                  {Array.from(attributesForForm.entries()).map(
+                    ([attrName, attributeObject]) => {
+                      if (
+                        attributeObject.values &&
+                        attributeObject.values.length > 0
+                      ) {
+                        return (
+                          <div key={attrName}>
+                            <Label
+                              htmlFor={`attr-${attrName}`}
+                              className="mb-1 text-xs"
+                            >
+                              {attributeObject.description || attrName}
+                            </Label>
+                            <Select
+                              id={`attr-${attrName}`}
+                              {...registerPref(`attributes.${attrName}`)}
+                              className="text-sm"
+                            >
+                              <option value="">
+                                Select {attributeObject.description || attrName}
+                                ...
+                              </option>
+                              {attributeObject.values.map((val) => (
+                                <option key={val} value={val}>
+                                  {val}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                        );
+                      }
+                      // If attribute has no predefined values, it won't be rendered as a dropdown.
+                      // You could add a TextInput here as a fallback if needed.
+                      return null;
+                    },
                   )}
                 </div>
               </fieldset>
