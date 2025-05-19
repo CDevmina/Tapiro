@@ -1245,6 +1245,18 @@ const UserPreferencesPage: React.FC = () => {
                       value={value ?? 50}
                       onChange={(e) => onChange(parseInt(e.target.value, 10))}
                       className="flex-grow"
+                      theme={{
+                        field: {
+                          input: {
+                            base: "h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-600", // Adjusted dark mode background for better contrast
+                            sizes: {
+                              sm: "h-1",
+                              md: "h-2",
+                              lg: "h-3",
+                            },
+                          },
+                        },
+                      }}
                     />
                     <span className="w-10 text-right text-sm font-medium text-gray-900 dark:text-white">
                       {value ?? 50}
