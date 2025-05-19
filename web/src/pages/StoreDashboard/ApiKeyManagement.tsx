@@ -328,13 +328,13 @@ export function ApiKeyManagement() {
                   type="text"
                   value={generatedApiKey.apiKey} // Display the full key here
                   readOnly
-                  className="pr-10" // Add padding for the button
+                  className="pr-12" // Increased padding for more space for the button
                 />
                 <Tooltip content={copied ? "Copied!" : "Copy to clipboard"}>
                   <Button
                     size="sm"
                     color="gray"
-                    className="absolute inset-y-0 right-0 mr-1 flex items-center px-2"
+                    className="absolute inset-y-0 right-0 mr-2 flex items-center px-2" // Increased mr-1 to mr-2
                     onClick={copyToClipboard}
                   >
                     {copied ? (
@@ -357,7 +357,10 @@ export function ApiKeyManagement() {
               className="space-y-4"
             >
               <div>
-                <Label htmlFor="keyName">Key Name</Label>
+                <Label htmlFor="keyName" className="mb-1 block">
+                  Key Name
+                </Label>{" "}
+                {/* Added mb-1 and block */}
                 <TextInput
                   id="keyName"
                   type="text"
