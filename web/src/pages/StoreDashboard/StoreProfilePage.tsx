@@ -3,7 +3,6 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import {
   Button,
   Card,
-  FloatingLabel,
   HelperText,
   Spinner,
   Tabs,
@@ -13,6 +12,8 @@ import {
   Modal, // Import Modal
   ModalBody,
   ModalHeader,
+  Label, // <-- Add Label
+  TextInput, // <-- Add TextInput
 } from "flowbite-react";
 // Import necessary icons
 import {
@@ -215,12 +216,18 @@ export default function StoreProfilePage() {
                 Store Information
               </h2>
               {/* Store Name */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="name"
+                    color={errors.name ? "failure" : "default"}
+                  >
+                    Store Name
+                  </Label>
+                </div>
+                <TextInput
                   id="name"
-                  label="Store Name"
-                  color={errors.name ? "error" : "default"}
+                  placeholder="Enter store name"
                   {...register("name", { required: "Store name is required" })}
                 />
                 {errors.name?.message && (
@@ -229,13 +236,19 @@ export default function StoreProfilePage() {
               </div>
 
               {/* Address */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="address"
+                    color={errors.address ? "failure" : "default"}
+                  >
+                    Address
+                  </Label>
+                </div>
+                <TextInput
                   id="address"
-                  label="Address"
-                  color={errors.address ? "error" : "default"}
-                  {...register("address")} // Add validation if required
+                  placeholder="Enter store address"
+                  {...register("address")}
                 />
                 {errors.address?.message && (
                   <HelperText color="failure">

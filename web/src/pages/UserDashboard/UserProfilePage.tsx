@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   ToggleSwitch,
-  FloatingLabel,
   HelperText,
   Spinner,
   Tabs,
@@ -15,6 +14,8 @@ import {
   ModalBody,
   ModalHeader,
   Tooltip, // <-- Import Tooltip
+  Label, // <-- Add Label
+  TextInput, // <-- Add TextInput
 } from "flowbite-react";
 // Import necessary icons
 import {
@@ -239,12 +240,18 @@ export default function UserProfilePage() {
                 Basic Information
               </h2>
               {/* Username */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="username"
+                    color={errors.username ? "failure" : "default"}
+                  >
+                    Username
+                  </Label>
+                </div>
+                <TextInput
                   id="username"
-                  label="Username"
-                  color={errors.username ? "error" : "default"}
+                  placeholder="Enter username"
                   {...register("username", {
                     required: "Username is required",
                     minLength: {
@@ -270,12 +277,18 @@ export default function UserProfilePage() {
               </div>
 
               {/* Phone Number */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="phone"
+                    color={errors.phone ? "failure" : "default"}
+                  >
+                    Phone Number
+                  </Label>
+                </div>
+                <TextInput
                   id="phone"
-                  label="Phone Number (e.g., +14155552671)"
-                  color={errors.phone ? "error" : "default"}
+                  placeholder="e.g., +14155552671"
                   {...register("phone", {
                     pattern: {
                       value: /^\+[1-9]\d{1,14}$/,
