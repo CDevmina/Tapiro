@@ -825,16 +825,6 @@ const UserPreferencesPage: React.FC = () => {
               {/* Form Actions */}
               <div className="flex justify-end space-x-3 pt-2">
                 <Button
-                  color="gray"
-                  onClick={() => {
-                    setIsEditingDemographics(false);
-                    resetDemoForm();
-                  }}
-                  disabled={isMutating}
-                >
-                  <HiX className="mr-1 h-4 w-4" /> Cancel
-                </Button>
-                <Button
                   type="submit"
                   disabled={isUpdatingProfile || !isDemoDirty}
                 >
@@ -847,6 +837,16 @@ const UserPreferencesPage: React.FC = () => {
                       <HiCheck className="mr-1 h-4 w-4" /> Save Changes
                     </>
                   )}
+                </Button>
+                <Button
+                  color="gray"
+                  onClick={() => {
+                    setIsEditingDemographics(false);
+                    resetDemoForm();
+                  }}
+                  disabled={isMutating}
+                >
+                  <HiX className="mr-1 h-4 w-4" /> Cancel
                 </Button>
               </div>
             </form>
@@ -1259,13 +1259,6 @@ const UserPreferencesPage: React.FC = () => {
             </div>
           </ModalBody>
           <ModalFooter className="justify-end">
-            <Button
-              color="gray"
-              onClick={() => setShowPreferenceModal(false)}
-              disabled={isMutating}
-            >
-              Cancel
-            </Button>
             <Button type="submit" disabled={isMutating}>
               {isUpdatingPreferences ? (
                 <>
@@ -1276,6 +1269,13 @@ const UserPreferencesPage: React.FC = () => {
               ) : (
                 "Add Interest"
               )}
+            </Button>
+            <Button
+              color="gray"
+              onClick={() => setShowPreferenceModal(false)}
+              disabled={isMutating}
+            >
+              Cancel
             </Button>
           </ModalFooter>
         </form>
