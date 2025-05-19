@@ -2,6 +2,7 @@ import { Outlet, useLocation, matchPath } from "react-router";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { Breadcrumbs } from "../components/layout/Breadcrumbs";
+import { RegistrationGuard } from "../components/auth/RegistrationGuard";
 
 export function Layout() {
   const location = useLocation();
@@ -28,7 +29,9 @@ export function Layout() {
             <Breadcrumbs />
           </div>
         )}
-        <Outlet />
+        <RegistrationGuard>
+          <Outlet />
+        </RegistrationGuard>
       </main>
       <Footer />
     </div>
