@@ -5,6 +5,7 @@ interface ProductCardProps {
   onProductClick?: (product: Product) => void; // Handler for clicks
   onPurchaseClick?: (product: Product) => void; // Handler for purchase clicks
   isRecommended?: boolean; // Optional flag for highlighting
+  categoryNameMap: Record<string, string>; // Add categoryNameMap prop
 }
 
 export function ProductCard({
@@ -12,6 +13,7 @@ export function ProductCard({
   onProductClick,
   onPurchaseClick,
   isRecommended,
+  categoryNameMap, // Destructure categoryNameMap
 }: ProductCardProps) {
   const handleCardClick = () => {
     if (onProductClick) {
@@ -52,7 +54,8 @@ export function ProductCard({
             {product.name}
           </h3>
           <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            Category: {product.categoryId}
+            Category:{" "}
+            {categoryNameMap[product.categoryId] || product.categoryId}
           </p>
           {product.description && (
             <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">

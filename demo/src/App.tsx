@@ -548,61 +548,119 @@ function App() {
       </header>
 
       <main className="container mx-auto p-4">
-        {/* Display User Preferences */}
+        {/* User Info & Preferences Display Area */}
+        {(userEmail || apiKey) && (
+          <div className="mb-6 rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Demo Store
+                </h2>
+                {userEmail && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    User: {userEmail}
+                  </p>
+                )}
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  API Key:{" "}
+                  <span className="font-mono text-xs">{displayApiKey}</span>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsApiKeyModalOpen(true)}
+                  className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                >
+                  {apiKey ? "Change API Key" : "Set API Key"}
+                </button>
+                <button
+                  onClick={() => {
+                    setUserEmail(null);
+                    localStorage.removeItem("tapiroDemoUserEmail");
+                    setIsEmailModalOpen(true);
+                  }}
+                  className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                >
+                  {userEmail ? "Change User" : "Set User"}
+                </button>
+              </div>
+            </div>
+            {apiError && (
+              <div className="mt-4 rounded-md bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
+                <strong>Error:</strong> {apiError}
+              </div>
+            )}
+            {apiSuccessMessage && (
+              <div className="mt-4 rounded-md bg-green-100 p-3 text-sm text-green-700 dark:bg-green-900 dark:text-green-200">
+                <strong>Success:</strong> {apiSuccessMessage}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Preferences Display - only if preferences exist */}
         {preferences && preferences.length > 0 && (
           <div className="mb-6 rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-            <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
-              Your Preferences
-            </h2>
-            <ul className="space-y-3">
-              {preferences.map((pref, index) => {
-                const categoryName =
-                  categoryNameMap[pref.category] || pref.category;
-                const displayCategory = categoryNameMap[pref.category]
-                  ? `${categoryName} (${pref.category})`
-                  : pref.category;
-
-                return (
-                  <li
-                    key={index}
-                    className="rounded-md border border-gray-200 p-3 dark:border-gray-700"
-                  >
-                    <p className="font-medium text-gray-800 dark:text-gray-200">
-                      Category:{" "}
-                      <span className="font-normal">{displayCategory}</span>
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Score:{" "}
-                      <span className="font-normal">
-                        {(pref.score * 100).toFixed(0)}%
-                      </span>
-                    </p>
-                    {pref.attributes &&
-                      Object.keys(pref.attributes).length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Attributes:
-                          </p>
-                          <ul className="ml-4 list-disc space-y-1 text-xs text-gray-500 dark:text-gray-400">
-                            {Object.entries(pref.attributes).map(
-                              ([attrKey, attrValueObj]) => (
-                                <li key={attrKey}>
-                                  {attrKey}:{" "}
-                                  {Object.entries(attrValueObj)
-                                    .map(
-                                      ([val, score]) =>
-                                        `${val} (${(score * 100).toFixed(0)}%)`
-                                    )
-                                    .join(", ")}
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                  </li>
-                );
-              })}
+            <h3 className="mb-3 text-lg font-semibold text-gray-800 dark:text-white">
+              Your Inferred Preferences
+            </h3>
+            <ul className="space-y-2">
+              {preferences
+                .filter((p) => p.score > 0.1) // Only show relevant preferences
+                .sort((a, b) => b.score - a.score) // Sort by score desc
+                .slice(0, 10) // Show top 10
+                .map((pref) => {
+                  const categoryName =
+                    categoryNameMap[pref.category] || pref.category;
+                  return (
+                    <li
+                      key={pref.category}
+                      className="rounded-md border border-gray-200 p-3 dark:border-gray-700"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {categoryName}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            pref.score > 0.65
+                              ? "bg-green-100 text-green-700 dark:bg-green-700 dark:text-green-100"
+                              : pref.score > 0.35
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-600 dark:text-yellow-100"
+                              : "bg-red-100 text-red-700 dark:bg-red-700 dark:text-red-100"
+                          }`}
+                        >
+                          Score: {(pref.score * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      {pref.attributes &&
+                        Object.keys(pref.attributes).length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                              Attribute Preferences:
+                            </p>
+                            <ul className="ml-4 list-disc space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                              {Object.entries(pref.attributes).map(
+                                ([attrKey, attrValueObj]) => (
+                                  <li key={attrKey}>
+                                    {attrKey}:{" "}
+                                    {Object.entries(attrValueObj)
+                                      .map(
+                                        ([val, score]) =>
+                                          `${val} (${(score * 100).toFixed(
+                                            0
+                                          )}%)`
+                                      )
+                                      .join(", ")}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         )}
@@ -613,22 +671,19 @@ function App() {
             {searchQuery ? `Search Results for "${searchQuery}"` : "Products"}
             {isLoadingPrefs &&
               apiKey &&
-              userEmail && ( // Only show loading if key and email are set
-                <span className="ml-2 text-sm text-gray-500">
-                  (Loading Preferences...)
+              userEmail && ( // Only show loading if API key and email are set
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                  (Loading preferences...)
                 </span>
               )}
-            {(!apiKey || !userEmail) && ( // Show message if key or email is missing
-              <span className="ml-2 text-sm text-yellow-600 dark:text-yellow-400">
-                (Set API Key and User Email to see personalized results)
-              </span>
-            )}
           </h2>
+          <SearchBar onSearch={handleSearch} initialQuery={searchQuery} />
           <ProductList
             products={displayedProducts}
             onProductClick={handleProductClick}
             onPurchaseClick={handlePurchaseClick}
             recommendedProductIds={recommendedProductIds}
+            categoryNameMap={categoryNameMap}
           />
         </div>
       </main>

@@ -6,6 +6,7 @@ interface ProductListProps {
   onProductClick?: (product: Product) => void; // Pass click handler down
   onPurchaseClick?: (product: Product) => void; // Pass purchase click handler down
   recommendedProductIds?: Set<string>; // Set of IDs to highlight
+  categoryNameMap: Record<string, string>; // Add categoryNameMap prop
 }
 
 export function ProductList({
@@ -13,6 +14,7 @@ export function ProductList({
   onProductClick,
   onPurchaseClick,
   recommendedProductIds = new Set(),
+  categoryNameMap, // Destructure categoryNameMap
 }: ProductListProps) {
   if (!products || products.length === 0) {
     return (
@@ -31,6 +33,7 @@ export function ProductList({
           onProductClick={onProductClick}
           onPurchaseClick={onPurchaseClick}
           isRecommended={recommendedProductIds.has(product.id)}
+          categoryNameMap={categoryNameMap} // Pass categoryNameMap to ProductCard
         />
       ))}
     </div>
