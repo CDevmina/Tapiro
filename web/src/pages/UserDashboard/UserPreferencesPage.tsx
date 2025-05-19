@@ -839,7 +839,7 @@ const UserPreferencesPage: React.FC = () => {
                   )}
                 </Button>
                 <Button
-                  color="gray"
+                  color="alternative"
                   onClick={() => {
                     setIsEditingDemographics(false);
                     resetDemoForm();
@@ -1271,7 +1271,7 @@ const UserPreferencesPage: React.FC = () => {
               )}
             </Button>
             <Button
-              color="gray"
+              color="alternative"
               onClick={() => setShowPreferenceModal(false)}
               disabled={isMutating}
             >
