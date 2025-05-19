@@ -103,7 +103,13 @@ exports.optOutFromStore = async function (req, storeId) {
     );
 
     // Clear relevant caches
-    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    // Ensure user.email is available from the 'user' object fetched earlier.
+    if (user.email) {
+      await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+      console.log(`Invalidated store preference cache (email key): ${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+    } else {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) opted out from store ${storeId} but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
+    }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
 
@@ -194,7 +200,7 @@ exports.updateUserPreferences = async function (req, body) {
     // No need to fetch again if we trust the update, but it confirms the write
     const updatedUser = await db.collection('users').findOne(
         { _id: user._id },
-        { projection: { preferences: 1, updatedAt: 1 } }
+        { projection: { preferences: 1, updatedAt: 1, email: 1, privacySettings: 1 } }
     );
 
     // Clear related caches
@@ -202,23 +208,24 @@ exports.updateUserPreferences = async function (req, body) {
     await invalidateCache(userCacheKey);
     console.log(`Invalidated general preferences cache: ${userCacheKey}`);
 
-    // Clear store-specific preference caches as preferences changed
-    if (user.privacySettings?.optInStores && user.privacySettings.optInStores.length > 0) {
-      console.log(`Invalidating store-specific preferences for user ${user._id} (Auth0 ID: ${userData.sub}) across ${user.privacySettings.optInStores.length} stores.`);
-      for (const storeId of user.privacySettings.optInStores) {
-        // Invalidate cache key used internally (if any) or by other services using MongoDB ID
-        const internalStorePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`;
-        await invalidateCache(internalStorePrefCacheKey);
-        console.log(`Invalidated internal store preferences cache: ${internalStorePrefCacheKey}`);
+    // Invalidate USER_DATA cache as the user document (updatedAt) has changed
+    const userDataCacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
+    await invalidateCache(userDataCacheKey);
+    console.log(`Invalidated user data cache: ${userDataCacheKey}`);
 
-        // Also invalidate the cache key used by the external API (which uses email as userId)
-        if (userData.email) {
-          const externalStorePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userData.email}:${storeId}`;
-          await invalidateCache(externalStorePrefCacheKey);
-          console.log(`Invalidated external API store preferences cache: ${externalStorePrefCacheKey}`);
-        } else {
-          console.warn(`User email not found in userData for Auth0 ID ${userData.sub}. Cannot invalidate external API store preferences cache by email for store ${storeId}.`);
+    // Clear store-specific preference caches as preferences changed
+    if (updatedUser.privacySettings?.optInStores && updatedUser.privacySettings.optInStores.length > 0) {
+      const userEmail = updatedUser.email; 
+      if (userEmail) {
+        console.log(`Invalidating store-specific preferences for user ${updatedUser._id} (Email: ${userEmail}) across ${updatedUser.privacySettings.optInStores.length} stores.`);
+        for (const storeId of updatedUser.privacySettings.optInStores) {
+          // Standardize to use email for the cache key
+          const storePrefCacheKeyByEmail = `${CACHE_KEYS.STORE_PREFERENCES}${userEmail}:${storeId}`;
+          await invalidateCache(storePrefCacheKeyByEmail);
+          console.log(`Invalidated store preference cache (email key): ${storePrefCacheKeyByEmail}`);
         }
+      } else {
+        console.warn(`User ${updatedUser._id} (Auth0 ID: ${userData.sub}) has opt-in stores but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
       }
     }
 
@@ -296,7 +303,13 @@ exports.optInToStore = async function (req, storeId) {
     );
 
     // Clear relevant caches
-    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    // Ensure user.email is available from the 'user' object fetched earlier.
+    if (user.email) {
+      await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+      console.log(`Invalidated store preference cache (email key): ${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+    } else {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) opted into store ${storeId} but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
+    }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
 

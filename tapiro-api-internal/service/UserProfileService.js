@@ -266,10 +266,10 @@ exports.deleteUserProfile = async function (req) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
-    // Find user to get ID for cache invalidation later
+    // Find user to get ID and email for cache invalidation later
     const user = await db
       .collection('users')
-      .findOne({ auth0Id: userData.sub }, { projection: { _id: 1, privacySettings: 1 } });
+      .findOne({ auth0Id: userData.sub }, { projection: { _id: 1, email: 1, privacySettings: 1 } }); // Ensure email is projected
     if (!user) {
       return respondWithCode(404, {
         code: 404,
@@ -297,10 +297,16 @@ exports.deleteUserProfile = async function (req) {
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
 
     // Clear related store preference caches
-    if (userPrivacySettings?.optInStores) {
+    if (user.email && userPrivacySettings?.optInStores && userPrivacySettings.optInStores.length > 0) { // Check if user.email is available and stores exist
+      console.log(`Invalidating store-specific preferences for deleted user ${user.email} across ${userPrivacySettings.optInStores.length} stores.`);
       for (const storeId of userPrivacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+        // Use email for the cache key
+        const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`;
+        await invalidateCache(storePrefCacheKey);
+        console.log(`Invalidated store preference cache (email key): ${storePrefCacheKey}`);
       }
+    } else if (!user.email && userPrivacySettings?.optInStores && userPrivacySettings.optInStores.length > 0) {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) was deleted and had opt-in stores, but email was missing. Cannot invalidate STORE_PREFERENCES by email.`);
     }
 
     return respondWithCode(204);

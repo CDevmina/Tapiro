@@ -492,17 +492,31 @@ async def process_user_data(data: UserDataEntry, db) -> UserPreferences:
         logger.info(f"Skipping demographic inference for user {email} ({user_id}) as allowInference is False.")
 
     auth0_id = user.get("auth0Id")
+    email = user.get("email") # Ensure email is fetched
+
     if auth0_id:
         logger.info(f"Running post-processing cache invalidation for user {auth0_id}.")
         await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
         await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}")
         logger.info(f"Invalidated USER_DATA and PREFERENCES caches for user {auth0_id} (post-processing)")
-        if user.get("privacySettings", {}).get("optInStores"):
+        
+        if email and user.get("privacySettings", {}).get("optInStores"): # Check if email is available
             for store_id in user["privacySettings"]["optInStores"]:
-                await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_id}:{store_id}")
-            logger.info(f"Invalidated STORE_PREFERENCES for user {auth0_id} for {len(user['privacySettings']['optInStores'])} stores.")
+                # Use email for STORE_PREFERENCES cache key
+                await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{email}:{store_id}")
+            logger.info(f"Invalidated STORE_PREFERENCES for user {email} (Auth0 ID: {auth0_id}) for {len(user['privacySettings']['optInStores'])} stores.")
+        elif not email and user.get("privacySettings", {}).get("optInStores"):
+            logger.warning(f"Cannot invalidate STORE_PREFERENCES for user {auth0_id} as email is missing from user object.")
+
     else:
-        logger.warning(f"Cannot invalidate caches for user {email} as auth0Id is missing.")
+        logger.warning(f"Cannot invalidate USER_DATA/PREFERENCES caches for user {email} as auth0Id is missing.")
+        # Attempt to invalidate STORE_PREFERENCES with email if available, even if auth0Id is missing for other caches
+        if email and user.get("privacySettings", {}).get("optInStores"):
+            for store_id in user["privacySettings"]["optInStores"]:
+                await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{email}:{store_id}")
+            logger.info(f"Invalidated STORE_PREFERENCES for user {email} (auth0Id missing) for {len(user['privacySettings']['optInStores'])} stores.")
+        elif not email and user.get("privacySettings", {}).get("optInStores"):
+            logger.warning(f"Cannot invalidate STORE_PREFERENCES for user as email is missing and auth0Id is missing.")
 
     return UserPreferences(
         user_id=user_id,
