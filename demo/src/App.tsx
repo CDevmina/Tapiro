@@ -19,6 +19,41 @@ interface UserPreferences {
   updatedAt: string;
 }
 
+// Simple map for category IDs to names for the demo
+const categoryNameMap: Record<string, string> = {
+  "100": "Electronics",
+  "101": "Mobile Phones",
+  "102": "Laptops",
+  "103": "Tablets",
+  "104": "Wearables",
+  "105": "Audio Devices",
+  "200": "Fashion",
+  "201": "Apparel",
+  "202": "Footwear",
+  "300": "Home Goods",
+  "301": "Furniture",
+  "302": "Kitchenware",
+  "303": "Gardening",
+  "304": "Home Improvement",
+  "400": "Beauty & Personal Care",
+  "401": "Skincare",
+  "402": "Makeup",
+  "500": "Media",
+  "501": "Books",
+  "502": "Movies & Music",
+  "600": "Health & Wellness",
+  "700": "Toys & Kids",
+  "701": "Baby Gear",
+  "702": "Kids Clothing",
+  "800": "Office Supplies",
+  "900": "Gaming",
+  "1100": "Grocery",
+  "1101": "Pantry Goods",
+  "1200": "Jewelry & Watches",
+  "1300": "Gifts",
+  "1400": "Software",
+};
+
 function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null); // State for API Key
@@ -90,9 +125,18 @@ function App() {
     // Sort by preference score if preferences are loaded
     if (preferences && preferences.length > 0) {
       const getScore = (product: Product): number => {
-        const categoryPreference = preferences.find(
-          (p) => p.category === product.categoryId
-        );
+        const categoryPreference = preferences.find((p) => {
+          const prefCat = p.category;
+          const prodCat = product.categoryId;
+          // Match if exact, or if prefCat is a prefix of prodCat AND
+          // (lengths are same OR the char in prodCat after prefCat prefix is not '0' - heuristic for demo)
+          return (
+            prodCat.startsWith(prefCat) &&
+            (prodCat.length === prefCat.length ||
+              (prefCat.length < prodCat.length &&
+                prodCat.charAt(prefCat.length) !== "0"))
+          );
+        });
 
         if (!categoryPreference) {
           return 0; // No preference for this category
@@ -363,9 +407,16 @@ function App() {
     if (preferences && preferences.length > 0 && displayedProducts.length > 0) {
       // Get scores for all currently displayed products
       const productScores = displayedProducts.map((product) => {
-        const categoryPreference = preferences.find(
-          (p) => p.category === product.categoryId
-        );
+        const categoryPreference = preferences.find((p) => {
+          const prefCat = p.category;
+          const prodCat = product.categoryId;
+          return (
+            prodCat.startsWith(prefCat) &&
+            (prodCat.length === prefCat.length ||
+              (prefCat.length < prodCat.length &&
+                prodCat.charAt(prefCat.length) !== "0"))
+          );
+        });
         if (!categoryPreference) return { id: product.id, score: 0 };
 
         let score = categoryPreference.score;
@@ -497,6 +548,65 @@ function App() {
       </header>
 
       <main className="container mx-auto p-4">
+        {/* Display User Preferences */}
+        {preferences && preferences.length > 0 && (
+          <div className="mb-6 rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
+              Your Preferences
+            </h2>
+            <ul className="space-y-3">
+              {preferences.map((pref, index) => {
+                const categoryName =
+                  categoryNameMap[pref.category] || pref.category;
+                const displayCategory = categoryNameMap[pref.category]
+                  ? `${categoryName} (${pref.category})`
+                  : pref.category;
+
+                return (
+                  <li
+                    key={index}
+                    className="rounded-md border border-gray-200 p-3 dark:border-gray-700"
+                  >
+                    <p className="font-medium text-gray-800 dark:text-gray-200">
+                      Category:{" "}
+                      <span className="font-normal">{displayCategory}</span>
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Score:{" "}
+                      <span className="font-normal">
+                        {(pref.score * 100).toFixed(0)}%
+                      </span>
+                    </p>
+                    {pref.attributes &&
+                      Object.keys(pref.attributes).length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Attributes:
+                          </p>
+                          <ul className="ml-4 list-disc space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            {Object.entries(pref.attributes).map(
+                              ([attrKey, attrValueObj]) => (
+                                <li key={attrKey}>
+                                  {attrKey}:{" "}
+                                  {Object.entries(attrValueObj)
+                                    .map(
+                                      ([val, score]) =>
+                                        `${val} (${(score * 100).toFixed(0)}%)`
+                                    )
+                                    .join(", ")}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         {/* Product List Area */}
         <div className="mt-6 rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">

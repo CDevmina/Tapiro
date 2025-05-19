@@ -202,7 +202,7 @@ exports.updateUserProfile = async function (req, body) {
       .findOneAndUpdate(
         { auth0Id: auth0UserId },
         { $set: updateData },
-        { returnDocument: 'after', projection: { preferences: 0 } },
+        { returnDocument: 'after', projection: { preferences: 0 } }, // Ensure email is projected
       );
 
     if (!result) {
@@ -222,18 +222,22 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // Invalidate store-specific preferences if demographics or relevant privacy settings changed
-    // (Keep existing logic, as privacySettingsChanged flag now includes allowInference)
     const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
-    if (
-      (demographicsChanged || privacySettingsChanged) &&
-      updatedUserDoc.privacySettings?.optInStores
-    ) {
-      const userObjectId = updatedUserDoc._id; // Use the _id from the updated result
-      console.log(`Invalidating store preferences for user ${userObjectId} due to update.`);
-      for (const storeId of updatedUserDoc.privacySettings.optInStores) {
-        const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`;
-        await invalidateCache(storePrefCacheKey);
-        console.log(`Invalidated cache: ${storePrefCacheKey}`);
+
+    if (demographicsChanged || privacySettingsChanged) {
+      const userObjectId = updatedUserDoc._id;
+      const userEmail = updatedUserDoc.email; // Make sure email is available in updatedUserDoc
+
+      if (userEmail && updatedUserDoc.privacySettings?.optInStores?.length > 0) {
+        console.log(`Invalidating store preferences for user ${userObjectId} (email: ${userEmail}) due to privacy/demographic update.`);
+        for (const storeId of updatedUserDoc.privacySettings.optInStores) {
+          // Invalidate cache key used by external API (email based)
+          const externalApiCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userEmail}:${storeId}`;
+          await invalidateCache(externalApiCacheKey);
+          console.log(`Invalidated external API cache: ${externalApiCacheKey}`);
+        }
+      } else if (privacySettingsChanged) { // Log if privacy changed but no stores to invalidate for or email missing
+        console.log(`Privacy settings changed for user ${userObjectId}. Email: ${userEmail}. OptInStores count: ${updatedUserDoc.privacySettings?.optInStores?.length || 0}. No specific external store preference caches to invalidate under these conditions, but general consent check will apply on cache miss.`);
       }
     }
 
