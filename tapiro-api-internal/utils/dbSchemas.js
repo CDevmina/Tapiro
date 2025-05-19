@@ -202,12 +202,12 @@ const storeSchema = {
           bsonType: 'array',
           items: {
             bsonType: 'object',
-            required: ['keyId', 'prefix', 'hashedKey', 'status', 'createdAt'],
+            required: ['keyId', 'prefix', 'hashedKey', 'status', 'createdAt', 'name'],
             properties: {
               keyId: { bsonType: 'string' },
               prefix: { bsonType: 'string' },
               hashedKey: { bsonType: 'string' },
-              name: { bsonType: 'string' },
+              name: { bsonType: 'string', description: "User-defined name for the API key" },
               status: { bsonType: 'string' },
               createdAt: { bsonType: 'date' },
             },

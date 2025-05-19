@@ -1052,10 +1052,15 @@ components:
                   prefer_not_to_say,
                   null,
                 ]
-            # REMOVED verification flags from update payload
 
     ApiKey:
       type: object
+      required:
+        - keyId
+        - prefix
+        - name
+        - createdAt
+        - status
       properties:
         keyId:
           type: string
@@ -1174,10 +1179,13 @@ components:
 
     ApiKeyCreate:
       type: object
+      required:
+        - name
       properties:
         name:
           type: string
           description: Name for the API key
+          minLength: 1
 
     ApiKeyList:
       type: array
