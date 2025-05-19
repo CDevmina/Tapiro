@@ -198,13 +198,27 @@ exports.updateUserPreferences = async function (req, body) {
     );
 
     // Clear related caches
-    const userCacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+    const userCacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`; // userData.sub is the Auth0 user ID
     await invalidateCache(userCacheKey);
+    console.log(`Invalidated general preferences cache: ${userCacheKey}`);
 
     // Clear store-specific preference caches as preferences changed
-    if (user.privacySettings?.optInStores) {
+    if (user.privacySettings?.optInStores && user.privacySettings.optInStores.length > 0) {
+      console.log(`Invalidating store-specific preferences for user ${user._id} (Auth0 ID: ${userData.sub}) across ${user.privacySettings.optInStores.length} stores.`);
       for (const storeId of user.privacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+        // Invalidate cache key used internally (if any) or by other services using MongoDB ID
+        const internalStorePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`;
+        await invalidateCache(internalStorePrefCacheKey);
+        console.log(`Invalidated internal store preferences cache: ${internalStorePrefCacheKey}`);
+
+        // Also invalidate the cache key used by the external API (which uses email as userId)
+        if (userData.email) {
+          const externalStorePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userData.email}:${storeId}`;
+          await invalidateCache(externalStorePrefCacheKey);
+          console.log(`Invalidated external API store preferences cache: ${externalStorePrefCacheKey}`);
+        } else {
+          console.warn(`User email not found in userData for Auth0 ID ${userData.sub}. Cannot invalidate external API store preferences cache by email for store ${storeId}.`);
+        }
       }
     }
 
@@ -215,8 +229,9 @@ exports.updateUserPreferences = async function (req, body) {
       updatedAt: updatedUser.updatedAt, // Use the actual updated timestamp
     };
 
-    // Update the cache with the new minimal response
+    // Update the general preferences cache with the new minimal response
     await setCache(userCacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
+    console.log(`Re-cached general preferences: ${userCacheKey}`);
 
     return respondWithCode(200, preferencesResponse);
 

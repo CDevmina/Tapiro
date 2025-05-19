@@ -202,7 +202,8 @@ exports.submitUserData = async function (req, body) {
     const insertedId = result.insertedId; // Get the ID of the inserted document
 
     // Invalidate the preferences cache
-    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${req.storeId}`);
+    // Use 'email' for STORE_PREFERENCES key to match how it's set in getUserPreferences
+    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${email}:${req.storeId}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${user.auth0Id}`);
 
     // Call AI service but DO NOT await it.
