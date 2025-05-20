@@ -66,6 +66,12 @@ exports.getUserPreferences = async function (req, userId) {
           $set: { updatedAt: new Date() },
         },
       );
+      // ---- ADD INVALIDATION ----
+      if (user.auth0Id) {
+        await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${user.auth0Id}`);
+        console.log(`Invalidated USER_STORE_CONSENT cache for user ${user.auth0Id} (Auth0 ID) due to auto opt-in by store ${req.storeId} in getUserPreferences.`);
+      }
+      // ---- END INVALIDATION ----
     }
 
     // Prepare user preferences
@@ -155,6 +161,12 @@ exports.submitUserData = async function (req, body) {
           $set: { updatedAt: new Date() },
         },
       );
+      // ---- ADD INVALIDATION ----
+      if (user.auth0Id) {
+        await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${user.auth0Id}`);
+        console.log(`Invalidated USER_STORE_CONSENT cache for user ${user.auth0Id} (Auth0 ID) due to auto opt-in by store ${req.storeId} in submitUserData.`);
+      }
+      // ---- END INVALIDATION ----
     }
 
     // Process entries to ensure proper data types

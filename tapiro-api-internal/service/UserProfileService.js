@@ -284,6 +284,7 @@ exports.deleteUserProfile = async function (req) {
     // Clear user-specific caches
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`);
 
     // Clear related store preference caches
     if (user.email && userPrivacySettings?.optInStores && userPrivacySettings.optInStores.length > 0) { // Check if user.email is available and stores exist

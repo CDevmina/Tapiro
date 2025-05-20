@@ -25,6 +25,7 @@ const CACHE_KEYS = {
   STORE_PREFERENCES: 'prefs:', // Store preferences
   TAXONOMY: 'taxonomy:current', // <-- Add this line
   AI_REQUEST: 'ai_request:', // AI service request cache
+  USER_STORE_CONSENT: 'userconsent:', // <-- ADD THIS LINE
 };
 
 module.exports = { CACHE_TTL, CACHE_KEYS };
