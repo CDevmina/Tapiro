@@ -220,7 +220,7 @@ export default function ApiDocsPage() {
         {/* Main Content Area */}
         <main className="w-full min-w-0 lg:flex-1">
           {/* Card already has dark:bg-gray-800 */}
-          <Card className="p-6 shadow-xl dark:bg-gray-800">
+          <Card className="px-6 pb-6 shadow-xl dark:bg-gray-800">
             {/* Introduction Section (Example) */}
             <section
               id="introduction"
