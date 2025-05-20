@@ -425,6 +425,58 @@ export interface DemographicData {
   inferredGender?: "male" | "female" | "non-binary" | null;
 }
 
+export interface PurchaseItem {
+  /** Stock Keeping Unit or unique product identifier. */
+  sku?: string;
+  /** Name of the purchased item. */
+  name: string;
+  /** Category ID or name matching the taxonomy. */
+  category: string;
+  /**
+   * Price of a single unit of the item.
+   * @format float
+   */
+  price?: number;
+  /**
+   * Number of units purchased.
+   * @default 1
+   */
+  quantity?: number;
+  /** Key-value pairs representing product attributes. */
+  attributes?: Record<string, any>;
+}
+
+export interface PurchaseEntry {
+  /**
+   * ISO 8601 timestamp of when the purchase occurred.
+   * @format date-time
+   */
+  timestamp: string;
+  /** List of items included in the purchase. */
+  items: PurchaseItem[];
+  /**
+   * Optional total value of the purchase event.
+   * @format float
+   */
+  totalValue?: number | null;
+}
+
+export interface SearchEntry {
+  /**
+   * ISO 8601 timestamp of when the search occurred.
+   * @format date-time
+   */
+  timestamp: string;
+  /** The search query string entered by the user. */
+  query: string;
+  /** Optional category context provided during the search. */
+  category?: string | null;
+  /** Optional number of results returned for the search query. */
+  results?: number | null;
+  /** Optional list of product IDs or SKUs clicked from the search results. */
+  clicked?: string[] | null;
+}
+
 export interface RecentUserDataEntry {
   /** The unique ID of the userData entry. */
   _id?: string;
@@ -442,8 +494,8 @@ export interface RecentUserDataEntry {
    * @format date-time
    */
   entryTimestamp?: string;
-  /** Simplified details (e.g., item count for purchase, query string for search) */
-  details?: object;
+  /** Array of individual purchase or search events within this batch. */
+  details?: (PurchaseEntry | SearchEntry)[];
 }
 
 export interface StoreBasicInfo {
