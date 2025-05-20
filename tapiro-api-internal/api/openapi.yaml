@@ -730,18 +730,25 @@ paths:
       x-swagger-router-controller: UserProfile
 
   /stores/lookup:
-    get:
+    post:
       tags: [Store Management]
       summary: Lookup Store Details
       description: Retrieves basic details (like name) for a list of store IDs.
       operationId: lookupStores
-      parameters:
-        - name: ids
-          in: query
-          description: Comma-separated list of store IDs to lookup.
-          required: true
-          schema:
-            type: string
+      requestBody: # Added requestBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: An array of store IDs to lookup.
       responses:
         "200":
           description: Store details retrieved successfully.

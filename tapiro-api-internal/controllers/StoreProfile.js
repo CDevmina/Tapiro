@@ -43,8 +43,8 @@ module.exports.searchStores = function searchStores(req, res, next) {
 };
 
 module.exports.lookupStores = function lookupStores(req, res, next) {
-  const { ids } = req.query;
-  StoreProfile.lookupStores(req, ids)
+  const body = req.body; // Get body from request
+  StoreProfile.lookupStores(req, body) // Pass body to service
     .then((response) => {
       utils.writeJson(res, response);
     })

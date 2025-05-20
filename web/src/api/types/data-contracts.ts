@@ -636,9 +636,9 @@ export interface GetSpendingAnalyticsParams {
   endDate?: string;
 }
 
-export interface LookupStoresParams {
-  /** Comma-separated list of store IDs to lookup. */
-  ids: string;
+export interface LookupStoresPayload {
+  /** An array of store IDs to lookup. */
+  ids: string[];
 }
 
 export interface SearchStoresParams {
