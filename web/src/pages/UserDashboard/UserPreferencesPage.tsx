@@ -178,27 +178,25 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
         <Spinner size="xs" />
       ) : (
         <div className="flex items-center justify-between">
-          {" "}
-          {/* Added justify-between */}
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
             {value || "Not set"}
-            {isInferred &&
-              value && ( // Show "(inferred)" text
-                <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
-                  (inferred)
-                </span>
-              )}
+            {isInferred && value && (
+              <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
+                (inferred)
+              </span>
+            )}
           </p>
-          {/* Show Verify button if inferred, has value, not loading, and handler provided */}
+          {/* Replace Verify button with icon button */}
           {isInferred && value && !isLoading && fieldName && onVerify && (
             <Button
               size="xs"
               color="blue"
-              outline // Added outline
-              className="ml-2 px-1.5 py-0.5" // Adjusted padding
-              onClick={() => onVerify(fieldName, value)} // Call handler with fieldName and current value
+              outline
+              className="p-1"
+              onClick={() => onVerify(fieldName, value)}
             >
-              Verify
+              <HiCheck className="h-3.5 w-3.5" />
+              <span className="sr-only">Verify</span>
             </Button>
           )}
         </div>
