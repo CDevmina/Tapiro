@@ -422,7 +422,7 @@ const UserAnalyticsPage: React.FC = () => {
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
               <Table hoverable>
                 <TableHead>
                   <TableRow>
