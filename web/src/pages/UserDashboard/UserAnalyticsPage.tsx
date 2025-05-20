@@ -17,10 +17,13 @@ import {
   Modal, // Added Modal
   ModalHeader,
   ModalBody,
+  ModalFooter, // Added ModalFooter
   Toast,
   ToastToggle,
   DropdownItem,
   DropdownDivider, // Added Toast
+  List, // Added List for modal details
+  ListItem, // Added ListItem for modal details
 } from "flowbite-react";
 import {
   ResponsiveContainer,
@@ -41,6 +44,7 @@ import {
   HiExclamation, // Added Exclamation icon for modal
   HiCheckCircle, // For success toast
   HiXCircle, // For error toast
+  HiOutlineEye, // Added Eye icon for view details
 } from "react-icons/hi";
 import {
   useRecentUserData,
@@ -73,7 +77,8 @@ const formatDate = (dateString: string | Date | undefined) => {
   });
 };
 
-const formatCurrency = (value: number) => {
+const formatCurrency = (value: number | undefined | null) => {
+  if (value === undefined || value === null) return "N/A";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -135,6 +140,11 @@ const UserAnalyticsPage: React.FC = () => {
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  // --- State for Details Modal ---
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedEntryForDetails, setSelectedEntryForDetails] =
+    useState<RecentUserDataEntry | null>(null);
 
   // --- Data Fetching ---
   const {
@@ -240,8 +250,6 @@ const UserAnalyticsPage: React.FC = () => {
   };
 
   // --- Pagination Logic ---
-  // Determine if there might be a next page
-  // We infer this if the current page loaded the maximum number of items
   const hasMoreData = useMemo(() => {
     return activityData && activityData.length === activityLimit;
   }, [activityData, activityLimit]);
@@ -317,10 +325,14 @@ const UserAnalyticsPage: React.FC = () => {
     });
   };
 
+  // --- Handler for View Details ---
+  const handleViewDetails = (entry: RecentUserDataEntry) => {
+    setSelectedEntryForDetails(entry);
+    setShowDetailsModal(true);
+  };
+
   // --- Render Logic ---
   const isLoading = spendingLoading || activityLoading || storesLoading;
-  // Remove combinedError
-  // const combinedError = spendingError || activityError || storesError;
 
   if (isLoading && !spendingData && !activityData) {
     return <LoadingSpinner message="Loading analytics data..." />;
@@ -398,7 +410,9 @@ const UserAnalyticsPage: React.FC = () => {
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tickFormatter={formatMonth} />
-                <YAxis tickFormatter={formatCurrency} />
+                <YAxis
+                  tickFormatter={(value) => formatCurrency(value as number)}
+                />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={formatMonth}
@@ -530,7 +544,6 @@ const UserAnalyticsPage: React.FC = () => {
 
         {/* Activity Table */}
         {activityError || storesError ? (
-          // ... error display ...
           <ErrorDisplay
             title="Activity Log Error"
             message={
@@ -558,7 +571,7 @@ const UserAnalyticsPage: React.FC = () => {
                     <TableHeadCell>Date</TableHeadCell>
                     <TableHeadCell>Type</TableHeadCell>
                     <TableHeadCell>Store</TableHeadCell>
-                    <TableHeadCell>Details</TableHeadCell>
+                    <TableHeadCell>Summary</TableHeadCell>
                     <TableHeadCell>Actions</TableHeadCell>
                   </TableRow>
                 </TableHead>
@@ -599,8 +612,10 @@ const UserAnalyticsPage: React.FC = () => {
                             purchaseDetail.items.length > 0 && (
                               <span>
                                 {purchaseDetail.items
+                                  .slice(0, 2) // Show first 2 items as summary
                                   .map((item: PurchaseItem) => item.name)
                                   .join(", ")}
+                                {purchaseDetail.items.length > 2 && "..."}
                               </span>
                             )}
                           {entry.dataType === "search" &&
@@ -608,7 +623,16 @@ const UserAnalyticsPage: React.FC = () => {
                               <span>Query: "{searchDetail.query}"</span>
                             )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex space-x-2">
+                          <Button
+                            color="blue"
+                            size="xs"
+                            outline
+                            onClick={() => handleViewDetails(entry)}
+                            title="View details"
+                          >
+                            <HiOutlineEye className="h-4 w-4" />
+                          </Button>
                           <Button
                             color="red"
                             size="xs"
@@ -715,6 +739,194 @@ const UserAnalyticsPage: React.FC = () => {
           </div>
         </ModalBody>
       </Modal>
+
+      {/* Activity Details Modal */}
+      {selectedEntryForDetails && (
+        <Modal
+          show={showDetailsModal}
+          onClose={() => setShowDetailsModal(false)}
+          size="xl" // Increased modal size
+        >
+          <ModalHeader>Activity Entry Details</ModalHeader>
+          <ModalBody className="space-y-6">
+            <Card className="bg-slate-50 p-4 dark:bg-slate-800">
+              <h4 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+                Entry Overview
+              </h4>
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <Label
+                    htmlFor="submissionTimestamp"
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400"
+                  >
+                    Submission Timestamp
+                  </Label>
+                  <p
+                    id="submissionTimestamp"
+                    className="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {formatDate(selectedEntryForDetails.timestamp)}
+                  </p>
+                </div>
+                <div>
+                  <Label
+                    htmlFor="dataType"
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400"
+                  >
+                    Data Type
+                  </Label>
+                  <p
+                    id="dataType"
+                    className="text-sm font-semibold text-gray-900 capitalize dark:text-white"
+                  >
+                    {selectedEntryForDetails.dataType}
+                  </p>
+                </div>
+                <div>
+                  <Label
+                    htmlFor="storeName"
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400"
+                  >
+                    Store
+                  </Label>
+                  <p
+                    id="storeName"
+                    className="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {selectedEntryForDetails.storeId
+                      ? (storeNameMap.get(selectedEntryForDetails.storeId) ??
+                        `ID: ${selectedEntryForDetails.storeId}`)
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {selectedEntryForDetails.details &&
+              selectedEntryForDetails.details.length > 0 && (
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Detailed Entries ({selectedEntryForDetails.details.length})
+                </h4>
+              )}
+
+            {selectedEntryForDetails.details?.map((detail, index) => (
+              <Card key={index} className="shadow-md">
+                <div className="mb-2 flex items-center justify-between border-b pb-2 dark:border-gray-700">
+                  <h5 className="text-md font-semibold text-gray-800 dark:text-gray-100">
+                    Detail #{index + 1}
+                  </h5>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(detail.timestamp)}
+                  </span>
+                </div>
+
+                {selectedEntryForDetails.dataType === "purchase" &&
+                  (detail as PurchaseEntry).items && (
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Purchased Items:
+                      </Label>
+                      <List unstyled className="space-y-3">
+                        {(detail as PurchaseEntry).items.map(
+                          (item: PurchaseItem, itemIndex: number) => (
+                            <ListItem
+                              key={itemIndex}
+                              className="rounded-lg border bg-gray-50 p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                <span className="text-md font-semibold text-blue-600 dark:text-blue-500">
+                                  {item.name}
+                                </span>
+                                {item.price !== undefined &&
+                                  item.price !== null && (
+                                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                      {formatCurrency(item.price)}
+                                    </span>
+                                  )}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                {item.quantity && (
+                                  <span>
+                                    Qty:{" "}
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                      {item.quantity}
+                                    </span>
+                                  </span>
+                                )}
+                                {item.category && (
+                                  <span>
+                                    Category:{" "}
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                      {item.category}
+                                    </span>
+                                  </span>
+                                )}
+                                {item.sku && (
+                                  <span>
+                                    SKU:{" "}
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                      {item.sku}
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            </ListItem>
+                          ),
+                        )}
+                      </List>
+                    </div>
+                  )}
+                {selectedEntryForDetails.dataType === "search" &&
+                  (detail as SearchEntry).query && (
+                    <div className="space-y-2">
+                      <div>
+                        <Label
+                          htmlFor={`searchQuery-${index}`}
+                          className="text-xs font-medium text-gray-500 dark:text-gray-400"
+                        >
+                          Search Query
+                        </Label>
+                        <p
+                          id={`searchQuery-${index}`}
+                          className="text-md rounded-md bg-gray-100 p-2 font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                        >
+                          {(detail as SearchEntry).query}
+                        </p>
+                      </div>
+                      {(detail as SearchEntry).results !== undefined && (
+                        <div>
+                          <Label
+                            htmlFor={`searchResults-${index}`}
+                            className="text-xs font-medium text-gray-500 dark:text-gray-400"
+                          >
+                            Number of Results
+                          </Label>
+                          <p
+                            id={`searchResults-${index}`}
+                            className="text-sm text-gray-700 dark:text-gray-300"
+                          >
+                            {(detail as SearchEntry).results}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+              </Card>
+            ))}
+            {!selectedEntryForDetails.details ||
+              (selectedEntryForDetails.details.length === 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No detailed entries recorded for this submission.
+                </p>
+              ))}
+          </ModalBody>
+          <ModalFooter>
+            <Button color="blue" onClick={() => setShowDetailsModal(false)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </div>
   );
 };
