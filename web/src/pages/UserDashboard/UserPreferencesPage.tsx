@@ -150,13 +150,13 @@ interface DemoInfoCardProps {
   label: string;
   value: string | number | null | undefined;
   isLoading?: boolean;
-  isInferred?: boolean; // Added: Flag for inferred data
-  fieldName?: keyof DemographicsFormData; // Added: Field name for verification
+  isInferred?: boolean;
+  fieldName?: keyof DemographicsFormData;
   onVerify?: (
     fieldName: keyof DemographicsFormData,
-    // --- CHANGE HERE ---
     valueToVerify: string | number | boolean | null | undefined,
-  ) => void; // Added: Handler for verify button
+  ) => void;
+  onUnverify?: (fieldName: keyof DemographicsFormData) => void; // Added onUnverify
 }
 
 const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
@@ -164,47 +164,74 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
   label,
   value,
   isLoading,
-  isInferred, // Destructure
-  fieldName, // Destructure
-  onVerify, // Destructure
-}) => (
-  <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />
-    <div className="flex-grow">
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-        {label}
-      </p>
-      {isLoading ? (
-        <Spinner size="xs" />
-      ) : (
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            {value || "Not set"}
-            {isInferred && value && (
-              <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
-                (inferred)
-              </span>
-            )}
+  isInferred,
+  fieldName,
+  onVerify,
+  onUnverify,
+}) => {
+  const showVerifyButton = !!(
+    isInferred &&
+    value &&
+    value !== "Not set" &&
+    onVerify
+  );
+  const showUnverifyButton = !!(value && value !== "Not set" && onUnverify);
+  const showAnyButton = showVerifyButton || showUnverifyButton;
+
+  return (
+    <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex flex-grow items-center">
+        <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />
+        <div className="flex-grow">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {label}
           </p>
-          {/* Replace Verify button with icon button */}
-          {isInferred && value && !isLoading && fieldName && onVerify && (
+          {isLoading ? (
+            <Spinner size="xs" />
+          ) : (
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {value || "Not set"}
+              {isInferred && value && value !== "Not set" && (
+                <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
+                  (inferred)
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      </div>
+      {/* Buttons section - below the main content */}
+      {!isLoading && fieldName && isInferred && showAnyButton && (
+        <div className="mt-2 flex flex-col space-y-2 border-t border-gray-200 pt-2 sm:flex-row sm:justify-end sm:space-y-0 sm:space-x-2 dark:border-gray-700">
+          {showVerifyButton && (
             <Button
               size="xs"
-              color="blue"
+              color="green"
               outline
-              className="p-1"
-              onClick={() => onVerify(fieldName, value)}
+              onClick={() => onVerify!(fieldName!, value)}
+              className="w-full sm:w-auto"
             >
-              <HiCheck className="h-3.5 w-3.5" />
-              <span className="sr-only">Verify</span>
+              <HiCheck className="mr-1 h-3.5 w-3.5" />
+              Verify
+            </Button>
+          )}
+          {showUnverifyButton && (
+            <Button
+              size="xs"
+              color="red"
+              outline
+              onClick={() => onUnverify!(fieldName!)}
+              className="w-full sm:w-auto"
+            >
+              <HiX className="mr-1 h-3.5 w-3.5" />
+              Unverify
             </Button>
           )}
         </div>
       )}
     </div>
-  </div>
-);
-// --- End Mini Demographic Card Component ---
+  );
+};
 
 const UserPreferencesPage: React.FC = () => {
   // --- Data Fetching (Keep existing) ---
@@ -264,7 +291,6 @@ const UserPreferencesPage: React.FC = () => {
     register: registerDemo,
     handleSubmit: handleDemoSubmit,
     reset: resetDemoForm,
-    setValue: setValueDemo, // <-- Get setValue for verification
     formState: { isDirty: isDemoDirty, errors: demoErrors }, // <-- Add errors
   } = useForm<DemographicsFormData>();
 
@@ -549,62 +575,128 @@ const UserPreferencesPage: React.FC = () => {
     setEditingPreferenceIndex(index);
     setShowPreferenceModal(true);
   };
+  // --- REVISED handleVerify ---
   const handleVerify = (
     fieldName: keyof DemographicsFormData,
-    // --- CHANGE HERE ---
     valueToVerify: string | number | boolean | null | undefined,
   ) => {
-    // console.log("Verifying field:", fieldName, "with value:", valueToVerify); // Debug
-    setIsEditingDemographics(true); // Switch to edit mode
+    let apiValue: string | number | boolean | null | undefined = valueToVerify;
 
-    // Use a timeout to ensure the form is in edit mode before setting value
-    setTimeout(() => {
-      let formValue: string | number | boolean | null | undefined =
-        valueToVerify;
+    // Transform displayed value back to API value if necessary
+    if (fieldName === "gender") {
+      apiValue =
+        genderOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+    } else if (fieldName === "country") {
+      apiValue =
+        countryOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+    } else if (fieldName === "incomeBracket") {
+      apiValue =
+        incomeOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+    } else if (fieldName === "relationshipStatus") {
+      apiValue =
+        relationshipOptions.find((o) => o.label === valueToVerify)?.value ??
+        null;
+    } else if (fieldName === "employmentStatus") {
+      apiValue =
+        employmentOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+    } else if (fieldName === "educationLevel") {
+      apiValue =
+        educationOptions.find((o) => o.label === valueToVerify)?.value ?? null;
+    } else if (fieldName === "age") {
+      apiValue =
+        typeof valueToVerify === "number"
+          ? valueToVerify
+          : valueToVerify === "Not set"
+            ? null
+            : parseInt(String(valueToVerify), 10);
+      if (apiValue !== null && isNaN(Number(apiValue))) apiValue = null;
+    } else if (fieldName === "hasKids") {
+      if (valueToVerify === "Yes") apiValue = true;
+      else if (valueToVerify === "No") apiValue = false;
+      else apiValue = null;
+    }
 
-      // Transform value for specific fields if necessary (e.g., for select options)
-      if (fieldName === "gender")
-        formValue =
-          genderOptions.find((o) => o.label === valueToVerify)?.value ?? null;
-      else if (fieldName === "country")
-        formValue =
-          countryOptions.find((o) => o.label === valueToVerify)?.value ?? null;
-      else if (fieldName === "incomeBracket")
-        formValue =
-          incomeOptions.find((o) => o.label === valueToVerify)?.value ?? null;
-      else if (fieldName === "relationshipStatus")
-        formValue =
-          relationshipOptions.find((o) => o.label === valueToVerify)?.value ??
-          null;
-      else if (fieldName === "employmentStatus")
-        formValue =
-          employmentOptions.find((o) => o.label === valueToVerify)?.value ??
-          null;
-      else if (fieldName === "educationLevel")
-        formValue =
-          educationOptions.find((o) => o.label === valueToVerify)?.value ??
-          null;
-      // Ensure age is treated as a number or null for the form
-      else if (fieldName === "age") {
-        // Use valueToVerify here as formValue might already be null
-        formValue = typeof valueToVerify === "number" ? valueToVerify : null;
-      }
-      // For boolean 'hasKids', ensure it's boolean or null
-      else if (fieldName === "hasKids") {
-        if (valueToVerify === "Yes") formValue = true;
-        else if (valueToVerify === "No") formValue = false;
-        else formValue = null; // Or handle "Prefer not to say" if it maps to a specific string
-      }
+    if (apiValue === "Not set") apiValue = null;
 
-      // Use setValueDemo with the potentially transformed formValue
-      setValueDemo(fieldName, formValue, { shouldDirty: true });
+    const demoPayload: Partial<DemographicData> = {
+      [fieldName]: apiValue,
+    };
 
-      // Optional: Focus the element after setting value
-      const element = document.getElementById(fieldName);
-      element?.focus();
-      element?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 0);
-    console.log(`Verifying ${fieldName} with value:`, valueToVerify);
+    const finalPayload: UserUpdate = {
+      demographicData: demoPayload,
+    };
+
+    updateProfile(finalPayload, {
+      onSuccess: () => {
+        setToastInfo({
+          type: "success",
+          message: `${labelForField(fieldName)} verified successfully.`,
+        });
+        resetUpdateProfileMutation();
+      },
+      onError: (err: Error) => {
+        setToastInfo({
+          type: "error",
+          message:
+            err.message || `Failed to verify ${labelForField(fieldName)}.`,
+        });
+        resetUpdateProfileMutation();
+      },
+    });
+  };
+
+  // --- NEW handleUnverify ---
+  const handleUnverify = (fieldName: keyof DemographicsFormData) => {
+    const demoPayload: Partial<DemographicData> = {
+      [fieldName]: null, // Setting to null clears the user-provided value
+    };
+
+    const finalPayload: UserUpdate = {
+      demographicData: demoPayload,
+    };
+
+    updateProfile(finalPayload, {
+      onSuccess: () => {
+        setToastInfo({
+          type: "success",
+          message: `User value for ${labelForField(fieldName)} cleared successfully.`,
+        });
+        resetUpdateProfileMutation();
+      },
+      onError: (err: Error) => {
+        setToastInfo({
+          type: "error",
+          message:
+            err.message ||
+            `Failed to clear user value for ${labelForField(fieldName)}.`,
+        });
+        resetUpdateProfileMutation();
+      },
+    });
+  };
+
+  // Helper to get a display-friendly label for toast messages
+  const labelForField = (fieldName: keyof DemographicsFormData): string => {
+    switch (fieldName) {
+      case "gender":
+        return "Gender";
+      case "age":
+        return "Age";
+      case "country":
+        return "Country";
+      case "incomeBracket":
+        return "Income Bracket";
+      case "hasKids":
+        return "Has Children";
+      case "relationshipStatus":
+        return "Relationship Status";
+      case "employmentStatus":
+        return "Employment Status";
+      case "educationLevel":
+        return "Education Level";
+      default:
+        return fieldName;
+    }
   };
   // --- Render Logic ---
   const isLoading = profileLoading || preferencesLoading || taxonomyLoading;
@@ -852,7 +944,7 @@ const UserPreferencesPage: React.FC = () => {
             </form>
           ) : (
             // --- DISPLAY VIEW (Combined User-Provided and Inferred) ---
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-start">
               {/* Gender */}
               <DemoInfoCard
                 icon={HiOutlineUserCircle}
@@ -877,6 +969,7 @@ const UserPreferencesPage: React.FC = () => {
                 }
                 fieldName="gender"
                 onVerify={handleVerify}
+                onUnverify={handleUnverify}
               />
               {/* Age */}
               <DemoInfoCard
@@ -884,7 +977,11 @@ const UserPreferencesPage: React.FC = () => {
                 label="Age"
                 value={userProfile?.demographicData?.age ?? "Not set"}
                 isLoading={profileLoading}
-                // No inferred age to verify in this example, but can be added
+                // No separate inferred age display in this card, so verify/unverify might not apply in the same way
+                // If age could be inferred and verified/unverified, it would need isInferred logic and handlers.
+                // For now, only user-provided age is directly managed here.
+                // fieldName="age" // If you want to allow clearing user-set age
+                // onUnverify={handleUnverify} // If you want to allow clearing user-set age
               />
               {/* Country */}
               <DemoInfoCard
@@ -899,7 +996,8 @@ const UserPreferencesPage: React.FC = () => {
                     : "Not set" // Assuming no inferred country
                 }
                 isLoading={profileLoading}
-                // No inferred country to verify
+                // fieldName="country" // If you want to allow clearing user-set country
+                // onUnverify={handleUnverify} // If you want to allow clearing user-set country
               />
               {/* Income Bracket */}
               <DemoInfoCard
@@ -914,7 +1012,8 @@ const UserPreferencesPage: React.FC = () => {
                     : "Not set" // Assuming no inferred income
                 }
                 isLoading={profileLoading}
-                // No inferred income to verify
+                // fieldName="incomeBracket" // If you want to allow clearing user-set income
+                // onUnverify={handleUnverify} // If you want to allow clearing user-set income
               />
               {/* Has Kids */}
               <DemoInfoCard
@@ -941,6 +1040,7 @@ const UserPreferencesPage: React.FC = () => {
                 }
                 fieldName="hasKids"
                 onVerify={handleVerify}
+                onUnverify={handleUnverify}
               />
               {/* Relationship Status */}
               <DemoInfoCard
@@ -967,6 +1067,7 @@ const UserPreferencesPage: React.FC = () => {
                 }
                 fieldName="relationshipStatus"
                 onVerify={handleVerify}
+                onUnverify={handleUnverify}
               />
               {/* Employment Status */}
               <DemoInfoCard
@@ -992,6 +1093,7 @@ const UserPreferencesPage: React.FC = () => {
                 }
                 fieldName="employmentStatus"
                 onVerify={handleVerify}
+                onUnverify={handleUnverify}
               />
               {/* Education Level */}
               <DemoInfoCard
@@ -1017,6 +1119,7 @@ const UserPreferencesPage: React.FC = () => {
                 }
                 fieldName="educationLevel"
                 onVerify={handleVerify}
+                onUnverify={handleUnverify}
               />
             </div>
           )}
