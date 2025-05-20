@@ -177,6 +177,7 @@ interface DemoInfoCardProps {
   label: string;
   value: string | number | null | undefined;
   isLoading?: boolean;
+  isInferred?: boolean; // Added isInferred
 }
 
 const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
@@ -184,9 +185,11 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
   label,
   value,
   isLoading,
+  isInferred, // Added isInferred
 }) => (
   <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />{" "}
+    {/* Changed icon color */}
     <div className="flex-grow">
       <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
         {label}
@@ -196,6 +199,12 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
       ) : (
         <p className="text-sm font-semibold text-gray-900 dark:text-white">
           {value || "Not set"}
+          {isInferred &&
+            value && ( // Added inferred text display
+              <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
+                (inferred)
+              </span>
+            )}
         </p>
       )}
     </div>
@@ -772,8 +781,15 @@ export default function UserDashboard() {
                                 <DemoInfoCard
                                   icon={HiOutlineUserCircle}
                                   label="Gender"
-                                  value={profile?.demographicData?.gender}
+                                  value={
+                                    profile?.demographicData?.gender ||
+                                    profile?.demographicData?.inferredGender
+                                  }
                                   isLoading={profileLoading}
+                                  isInferred={
+                                    !profile?.demographicData?.gender &&
+                                    !!profile?.demographicData?.inferredGender
+                                  }
                                 />
                                 <DemoInfoCard
                                   icon={HiOutlineCake}

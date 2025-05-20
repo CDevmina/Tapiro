@@ -169,7 +169,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
   onVerify, // Destructure
 }) => (
   <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />
     <div className="flex-grow">
       <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
         {label}
@@ -177,14 +177,14 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
       {isLoading ? (
         <Spinner size="xs" />
       ) : (
-        <div className="flex items-center">
+        <div className="flex items-center justify-between">
           {" "}
-          {/* Wrap value and button */}
+          {/* Added justify-between */}
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
             {value || "Not set"}
             {isInferred &&
               value && ( // Show "(inferred)" text
-                <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
                   (inferred)
                 </span>
               )}
@@ -193,8 +193,9 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
           {isInferred && value && !isLoading && fieldName && onVerify && (
             <Button
               size="xs"
-              color="light"
-              className="ml-2 px-2 py-1" // Adjusted padding for smaller button
+              color="blue"
+              outline // Added outline
+              className="ml-2 px-1.5 py-0.5" // Adjusted padding
               onClick={() => onVerify(fieldName, value)} // Call handler with fieldName and current value
             >
               Verify
