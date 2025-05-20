@@ -42,7 +42,7 @@ import {
   StoreBasicInfo,
   MonthlySpendingItem,
   GetRecentUserDataParams,
-  PurchaseItem, // Assuming PurchaseItem is the type for purchase details items
+  PurchaseItem, // Assuming PurchaseItem is the type for purchase details
   PurchaseEntry, // <-- Import PurchaseEntry
   SearchEntry, // Assuming SearchEntry is the type for search details
 } from "../../api/types/data-contracts";
@@ -268,7 +268,7 @@ const UserAnalyticsPage: React.FC = () => {
             placeholder="End Date"
           />
           {(spendingStartDate || spendingEndDate) && (
-            <Button size="sm" color="light" onClick={clearSpendingDates}>
+            <Button size="sm" color="blue" outline onClick={clearSpendingDates}>
               Clear Dates
             </Button>
           )}
@@ -389,7 +389,12 @@ const UserAnalyticsPage: React.FC = () => {
             />
           </div>
           <div className="flex justify-end lg:col-start-4">
-            <Button size="sm" color="light" onClick={clearActivityFilters}>
+            <Button
+              size="sm"
+              color="blue"
+              outline
+              onClick={clearActivityFilters}
+            >
               Clear Filters
             </Button>
           </div>
@@ -490,19 +495,21 @@ const UserAnalyticsPage: React.FC = () => {
             <div className="mt-4 flex items-center justify-between px-1">
               <Button
                 size="sm"
-                color="light"
+                color="blue"
+                outline
                 onClick={handlePreviousPage}
                 disabled={activityPage <= 1 || activityLoading} // Disable if on first page or loading
               >
                 <HiChevronLeft className="mr-1 h-4 w-4" />
                 Previous
               </Button>
-              <span className="text-sm text-gray-700 dark:text-gray-400">
+              <span className="inline-flex items-center rounded-md bg-blue-100 px-3 py-1.5 text-sm font-semibold text-blue-700 dark:bg-blue-700 dark:text-blue-100">
                 Page {activityPage}
               </span>
               <Button
                 size="sm"
-                color="light"
+                color="blue"
+                outline
                 onClick={handleNextPage}
                 disabled={!hasMoreData || activityLoading} // Disable if no more data inferred or loading
               >
