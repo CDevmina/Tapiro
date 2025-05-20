@@ -504,17 +504,22 @@ export default function UserDashboard() {
                               {recentActivity.map(
                                 (entry: RecentUserDataEntry) => (
                                   <TimelineItem key={entry._id}>
-                                    <TimelinePoint icon={HiClock} />
+                                    <TimelinePoint
+                                      icon={
+                                        entry.dataType === "preference_access"
+                                          ? HiOutlineSparkles
+                                          : HiClock
+                                      }
+                                    />
                                     <TimelineContent>
                                       <TimelineTime>
                                         {formatDate(entry.timestamp)}
                                       </TimelineTime>
                                       <TimelineTitle className="capitalize">
-                                        {entry.dataType}
-                                        {entry.storeId &&
-                                          ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
+                                        {entry.dataType === "preference_access"
+                                          ? `Preferences accessed by ${storeNameMap.get(entry.storeId) || "Unknown Store"}`
+                                          : `${entry.dataType}${entry.storeId ? ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}` : ""}`}
                                       </TimelineTitle>
-                                      {/* Further details can be added here if needed */}
                                     </TimelineContent>
                                   </TimelineItem>
                                 ),
