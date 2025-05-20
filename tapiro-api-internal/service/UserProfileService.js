@@ -4,7 +4,7 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { updateUserPhone, deleteAuth0User, updateUserMetadata } = require('../utils/auth0Util');
-const { ObjectId } = require('mongodb');
+const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
 
 /**
  * Get User Profile
@@ -579,5 +579,70 @@ exports.getSpendingAnalytics = async function (req) {
   } catch (error) {
     console.error('Get spending analytics failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Delete User Data History
+ * Deletes user's submitted data entries based on scope or specific IDs.
+ */
+exports.deleteUserDataHistory = async function (req, body) {
+  try {
+    const db = getDB();
+    const tokenUserData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    const auth0UserId = tokenUserData.sub;
+
+    const user = await db.collection('users').findOne({ auth0Id: auth0UserId }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found.' });
+    }
+    const userId = user._id; // This is the MongoDB ObjectId of the user
+
+    const { scope, entryIds } = body;
+
+    if (!scope) {
+      return respondWithCode(400, { code: 400, message: 'Scope is required.' });
+    }
+
+    const deleteQuery = { userId: userId };
+
+    const now = new Date();
+    switch (scope) {
+      case 'today':
+        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+        const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+        deleteQuery.timestamp = { $gte: startOfToday, $lte: endOfToday };
+        break;
+      case 'last7days':
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0); // Start of 7 days ago
+        deleteQuery.timestamp = { $gte: sevenDaysAgo, $lte: new Date() /* up to now */ };
+        break;
+      case 'all':
+        // No additional time filter, will delete all for the user
+        break;
+      case 'individual':
+        if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
+          return respondWithCode(400, { code: 400, message: 'entryIds are required for individual scope.' });
+        }
+        try {
+          deleteQuery._id = { $in: entryIds.map(id => new ObjectId(id)) };
+        } catch (e) {
+          return respondWithCode(400, { code: 400, message: 'Invalid entryId format.' });
+        }
+        break;
+      default:
+        return respondWithCode(400, { code: 400, message: 'Invalid scope provided.' });
+    }
+
+    const result = await db.collection('userData').deleteMany(deleteQuery);
+
+    console.log(`Deleted ${result.deletedCount} data entries for user ${userId} with scope '${scope}'.`);
+    
+    return respondWithCode(204);
+  } catch (error) {
+    console.error('Delete user data history failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error while deleting data history.' });
   }
 };

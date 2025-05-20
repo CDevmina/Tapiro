@@ -19,6 +19,7 @@ import {
   StoreConsentList,
   User,
   UserCreate,
+  UserDataHistoryDeletionRequest,
   UserMetadataResponse,
   UserPreferences,
   UserPreferencesUpdate,
@@ -293,6 +294,33 @@ export class Users<
       query: query,
       secure: true,
       format: "json",
+      ...params,
+    });
+  /**
+   * @description Allows authenticated users to delete their submitted data history based on a scope or specific entry IDs.
+   *
+   * @tags User Management
+   * @name DeleteUserDataHistory
+   * @summary Delete User Data History
+   * @request DELETE:/users/data/history
+   * @secure
+   * @response `204` `void` User data history deleted successfully.
+   * @response `400` `Error`
+   * @response `401` `Error`
+   * @response `403` `Error`
+   * @response `404` `Error`
+   * @response `500` `Error`
+   */
+  deleteUserDataHistory = (
+    data: UserDataHistoryDeletionRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<void, Error>({
+      path: `/users/data/history`,
+      method: "DELETE",
+      body: data,
+      secure: true,
+      type: ContentType.Json,
       ...params,
     });
 }

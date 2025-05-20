@@ -238,6 +238,13 @@ export interface StoreUpdate {
   }[];
 }
 
+export interface UserDataHistoryDeletionRequest {
+  /** Scope of data to delete. If 'individual', entryIds must be provided. */
+  scope: "today" | "last7days" | "all" | "individual";
+  /** Array of specific userData entry IDs to delete. Required if scope is 'individual'. */
+  entryIds?: string[] | null;
+}
+
 export interface ApiKeyCreate {
   /**
    * Name for the API key

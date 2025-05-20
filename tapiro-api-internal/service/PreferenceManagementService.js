@@ -112,6 +112,7 @@ exports.optOutFromStore = async function (req, storeId) {
     }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`); // Add this line
 
     return respondWithCode(204);
   } catch (error) {
