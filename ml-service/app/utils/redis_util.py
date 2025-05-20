@@ -2,6 +2,7 @@ import redis
 import os
 import json
 import logging
+from typing import Optional # Add this import
 from app.core.config import settings
 
 # Configure logging
@@ -84,7 +85,7 @@ async def get_cache(key: str):
         logger.error(f"Error getting cache {prefixed_key}: {e}")
         return None
 
-async def set_cache(key: str, value: str, options: dict = None):
+async def set_cache(key: str, value: str, options: Optional[dict] = None):
     """
     Set value in cache with options
     """
@@ -93,11 +94,10 @@ async def set_cache(key: str, value: str, options: dict = None):
         if not await ensure_connection():
             return False
             
-        if options is None:
-            options = {}
+        current_options = options if options is not None else {}
         
         # Handle expiration time
-        ex = options.get("EX", None)
+        ex = current_options.get("EX", None)
         
         if ex:
             redis_client.set(prefixed_key, value, ex=ex)
@@ -150,7 +150,7 @@ async def get_cache_json(key: str):
             logger.error(f"Error decoding JSON from cache {key}: {e}")
     return None
 
-async def set_cache_json(key: str, value, options: dict = None):
+async def set_cache_json(key: str, value, options: Optional[dict] = None):
     """Set JSON value in cache with options"""
     try:
         # Convert numpy values to Python native types
