@@ -360,7 +360,7 @@ export default function StoreProfilePage() {
         <ModalHeader />
         <ModalBody>
           <div className="text-center">
-            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-red-600 dark:text-red-600" />
             <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
               Are you sure you want to permanently delete your store account?
             </h3>
@@ -383,7 +383,7 @@ export default function StoreProfilePage() {
                 )}
               </Button>
               <Button
-                color="dark"
+                color="default"
                 outline
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
