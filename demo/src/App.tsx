@@ -798,7 +798,7 @@ function App() {
           <button
             onClick={handleSimulateBulkData}
             disabled={isSimulatingData || !userEmail || !apiKey}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 disabled:opacity-50 dark:bg-purple-500 dark:hover:bg-purple-600 dark:focus:ring-purple-800"
+            className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-purple-300 disabled:opacity-50 dark:bg-purple-500 dark:hover:bg-purple-600 dark:focus:ring-purple-800"
           >
             {isSimulatingData ? (
               <>
