@@ -17,10 +17,13 @@ import {
   Modal, // Added Modal
   ModalHeader,
   ModalBody,
+  ModalFooter, // Added ModalFooter
   Toast,
   ToastToggle,
   DropdownItem,
   DropdownDivider, // Added Toast
+  List, // Added List for modal details
+  ListItem, // Added ListItem for modal details
 } from "flowbite-react";
 import {
   ResponsiveContainer,
@@ -41,6 +44,7 @@ import {
   HiExclamation, // Added Exclamation icon for modal
   HiCheckCircle, // For success toast
   HiXCircle, // For error toast
+  HiOutlineEye, // Added Eye icon for view details
 } from "react-icons/hi";
 import {
   useRecentUserData,
@@ -135,6 +139,11 @@ const UserAnalyticsPage: React.FC = () => {
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  // --- State for Details Modal ---
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedEntryForDetails, setSelectedEntryForDetails] =
+    useState<RecentUserDataEntry | null>(null);
 
   // --- Data Fetching ---
   const {
@@ -240,8 +249,6 @@ const UserAnalyticsPage: React.FC = () => {
   };
 
   // --- Pagination Logic ---
-  // Determine if there might be a next page
-  // We infer this if the current page loaded the maximum number of items
   const hasMoreData = useMemo(() => {
     return activityData && activityData.length === activityLimit;
   }, [activityData, activityLimit]);
@@ -317,10 +324,14 @@ const UserAnalyticsPage: React.FC = () => {
     });
   };
 
+  // --- Handler for View Details ---
+  const handleViewDetails = (entry: RecentUserDataEntry) => {
+    setSelectedEntryForDetails(entry);
+    setShowDetailsModal(true);
+  };
+
   // --- Render Logic ---
   const isLoading = spendingLoading || activityLoading || storesLoading;
-  // Remove combinedError
-  // const combinedError = spendingError || activityError || storesError;
 
   if (isLoading && !spendingData && !activityData) {
     return <LoadingSpinner message="Loading analytics data..." />;
@@ -530,7 +541,6 @@ const UserAnalyticsPage: React.FC = () => {
 
         {/* Activity Table */}
         {activityError || storesError ? (
-          // ... error display ...
           <ErrorDisplay
             title="Activity Log Error"
             message={
@@ -558,7 +568,7 @@ const UserAnalyticsPage: React.FC = () => {
                     <TableHeadCell>Date</TableHeadCell>
                     <TableHeadCell>Type</TableHeadCell>
                     <TableHeadCell>Store</TableHeadCell>
-                    <TableHeadCell>Details</TableHeadCell>
+                    <TableHeadCell>Summary</TableHeadCell>
                     <TableHeadCell>Actions</TableHeadCell>
                   </TableRow>
                 </TableHead>
@@ -608,7 +618,16 @@ const UserAnalyticsPage: React.FC = () => {
                               <span>Query: "{searchDetail.query}"</span>
                             )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex space-x-2">
+                          <Button
+                            color="blue"
+                            size="xs"
+                            outline
+                            onClick={() => handleViewDetails(entry)}
+                            title="View details"
+                          >
+                            <HiOutlineEye className="h-4 w-4" />
+                          </Button>
                           <Button
                             color="red"
                             size="xs"
@@ -715,6 +734,96 @@ const UserAnalyticsPage: React.FC = () => {
           </div>
         </ModalBody>
       </Modal>
+
+      {/* Activity Details Modal */}
+      {selectedEntryForDetails && (
+        <Modal
+          show={showDetailsModal}
+          onClose={() => setShowDetailsModal(false)}
+          size="lg" // Or "xl" for more space
+        >
+          <ModalHeader>Activity Entry Details</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <div>
+                <Label>Submission Timestamp</Label>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {formatDate(selectedEntryForDetails.timestamp)}
+                </p>
+              </div>
+              <div>
+                <Label>Data Type</Label>
+                <p className="text-sm text-gray-700 capitalize dark:text-gray-300">
+                  {selectedEntryForDetails.dataType}
+                </p>
+              </div>
+              <div>
+                <Label>Store</Label>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {selectedEntryForDetails.storeId
+                    ? (storeNameMap.get(selectedEntryForDetails.storeId) ??
+                      selectedEntryForDetails.storeId)
+                    : "N/A"}
+                </p>
+              </div>
+
+              {selectedEntryForDetails.details?.map((detail, index) => (
+                <Card key={index} className="mt-2">
+                  <h5 className="text-md font-semibold text-gray-900 dark:text-white">
+                    Detail Entry #{index + 1} (Timestamp:{" "}
+                    {formatDate(detail.timestamp)})
+                  </h5>
+                  {selectedEntryForDetails.dataType === "purchase" &&
+                    (detail as PurchaseEntry).items && (
+                      <div>
+                        <Label className="mb-1">Purchased Items</Label>
+                        <List unstyled className="space-y-1">
+                          {(detail as PurchaseEntry).items.map(
+                            (item: PurchaseItem, itemIndex: number) => (
+                              <ListItem
+                                key={itemIndex}
+                                className="rounded border p-2 text-sm dark:border-gray-600"
+                              >
+                                <strong>{item.name}</strong>
+                                {item.quantity && ` (Qty: ${item.quantity})`}
+                                {item.price &&
+                                  ` - ${formatCurrency(item.price)}`}
+                                {item.category &&
+                                  ` [Category: ${item.category}]`}
+                              </ListItem>
+                            ),
+                          )}
+                        </List>
+                      </div>
+                    )}
+                  {selectedEntryForDetails.dataType === "search" &&
+                    (detail as SearchEntry).query && (
+                      <div>
+                        <Label>Search Query </Label>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          {(detail as SearchEntry).query}
+                        </p>
+                        {(detail as SearchEntry).results !== undefined && (
+                          <>
+                            <Label>Number of Results </Label>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {(detail as SearchEntry).results}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                </Card>
+              ))}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="blue" onClick={() => setShowDetailsModal(false)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </div>
   );
 };
