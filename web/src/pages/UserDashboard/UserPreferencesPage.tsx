@@ -555,25 +555,16 @@ const UserPreferencesPage: React.FC = () => {
     // --- CHANGE HERE ---
     valueToVerify: string | number | boolean | null | undefined,
   ) => {
-    setIsEditingDemographics(true);
-    // Use timeout to ensure state update completes before setting value
-    setTimeout(() => {
-      // Convert boolean "Yes"/"No" back to boolean for ToggleSwitch
-      // --- FIX: Handle potential undefined from valueToVerify ---
-      let formValue: string | number | boolean | null = valueToVerify ?? null;
+    // console.log("Verifying field:", fieldName, "with value:", valueToVerify); // Debug
+    setIsEditingDemographics(true); // Switch to edit mode
 
-      // Find the corresponding value for enum fields OR hasKids
-      if (fieldName === "hasKids") {
-        // Find the option matching the display label
-        const option = hasKidsOptions.find((o) => o.label === valueToVerify);
-        // Convert the option's string value back to boolean/null
-        formValue =
-          option?.value === "true"
-            ? true
-            : option?.value === "false"
-              ? false
-              : null;
-      } else if (fieldName === "gender")
+    // Use a timeout to ensure the form is in edit mode before setting value
+    setTimeout(() => {
+      let formValue: string | number | boolean | null | undefined =
+        valueToVerify;
+
+      // Transform value for specific fields if necessary (e.g., for select options)
+      if (fieldName === "gender")
         formValue =
           genderOptions.find((o) => o.label === valueToVerify)?.value ?? null;
       else if (fieldName === "country")
@@ -598,6 +589,12 @@ const UserPreferencesPage: React.FC = () => {
       else if (fieldName === "age") {
         // Use valueToVerify here as formValue might already be null
         formValue = typeof valueToVerify === "number" ? valueToVerify : null;
+      }
+      // For boolean 'hasKids', ensure it's boolean or null
+      else if (fieldName === "hasKids") {
+        if (valueToVerify === "Yes") formValue = true;
+        else if (valueToVerify === "No") formValue = false;
+        else formValue = null; // Or handle "Prefer not to say" if it maps to a specific string
       }
 
       // Use setValueDemo with the potentially transformed formValue
@@ -857,16 +854,24 @@ const UserPreferencesPage: React.FC = () => {
           ) : (
             // --- DISPLAY VIEW (Combined User-Provided and Inferred) ---
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* User Provided or Verified */}
+              {/* Gender */}
               <DemoInfoCard
                 icon={HiOutlineUserCircle}
                 label="Gender"
-                value={formatEnum(
-                  userProfile?.demographicData?.gender,
-                  genderOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.gender
+                    ? formatEnum(
+                        userProfile.demographicData.gender,
+                        genderOptions,
+                      )
+                    : userProfile?.demographicData?.inferredGender
+                      ? formatEnum(
+                          userProfile.demographicData.inferredGender,
+                          genderOptions,
+                        )
+                      : "Not set"
+                }
                 isLoading={profileLoading}
-                // If user provided is null, show inferred with verify button
                 isInferred={
                   !userProfile?.demographicData?.gender &&
                   !!userProfile?.demographicData?.inferredGender
@@ -874,69 +879,89 @@ const UserPreferencesPage: React.FC = () => {
                 fieldName="gender"
                 onVerify={handleVerify}
               />
+              {/* Age */}
               <DemoInfoCard
                 icon={HiOutlineCake}
                 label="Age"
-                value={userProfile?.demographicData?.age} // Age is number, no enum formatting
+                value={userProfile?.demographicData?.age ?? "Not set"}
                 isLoading={profileLoading}
-                // No inferred age currently, so no verify needed here
+                // No inferred age to verify in this example, but can be added
               />
+              {/* Country */}
               <DemoInfoCard
                 icon={HiOutlineGlobeAlt}
                 label="Country"
-                value={formatEnum(
-                  userProfile?.demographicData?.country,
-                  countryOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.country
+                    ? formatEnum(
+                        userProfile.demographicData.country,
+                        countryOptions,
+                      )
+                    : "Not set" // Assuming no inferred country
+                }
                 isLoading={profileLoading}
-                // No inferred country currently
+                // No inferred country to verify
               />
+              {/* Income Bracket */}
               <DemoInfoCard
                 icon={HiOutlineCash}
                 label="Income"
-                value={formatEnum(
-                  userProfile?.demographicData?.incomeBracket,
-                  incomeOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.incomeBracket
+                    ? formatEnum(
+                        userProfile.demographicData.incomeBracket,
+                        incomeOptions,
+                      )
+                    : "Not set" // Assuming no inferred income
+                }
                 isLoading={profileLoading}
-                // No inferred income currently
+                // No inferred income to verify
               />
+              {/* Has Kids */}
               <DemoInfoCard
                 icon={HiOutlineHeart}
                 label="Has Children"
-                // Use formatEnum with hasKidsOptions (convert boolean/null to string value first)
-                value={formatEnum(
-                  userProfile?.demographicData?.hasKids === true
-                    ? "true"
-                    : userProfile?.demographicData?.hasKids === false
-                      ? "false"
-                      : userProfile?.demographicData?.hasKids === null &&
-                          userProfile?.demographicData?.relationshipStatus ===
-                            "prefer_not_to_say" // Check if explicitly 'prefer_not_to_say' was saved
-                        ? "prefer_not_to_say" // Map null back to prefer_not_to_say if appropriate (might need adjustment based on API save logic)
-                        : "", // Default to empty string for "Not set" or other null cases
-                  hasKidsOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.hasKids !== null &&
+                  userProfile?.demographicData?.hasKids !== undefined
+                    ? formatBoolean(userProfile.demographicData.hasKids)
+                    : userProfile?.demographicData?.inferredHasKids !== null &&
+                        userProfile?.demographicData?.inferredHasKids !==
+                          undefined
+                      ? formatBoolean(
+                          userProfile.demographicData.inferredHasKids,
+                        )
+                      : "Not set"
+                }
                 isLoading={profileLoading}
-                // Show inferred if user provided is null (and not explicitly 'prefer_not_to_say')
                 isInferred={
-                  userProfile?.demographicData?.hasKids === null &&
+                  (userProfile?.demographicData?.hasKids === null ||
+                    userProfile?.demographicData?.hasKids === undefined) &&
                   userProfile?.demographicData?.inferredHasKids !== null &&
-                  userProfile?.demographicData?.relationshipStatus !==
-                    "prefer_not_to_say" // Don't show inferred if user chose 'prefer not to say'
+                  userProfile?.demographicData?.inferredHasKids !== undefined
                 }
                 fieldName="hasKids"
                 onVerify={handleVerify}
               />
+              {/* Relationship Status */}
               <DemoInfoCard
                 icon={HiOutlineUsers}
                 label="Relationship"
-                value={formatEnum(
-                  userProfile?.demographicData?.relationshipStatus,
-                  relationshipOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.relationshipStatus
+                    ? formatEnum(
+                        userProfile.demographicData.relationshipStatus,
+                        relationshipOptions,
+                      )
+                    : userProfile?.demographicData?.inferredRelationshipStatus
+                      ? formatEnum(
+                          userProfile.demographicData
+                            .inferredRelationshipStatus,
+                          relationshipOptions,
+                        )
+                      : "Not set"
+                }
                 isLoading={profileLoading}
-                // Show inferred if user provided is null
                 isInferred={
                   !userProfile?.demographicData?.relationshipStatus &&
                   !!userProfile?.demographicData?.inferredRelationshipStatus
@@ -944,15 +969,24 @@ const UserPreferencesPage: React.FC = () => {
                 fieldName="relationshipStatus"
                 onVerify={handleVerify}
               />
+              {/* Employment Status */}
               <DemoInfoCard
                 icon={HiOutlineBriefcase}
                 label="Employment"
-                value={formatEnum(
-                  userProfile?.demographicData?.employmentStatus,
-                  employmentOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.employmentStatus
+                    ? formatEnum(
+                        userProfile.demographicData.employmentStatus,
+                        employmentOptions,
+                      )
+                    : userProfile?.demographicData?.inferredEmploymentStatus
+                      ? formatEnum(
+                          userProfile.demographicData.inferredEmploymentStatus,
+                          employmentOptions,
+                        )
+                      : "Not set"
+                }
                 isLoading={profileLoading}
-                // Show inferred if user provided is null
                 isInferred={
                   !userProfile?.demographicData?.employmentStatus &&
                   !!userProfile?.demographicData?.inferredEmploymentStatus
@@ -960,15 +994,24 @@ const UserPreferencesPage: React.FC = () => {
                 fieldName="employmentStatus"
                 onVerify={handleVerify}
               />
+              {/* Education Level */}
               <DemoInfoCard
                 icon={HiOutlineAcademicCap}
                 label="Education"
-                value={formatEnum(
-                  userProfile?.demographicData?.educationLevel,
-                  educationOptions,
-                )}
+                value={
+                  userProfile?.demographicData?.educationLevel
+                    ? formatEnum(
+                        userProfile.demographicData.educationLevel,
+                        educationOptions,
+                      )
+                    : userProfile?.demographicData?.inferredEducationLevel
+                      ? formatEnum(
+                          userProfile.demographicData.inferredEducationLevel,
+                          educationOptions,
+                        )
+                      : "Not set"
+                }
                 isLoading={profileLoading}
-                // Show inferred if user provided is null
                 isInferred={
                   !userProfile?.demographicData?.educationLevel &&
                   !!userProfile?.demographicData?.inferredEducationLevel
@@ -976,82 +1019,6 @@ const UserPreferencesPage: React.FC = () => {
                 fieldName="educationLevel"
                 onVerify={handleVerify}
               />
-
-              {/* Display inferred values ONLY if user hasn't provided one */}
-              {!userProfile?.demographicData?.gender &&
-                userProfile?.demographicData?.inferredGender && (
-                  <DemoInfoCard
-                    icon={HiOutlineUserCircle}
-                    label="Gender" // Re-use label, it will show (inferred)
-                    value={formatEnum(
-                      userProfile?.demographicData?.inferredGender,
-                      genderOptions,
-                    )}
-                    isLoading={profileLoading}
-                    isInferred={true}
-                    fieldName="gender"
-                    onVerify={handleVerify}
-                  />
-                )}
-              {!userProfile?.demographicData?.hasKids &&
-                userProfile?.demographicData?.inferredHasKids !== null && (
-                  <DemoInfoCard
-                    icon={HiOutlineHeart}
-                    label="Has Children"
-                    value={formatBoolean(
-                      userProfile?.demographicData?.inferredHasKids,
-                    )}
-                    isLoading={profileLoading}
-                    isInferred={true}
-                    fieldName="hasKids"
-                    onVerify={handleVerify}
-                  />
-                )}
-              {!userProfile?.demographicData?.relationshipStatus &&
-                userProfile?.demographicData?.inferredRelationshipStatus && (
-                  <DemoInfoCard
-                    icon={HiOutlineUsers}
-                    label="Relationship"
-                    value={formatEnum(
-                      userProfile?.demographicData?.inferredRelationshipStatus,
-                      relationshipOptions,
-                    )}
-                    isLoading={profileLoading}
-                    isInferred={true}
-                    fieldName="relationshipStatus"
-                    onVerify={handleVerify}
-                  />
-                )}
-              {!userProfile?.demographicData?.employmentStatus &&
-                userProfile?.demographicData?.inferredEmploymentStatus && (
-                  <DemoInfoCard
-                    icon={HiOutlineBriefcase}
-                    label="Employment"
-                    value={formatEnum(
-                      userProfile?.demographicData?.inferredEmploymentStatus,
-                      employmentOptions,
-                    )}
-                    isLoading={profileLoading}
-                    isInferred={true}
-                    fieldName="employmentStatus"
-                    onVerify={handleVerify}
-                  />
-                )}
-              {!userProfile?.demographicData?.educationLevel &&
-                userProfile?.demographicData?.inferredEducationLevel && (
-                  <DemoInfoCard
-                    icon={HiOutlineAcademicCap}
-                    label="Education"
-                    value={formatEnum(
-                      userProfile?.demographicData?.inferredEducationLevel,
-                      educationOptions,
-                    )}
-                    isLoading={profileLoading}
-                    isInferred={true}
-                    fieldName="educationLevel"
-                    onVerify={handleVerify}
-                  />
-                )}
             </div>
           )}
         </Card>
