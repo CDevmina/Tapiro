@@ -929,12 +929,15 @@ const UserAnalyticsPage: React.FC = () => {
                           Preference Data Access
                         </p>
                       </div>
-                      <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                        {storeNameMap.get(selectedEntryForDetails.storeId) ||
-                          "A store"}{" "}
-                        accessed your preference data. This allows them to
-                        personalize your shopping experience based on your
-                        interests.
+                      <p
+                        id="storeName"
+                        className="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {selectedEntryForDetails.storeId
+                          ? (storeNameMap.get(
+                              selectedEntryForDetails.storeId,
+                            ) ?? `ID: ${selectedEntryForDetails.storeId}`)
+                          : "N/A"}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         You can manage which stores can access your data in the

@@ -1,10 +1,10 @@
-const crypto = require('crypto');
-const { ObjectId } = require('mongodb');
 const { getDB } = require('../utils/mongoUtil');
-const { respondWithCode } = require('../utils/writer');
 const { setCache, getCache, invalidateCache } = require('../utils/redisUtil');
+const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
+const { ObjectId } = require('mongodb');
+const crypto = require('crypto');
 
 /**
  * Create API Key
@@ -145,9 +145,7 @@ exports.getApiKeys = async function (req) {
 exports.revokeApiKey = async function (req, keyId) {
   try {
     const db = getDB();
-    
-    // Get user data - use req.user if available (from middleware) or fetch it
-    const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
+    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
     // Get the store with API keys first to find the prefix of the key being revoked
     const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
@@ -191,12 +189,22 @@ exports.revokeApiKey = async function (req, keyId) {
     if (result.matchedCount === 0) {
       return respondWithCode(404, {
         code: 404,
-        message: 'Store not found',
+        message: 'Store not found or API key not matched during update',
       });
     }
 
-    // Invalidate store cache to reflect modified API key
+    // Invalidate store cache to reflect modified API key for the store owner's view
     await invalidateCache(`${CACHE_KEYS.STORE_DATA}${userData.sub}`);
+
+    // Set a revocation marker for the specific keyId.
+    // The external API will check for this marker.
+    const markerKey = `revoked_api_key_marker:${keyToRevoke.keyId}`;
+    const externalApiKeyCacheTTL = CACHE_TTL.EXTERNAL_API_KEY_DETAILS || 1800; // Use the new constant
+    const markerBuffer = 300; // 5 minutes buffer
+    const markerTTL = externalApiKeyCacheTTL + markerBuffer; 
+
+    await setCache(markerKey, 'revoked', { EX: markerTTL });
+    console.log(`Set revocation marker for keyId ${keyToRevoke.keyId} with TTL ${markerTTL}s. Marker key: ${markerKey}`);
     
     return respondWithCode(204);
   } catch (error) {

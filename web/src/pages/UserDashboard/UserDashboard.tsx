@@ -517,7 +517,7 @@ export default function UserDashboard() {
                                       </TimelineTime>
                                       <TimelineTitle className="capitalize">
                                         {entry.dataType === "preference_access"
-                                          ? `Preferences accessed by ${storeNameMap.get(entry.storeId) || "Unknown Store"}`
+                                          ? `Preferences accessed by ${entry.storeId ? storeNameMap.get(entry.storeId) || "Unknown Store" : "Unknown Store"}`
                                           : `${entry.dataType}${entry.storeId ? ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}` : ""}`}
                                       </TimelineTitle>
                                     </TimelineContent>
