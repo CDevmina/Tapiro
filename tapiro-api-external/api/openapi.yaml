@@ -320,13 +320,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
 
-    ConflictError:
-      description: Conflict - resource already exists
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
-
     InternalServerError:
       description: Internal server error
       content:

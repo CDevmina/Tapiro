@@ -3,17 +3,28 @@ import { Product } from "../data/products"; // Make sure path is correct
 interface ProductCardProps {
   product: Product;
   onProductClick?: (product: Product) => void; // Handler for clicks
+  onPurchaseClick?: (product: Product) => void; // Handler for purchase clicks
   isRecommended?: boolean; // Optional flag for highlighting
+  categoryNameMap: Record<string, string>; // Add categoryNameMap prop
 }
 
 export function ProductCard({
   product,
   onProductClick,
+  onPurchaseClick,
   isRecommended,
+  categoryNameMap, // Destructure categoryNameMap
 }: ProductCardProps) {
   const handleCardClick = () => {
     if (onProductClick) {
       onProductClick(product);
+    }
+  };
+
+  const handlePurchase = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click event from firing
+    if (onPurchaseClick) {
+      onPurchaseClick(product);
     }
   };
 
@@ -43,7 +54,8 @@ export function ProductCard({
             {product.name}
           </h3>
           <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            Category: {product.categoryId}
+            Category:{" "}
+            {categoryNameMap[product.categoryId] || product.categoryId}
           </p>
           {product.description && (
             <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
@@ -54,6 +66,14 @@ export function ProductCard({
         <p className="mt-2 text-lg font-bold text-blue-600 dark:text-blue-400">
           ${product.price.toFixed(2)}
         </p>
+        {onPurchaseClick && (
+          <button
+            onClick={handlePurchase}
+            className="mt-3 w-full rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          >
+            Buy Now
+          </button>
+        )}
       </div>
     </div>
   );

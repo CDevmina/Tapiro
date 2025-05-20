@@ -397,15 +397,30 @@ async def run_inference_for_user(user: Dict[str, Any], taxonomy_service: Taxonom
                 logger.info(f"Inference: Successfully updated inferred demographic data for user {user_id}")
                 # --- Invalidate Caches ---
                 auth0_id = user.get("auth0Id")
+                email = user.get("email") # Ensure email is available
+
                 if auth0_id:
                     await invalidate_cache(f"{CACHE_KEYS['USER_DATA']}{auth0_id}")
                     await invalidate_cache(f"{CACHE_KEYS['PREFERENCES']}{auth0_id}") # Invalidate prefs as demographics changed
+                    
                     # Invalidate store-specific caches if opt-in stores exist
-                    if user.get("privacySettings", {}).get("optInStores"):
+                    if email and user.get("privacySettings", {}).get("optInStores"): # Check if email is available
                         for store_id in user["privacySettings"]["optInStores"]:
-                            # Use user_id (ObjectId string) for store cache key consistency
-                            await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{user_id}:{store_id}")
-                    logger.info(f"Inference: Invalidated relevant caches for user {auth0_id}")
+                            # Use email for STORE_PREFERENCES cache key consistency
+                            await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{email}:{store_id}")
+                        logger.info(f"Inference: Invalidated STORE_PREFERENCES for user {email} (Auth0 ID: {auth0_id}) for {len(user['privacySettings']['optInStores'])} stores.")
+                    elif not email and user.get("privacySettings", {}).get("optInStores"):
+                         logger.warning(f"Inference: Cannot invalidate STORE_PREFERENCES for user {auth0_id} as email is missing from user object.")
+                    logger.info(f"Inference: Invalidated USER_DATA and PREFERENCES caches for user {auth0_id}")
+                else:
+                    logger.warning(f"Inference: Cannot invalidate USER_DATA/PREFERENCES caches for user {email} as auth0Id is missing.")
+                    # Attempt to invalidate STORE_PREFERENCES with email if available
+                    if email and user.get("privacySettings", {}).get("optInStores"):
+                        for store_id in user["privacySettings"]["optInStores"]:
+                            await invalidate_cache(f"{CACHE_KEYS['STORE_PREFERENCES']}{email}:{store_id}")
+                        logger.info(f"Inference: Invalidated STORE_PREFERENCES for user {email} (auth0Id missing) for {len(user['privacySettings']['optInStores'])} stores.")
+                    elif not email and user.get("privacySettings", {}).get("optInStores"):
+                        logger.warning(f"Inference: Cannot invalidate STORE_PREFERENCES for user as email is missing and auth0Id is missing.")
                 # --- End Cache Invalidation ---
             else:
                 logger.warning(f"Inference: Update attempted for {user_id} but no documents were modified.")

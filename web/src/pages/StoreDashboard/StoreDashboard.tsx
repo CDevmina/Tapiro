@@ -66,7 +66,7 @@ export default function StoreDashboard() {
 
   return (
     // Removed relative positioning, toasts are now inside child components
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 pb-12">
       <h2 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">
         Store Dashboard
       </h2>
@@ -101,7 +101,7 @@ export default function StoreDashboard() {
                 </p>
               )}
               <Link to="/api-docs" className="mt-4 inline-block">
-                <Button color="light" size="sm">
+                <Button color="blue" outline size="sm">
                   <HiDocumentText className="mr-2 h-5 w-5" />
                   View API Documentation
                 </Button>

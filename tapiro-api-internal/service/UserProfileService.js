@@ -4,7 +4,7 @@ const { respondWithCode } = require('../utils/writer');
 const { getUserData } = require('../utils/authUtil');
 const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const { updateUserPhone, deleteAuth0User, updateUserMetadata } = require('../utils/auth0Util');
-const { ObjectId } = require('mongodb');
+const { ObjectId } = require('mongodb'); // Ensure ObjectId is imported
 
 /**
  * Get User Profile
@@ -55,21 +55,21 @@ exports.getUserProfile = async function (req) {
 exports.updateUserProfile = async function (req, body) {
   try {
     const db = getDB();
-    const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
-    const auth0UserId = userData.sub;
+    const tokenUserData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    const auth0UserId = tokenUserData.sub;
+
+    // Fetch the current user state from DB to compare demographic data
+    const currentUser = await db.collection('users').findOne({ auth0Id: auth0UserId });
+    if (!currentUser) {
+      return respondWithCode(404, { code: 404, message: 'User not found for update' });
+    }
 
     // --- Local DB Username Uniqueness Check ---
     // Keep this check for your application's internal username uniqueness
     if (body.username) {
-      const existingUser = await db.collection('users').findOne({
-        username: body.username,
-        auth0Id: { $ne: auth0UserId },
-      });
-      if (existingUser) {
-        return respondWithCode(409, {
-          code: 409,
-          message: 'Username already taken in application',
-        });
+      const existingUserByUsername = await db.collection('users').findOne({ username: body.username });
+      if (existingUserByUsername && existingUserByUsername.auth0Id !== auth0UserId) {
+        return respondWithCode(409, { code: 409, message: 'Username already taken' });
       }
     }
 
@@ -78,24 +78,20 @@ exports.updateUserProfile = async function (req, body) {
     // Auth0 will enforce its own uniqueness rules per connection.
     if (body.username) {
       try {
-        await updateUserMetadata(auth0UserId, { nickname: body.username });
-      } catch (auth0Error) {
-        console.error(`Auth0 username update failed for ${auth0UserId}:`, auth0Error);
-        return respondWithCode(409, {
-          code: 409,
-          message: 'Failed to update username with identity provider. It might already be taken.',
-        });
+        await updateUserMetadata(auth0UserId, { username: body.username });
+      } catch (authError) {
+        console.warn(`Auth0 username update failed for ${auth0UserId}:`, authError.message);
+        // Potentially return error or just log and continue with local DB update
       }
     }
 
     // --- Phone Number Update in Auth0 ---
-    if (body.phone && body.phone !== userData.phone_number) {
+    if (body.phone && body.phone !== tokenUserData.phone_number) { // Use tokenUserData for initial phone
       try {
         await updateUserPhone(auth0UserId, body.phone);
-      } catch (auth0Error) {
-        // Log and continue, or return error as needed
-        console.error(`Auth0 phone update failed for ${auth0UserId}:`, auth0Error);
-        // return respondWithCode(500, { code: 500, message: 'Failed to update phone number with identity provider.' });
+      } catch (authError) {
+        console.warn(`Auth0 phone update failed for ${auth0UserId}:`, authError.message);
+        // Potentially return error or just log and continue
       }
     }
 
@@ -103,70 +99,65 @@ exports.updateUserProfile = async function (req, body) {
     const updateData = {
       updatedAt: new Date(),
     };
-    let demographicsChanged = false; // Flag to track if demographics were updated
-
+    let demographicsChanged = false;
     // Update local DB username and phone
     if (body.username !== undefined) updateData.username = body.username;
     if (body.phone !== undefined) updateData.phone = body.phone;
 
     // --- Update Demographic Data ---
-    // Use dot notation to set fields within the demographicData object
+    if (body.demographicData) {
+      const newDemoData = body.demographicData;
+      const currentDemoData = currentUser.demographicData || {};
 
-    // User-provided fields
-    if (body.demographicData?.gender !== undefined) {
-      updateData['demographicData.gender'] = body.demographicData.gender;
-      updateData['demographicData.inferredGender'] = null; // Clear inferred on user update
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.incomeBracket !== undefined) {
-      updateData['demographicData.incomeBracket'] = body.demographicData.incomeBracket;
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.country !== undefined) {
-      updateData['demographicData.country'] = body.demographicData.country;
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.age !== undefined) {
-      const ageValue =
-        body.demographicData.age === null ? null : parseInt(body.demographicData.age);
-      if (ageValue === null || (!isNaN(ageValue) && ageValue >= 0)) {
-        // Added age >= 0 check
-        updateData['demographicData.age'] = ageValue;
-        // No inferred age bracket to clear anymore
-        demographicsChanged = true;
-      } else {
-        console.warn(
-          `Invalid age value provided for user ${auth0UserId}: ${body.demographicData.age}`,
-        );
-        // Optionally return a 400 error here
-        // return respondWithCode(400, { code: 400, message: 'Invalid age provided.' });
+      // Helper function to process demographic fields
+      const processDemographicField = (fieldName, inferredFieldName) => {
+        if (newDemoData.hasOwnProperty(fieldName)) {
+          const newValue = newDemoData[fieldName];
+          const currentValue = currentDemoData[fieldName];
+
+          // Always update the user-provided field if it's in the payload
+          updateData[`demographicData.${fieldName}`] = newValue;
+
+          if (newValue !== currentValue) {
+            demographicsChanged = true;
+          }
+
+          // If the new value is null (clearing/unverifying) OR if the user-provided value changed,
+          // and there's an inferred field, clear the inferred field.
+          if (inferredFieldName && (newValue === null || newValue !== currentValue)) {
+            // Check if the inferred field actually changes to trigger demographicsChanged
+            if (currentDemoData[inferredFieldName] !== null) {
+              demographicsChanged = true;
+            }
+            updateData[`demographicData.${inferredFieldName}`] = null;
+          }
+        }
+      };
+      
+      processDemographicField('gender', 'inferredGender');
+      processDemographicField('incomeBracket'); // No inferred counterpart
+      processDemographicField('country'); // No inferred counterpart
+
+      // Age - special handling for parsing and validation
+      if (newDemoData.hasOwnProperty('age')) {
+        const newAgeValue = newDemoData.age === null || newDemoData.age === undefined ? null : parseInt(String(newDemoData.age));
+        if (newAgeValue === null || (typeof newAgeValue === 'number' && newAgeValue >= 0 && Number.isInteger(newAgeValue))) {
+          if (newAgeValue !== currentDemoData.age) {
+            updateData['demographicData.age'] = newAgeValue;
+            demographicsChanged = true;
+          } else {
+            updateData['demographicData.age'] = newAgeValue;
+          }
+        } else {
+          console.warn(`Invalid age value provided for user ${auth0UserId}: ${newDemoData.age}`);
+        }
       }
+      
+      processDemographicField('hasKids', 'inferredHasKids');
+      processDemographicField('relationshipStatus', 'inferredRelationshipStatus');
+      processDemographicField('employmentStatus', 'inferredEmploymentStatus');
+      processDemographicField('educationLevel', 'inferredEducationLevel');
     }
-    // --- NEW User-Provided Fields ---
-    if (body.demographicData?.hasKids !== undefined) {
-      updateData['demographicData.hasKids'] = body.demographicData.hasKids;
-      updateData['demographicData.inferredHasKids'] = null; // Clear inferred on user update
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.relationshipStatus !== undefined) {
-      updateData['demographicData.relationshipStatus'] = body.demographicData.relationshipStatus;
-      updateData['demographicData.inferredRelationshipStatus'] = null; // Clear inferred on user update
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.employmentStatus !== undefined) {
-      updateData['demographicData.employmentStatus'] = body.demographicData.employmentStatus;
-      updateData['demographicData.inferredEmploymentStatus'] = null; // Clear inferred on user update
-      demographicsChanged = true;
-    }
-    if (body.demographicData?.educationLevel !== undefined) {
-      updateData['demographicData.educationLevel'] = body.demographicData.educationLevel;
-      updateData['demographicData.inferredEducationLevel'] = null; // Clear inferred on user update
-      demographicsChanged = true;
-    }
-
-    // --- REMOVED Verification Flag Handling ---
-    // The logic for hasKidsIsVerified, relationshipStatusIsVerified, etc. is removed.
-
     // --- End Update Demographic Data ---
 
     // Only update allowed privacy settings
@@ -189,10 +180,10 @@ exports.updateUserProfile = async function (req, body) {
     const updateKeys = Object.keys(updateData).filter((key) => key !== 'updatedAt');
     if (updateKeys.length === 0) {
       // Nothing changed
-      const currentUser = await db
+      const latestUser = await db
         .collection('users')
         .findOne({ auth0Id: auth0UserId }, { projection: { preferences: 0 } });
-      return respondWithCode(200, currentUser || { message: 'No changes detected.' });
+      return respondWithCode(200, latestUser || { message: 'No changes detected.' });
     }
 
     console.log(`Updating user ${auth0UserId} with data:`, updateData);
@@ -202,7 +193,7 @@ exports.updateUserProfile = async function (req, body) {
       .findOneAndUpdate(
         { auth0Id: auth0UserId },
         { $set: updateData },
-        { returnDocument: 'after', projection: { preferences: 0 } },
+        { returnDocument: 'after', projection: { preferences: 0 } }, // Ensure email is projected
       );
 
     if (!result) {
@@ -222,18 +213,20 @@ exports.updateUserProfile = async function (req, body) {
     }
 
     // Invalidate store-specific preferences if demographics or relevant privacy settings changed
-    // (Keep existing logic, as privacySettingsChanged flag now includes allowInference)
     const updatedUserDoc = result; // Use the returned document from findOneAndUpdate
-    if (
-      (demographicsChanged || privacySettingsChanged) &&
-      updatedUserDoc.privacySettings?.optInStores
-    ) {
-      const userObjectId = updatedUserDoc._id; // Use the _id from the updated result
-      console.log(`Invalidating store preferences for user ${userObjectId} due to update.`);
-      for (const storeId of updatedUserDoc.privacySettings.optInStores) {
-        const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`;
-        await invalidateCache(storePrefCacheKey);
-        console.log(`Invalidated cache: ${storePrefCacheKey}`);
+
+    if (demographicsChanged || privacySettingsChanged) {
+      const userObjectId = updatedUserDoc._id; // This should be correct from the result
+      const userEmail = updatedUserDoc.email; // Make sure email is available in updatedUserDoc
+
+      if (userEmail && updatedUserDoc.privacySettings?.optInStores?.length > 0) {
+        console.log(`Invalidating store preferences for user ${userObjectId} (email: ${userEmail}) due to privacy/demographic update.`);
+        for (const storeId of updatedUserDoc.privacySettings.optInStores) {
+          // Invalidate cache key used by external API (email based)
+          const externalApiCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userEmail}:${storeId}`;
+          await invalidateCache(externalApiCacheKey);
+          console.log(`Invalidated external store preference cache: ${externalApiCacheKey}`);
+        }
       }
     }
 
@@ -262,10 +255,10 @@ exports.deleteUserProfile = async function (req) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
-    // Find user to get ID for cache invalidation later
+    // Find user to get ID and email for cache invalidation later
     const user = await db
       .collection('users')
-      .findOne({ auth0Id: userData.sub }, { projection: { _id: 1, privacySettings: 1 } });
+      .findOne({ auth0Id: userData.sub }, { projection: { _id: 1, email: 1, privacySettings: 1 } }); // Ensure email is projected
     if (!user) {
       return respondWithCode(404, {
         code: 404,
@@ -291,12 +284,19 @@ exports.deleteUserProfile = async function (req) {
     // Clear user-specific caches
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`);
 
     // Clear related store preference caches
-    if (userPrivacySettings?.optInStores) {
+    if (user.email && userPrivacySettings?.optInStores && userPrivacySettings.optInStores.length > 0) { // Check if user.email is available and stores exist
+      console.log(`Invalidating store-specific preferences for deleted user ${user.email} across ${userPrivacySettings.optInStores.length} stores.`);
       for (const storeId of userPrivacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${userObjectId}:${storeId}`);
+        // Use email for the cache key
+        const storePrefCacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`;
+        await invalidateCache(storePrefCacheKey);
+        console.log(`Invalidated store preference cache (email key): ${storePrefCacheKey}`);
       }
+    } else if (!user.email && userPrivacySettings?.optInStores && userPrivacySettings.optInStores.length > 0) {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) was deleted and had opt-in stores, but email was missing. Cannot invalidate STORE_PREFERENCES by email.`);
     }
 
     return respondWithCode(204);
@@ -580,5 +580,70 @@ exports.getSpendingAnalytics = async function (req) {
   } catch (error) {
     console.error('Get spending analytics failed:', error);
     return respondWithCode(500, { code: 500, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Delete User Data History
+ * Deletes user's submitted data entries based on scope or specific IDs.
+ */
+exports.deleteUserDataHistory = async function (req, body) {
+  try {
+    const db = getDB();
+    const tokenUserData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+    const auth0UserId = tokenUserData.sub;
+
+    const user = await db.collection('users').findOne({ auth0Id: auth0UserId }, { projection: { _id: 1 } });
+    if (!user) {
+      return respondWithCode(404, { code: 404, message: 'User not found.' });
+    }
+    const userId = user._id; // This is the MongoDB ObjectId of the user
+
+    const { scope, entryIds } = body;
+
+    if (!scope) {
+      return respondWithCode(400, { code: 400, message: 'Scope is required.' });
+    }
+
+    const deleteQuery = { userId: userId };
+
+    const now = new Date();
+    switch (scope) {
+      case 'today':
+        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+        const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+        deleteQuery.timestamp = { $gte: startOfToday, $lte: endOfToday };
+        break;
+      case 'last7days':
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0); // Start of 7 days ago
+        deleteQuery.timestamp = { $gte: sevenDaysAgo, $lte: new Date() /* up to now */ };
+        break;
+      case 'all':
+        // No additional time filter, will delete all for the user
+        break;
+      case 'individual':
+        if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
+          return respondWithCode(400, { code: 400, message: 'entryIds are required for individual scope.' });
+        }
+        try {
+          deleteQuery._id = { $in: entryIds.map(id => new ObjectId(id)) };
+        } catch (e) {
+          return respondWithCode(400, { code: 400, message: 'Invalid entryId format.' });
+        }
+        break;
+      default:
+        return respondWithCode(400, { code: 400, message: 'Invalid scope provided.' });
+    }
+
+    const result = await db.collection('userData').deleteMany(deleteQuery);
+
+    console.log(`Deleted ${result.deletedCount} data entries for user ${userId} with scope '${scope}'.`);
+    
+    return respondWithCode(204);
+  } catch (error) {
+    console.error('Delete user data history failed:', error);
+    return respondWithCode(500, { code: 500, message: 'Internal server error while deleting data history.' });
   }
 };

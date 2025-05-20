@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Card,
   List,
@@ -7,8 +7,15 @@ import {
   Spinner,
   Alert,
   TextInput, // For search
+  Toast, // Added Toast
+  ToastToggle, // Added ToastToggle
 } from "flowbite-react";
-import { HiInformationCircle, HiOutlineSearch } from "react-icons/hi";
+import {
+  HiInformationCircle,
+  HiOutlineSearch,
+  HiCheck, // Added HiCheck
+  HiX, // Added HiX
+} from "react-icons/hi";
 import {
   useStoreConsentLists,
   useOptInToStore,
@@ -28,17 +35,34 @@ const UserDataSharingPage: React.FC = () => {
     data: consentLists,
     isLoading: consentLoading,
     error: consentError,
+    refetch: refetchConsentLists,
   } = useStoreConsentLists();
   const {
     mutate: optIn,
     isPending: isOptingIn,
     variables: optInVariables, // Get variables for optIn
+    reset: resetOptInMutation, // Added reset
   } = useOptInToStore();
   const {
     mutate: optOut,
     isPending: isOptingOut,
     variables: optOutVariables, // Get variables for optOut
+    reset: resetOptOutMutation, // Added reset
   } = useOptOutFromStore();
+
+  const [toastInfo, setToastInfo] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (toastInfo) {
+      const timer = setTimeout(() => {
+        setToastInfo(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastInfo]);
 
   // Combine IDs from both lists for lookup
   const storeIdsToLookup = useMemo(() => {
@@ -83,11 +107,47 @@ const UserDataSharingPage: React.FC = () => {
   }, [searchResults, consentLists]); // Dependencies remain the same
 
   const handleOptIn = (storeId: string) => {
-    optIn(storeId);
+    optIn(storeId, {
+      onSuccess: () => {
+        setToastInfo({
+          type: "success",
+          message: `Successfully opted in to ${storeNameMap.get(storeId) || "store"}.`,
+        });
+        resetOptInMutation();
+        refetchConsentLists(); // Refetch lists to update UI
+      },
+      onError: (error: Error) => {
+        setToastInfo({
+          type: "error",
+          message:
+            error.message ||
+            `Failed to opt in to ${storeNameMap.get(storeId) || "store"}.`,
+        });
+        resetOptInMutation();
+      },
+    });
   };
 
   const handleOptOut = (storeId: string) => {
-    optOut(storeId);
+    optOut(storeId, {
+      onSuccess: () => {
+        setToastInfo({
+          type: "success",
+          message: `Successfully opted out of ${storeNameMap.get(storeId) || "store"}.`,
+        });
+        resetOptOutMutation();
+        refetchConsentLists(); // Refetch lists to update UI
+      },
+      onError: (error: Error) => {
+        setToastInfo({
+          type: "error",
+          message:
+            error.message ||
+            `Failed to opt out of ${storeNameMap.get(storeId) || "store"}.`,
+        });
+        resetOptOutMutation();
+      },
+    });
   };
 
   // --- Loading and Error Checks (Now after the useMemo) ---
@@ -112,6 +172,21 @@ const UserDataSharingPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {toastInfo && (
+        <Toast className="fixed top-5 right-5 z-50">
+          <div
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toastInfo.type === "success" ? "bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200" : "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200"}`}
+          >
+            {toastInfo.type === "success" ? (
+              <HiCheck className="h-5 w-5" />
+            ) : (
+              <HiX className="h-5 w-5" />
+            )}
+          </div>
+          <div className="ml-3 text-sm font-normal">{toastInfo.message}</div>
+          <ToastToggle onDismiss={() => setToastInfo(null)} />
+        </Toast>
+      )}
       <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
         Control Data Sharing
       </h2>
@@ -120,7 +195,8 @@ const UserDataSharingPage: React.FC = () => {
         {/* Opt-In List (Existing) */}
         <Card>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Stores You Share Data With (Opt-In)
+            Stores You Share Data With{" "}
+            <span className="text-green-600 dark:text-green-500">(Opt-In)</span>
           </h3>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
             These stores can access your anonymized preference data based on
@@ -166,7 +242,8 @@ const UserDataSharingPage: React.FC = () => {
         {/* Opt-Out List (Existing) */}
         <Card>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Stores You Don't Share Data With (Opt-Out)
+            Stores You Don't Share Data With{" "}
+            <span className="text-red-600 dark:text-red-500">(Opt-Out)</span>
           </h3>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
             These stores cannot access your preference data.

@@ -39,6 +39,7 @@ import {
 import { ApiKey } from "../../api/types/data-contracts"; // Removed unused ApiKeyCreate
 import LoadingSpinner from "../../components/common/LoadingSpinner"; // Import LoadingSpinner
 import ErrorDisplay from "../../components/common/ErrorDisplay"; // Import ErrorDisplay
+import { handleApiError } from "../../api/utils/errorHandler"; // Import handleApiError
 
 // Define a type for the response when creating a key, which includes the raw key
 interface GeneratedApiKeyResponse extends ApiKey {
@@ -87,6 +88,9 @@ export function ApiKeyManagement() {
   const [generatedApiKey, setGeneratedApiKey] =
     useState<GeneratedApiKeyResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [keyNameValidationError, setKeyNameValidationError] = useState<
+    string | null
+  >(null); // Added for client-side validation
 
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKey | null>(null);
@@ -111,8 +115,17 @@ export function ApiKeyManagement() {
 
   // --- Handlers ---
   const handleGenerateSubmit = () => {
+    resetCreateKeyMutation();
+    const trimmedName = newKeyName.trim();
+
+    if (!trimmedName) {
+      setKeyNameValidationError("API key name is required.");
+      return;
+    }
+    setKeyNameValidationError(null); // Clear validation error if present
+
     createApiKey(
-      { name: newKeyName || undefined },
+      { name: trimmedName }, // Use trimmedName
       {
         onSuccess: (data) => {
           // Cast the received data to the expected response type
@@ -155,6 +168,7 @@ export function ApiKeyManagement() {
     setCopied(false); // Reset copied state
     setNewKeyName(""); // Clear name input
     resetCreateKeyMutation(); // Reset mutation state including error
+    setKeyNameValidationError(null); // Clear validation error
   };
 
   const copyToClipboard = () => {
@@ -212,7 +226,7 @@ export function ApiKeyManagement() {
           No API keys generated yet.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <Table hoverable>
             <TableHead>
               <TableRow>
@@ -223,22 +237,19 @@ export function ApiKeyManagement() {
                 <TableHeadCell>Actions</TableHeadCell>
               </TableRow>
             </TableHead>
-            <TableBody className="divide-y">
+            <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
               {apiKeysData.map((key) => (
-                <TableRow
-                  key={key.keyId}
-                  className="bg-white dark:border-gray-700 dark:bg-gray-800"
-                >
+                <TableRow key={key.keyId} className="bg-white dark:bg-gray-800">
                   {/* Key Name */}
-                  <TableCell className="font-medium whitespace-nowrap text-gray-900 dark:text-white">
+                  <TableCell className="px-6 py-4 font-medium whitespace-nowrap text-gray-900 dark:text-white">
                     {key.name || <span className="italic">Unnamed Key</span>}
                   </TableCell>
                   {/* Key Prefix */}
-                  <TableCell>
+                  <TableCell className="px-6 py-4">
                     <span className="font-mono">{key.prefix}...</span>
                   </TableCell>
                   {/* Key Status */}
-                  <TableCell>
+                  <TableCell className="px-6 py-4">
                     <Badge
                       color={key.status === "active" ? "success" : "failure"}
                       size="sm"
@@ -247,13 +258,16 @@ export function ApiKeyManagement() {
                     </Badge>
                   </TableCell>
                   {/* Created At */}
-                  <TableCell>{formatDate(key.createdAt)}</TableCell>
+                  <TableCell className="px-6 py-4">
+                    {formatDate(key.createdAt)}
+                  </TableCell>
                   {/* Actions */}
-                  <TableCell>
+                  <TableCell className="px-6 py-4">
                     {key.status === "active" ? (
                       <Button
                         size="xs"
-                        color="failure"
+                        color="red"
+                        outline
                         onClick={() => openRevokeModal(key)}
                         disabled={
                           isRevokingKey && keyToRevoke?.keyId === key.keyId
@@ -268,7 +282,7 @@ export function ApiKeyManagement() {
                         Revoke
                       </Button>
                     ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-red-500 dark:text-red-400">
                         Revoked
                       </span>
                     )}
@@ -281,10 +295,10 @@ export function ApiKeyManagement() {
       )}
       {/* Generate Key Modal */}
       <Modal show={showGenerateModal} onClose={closeGenerateModal} size="lg">
-        <ModalHeader>
+        <ModalHeader className="dark:border-gray-700">
           {generatedApiKey ? "API Key Generated" : "Generate New API Key"}
         </ModalHeader>
-        <ModalBody>
+        <ModalBody className="dark:bg-gray-800">
           {generatedApiKey ? (
             // Display generated key info
             <div className="space-y-4">
@@ -314,13 +328,13 @@ export function ApiKeyManagement() {
                   type="text"
                   value={generatedApiKey.apiKey} // Display the full key here
                   readOnly
-                  className="pr-10" // Add padding for the button
+                  className="pr-12" // Increased padding for more space for the button
                 />
                 <Tooltip content={copied ? "Copied!" : "Copy to clipboard"}>
                   <Button
                     size="sm"
                     color="gray"
-                    className="absolute inset-y-0 right-0 mr-1 flex items-center px-2"
+                    className="absolute inset-y-0 right-0 mr-2 flex items-center px-2" // Increased mr-1 to mr-2
                     onClick={copyToClipboard}
                   >
                     {copied ? (
@@ -343,25 +357,38 @@ export function ApiKeyManagement() {
               className="space-y-4"
             >
               <div>
-                <Label htmlFor="keyName">Key Name (Optional)</Label>
+                <Label htmlFor="keyName" className="mb-1 block">
+                  Key Name
+                </Label>{" "}
+                {/* Added mb-1 and block */}
                 <TextInput
                   id="keyName"
                   type="text"
                   placeholder="e.g., My Production Key"
                   value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
+                  onChange={(e) => {
+                    setNewKeyName(e.target.value);
+                    if (keyNameValidationError) {
+                      setKeyNameValidationError(null); // Clear error on input change
+                    }
+                  }}
                   disabled={isCreatingKey}
                 />
+                {keyNameValidationError && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    {keyNameValidationError}
+                  </p>
+                )}
               </div>
               {createKeyError && ( // Show error inside modal before key is generated
                 <Alert color="failure" icon={HiInformationCircle}>
-                  {createKeyError.message || "Failed to generate key."}
+                  {handleApiError(createKeyError)}
                 </Alert>
               )}
             </form>
           )}
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter className="dark:border-gray-700 dark:bg-gray-800">
           {generatedApiKey ? (
             // Only show Close button after generation
             <Button onClick={closeGenerateModal}>Close</Button>
@@ -401,33 +428,43 @@ export function ApiKeyManagement() {
         onClose={() => !isRevokingKey && setShowRevokeModal(false)} // Prevent closing while revoking
         popup
       >
-        <ModalHeader />
-        <ModalBody>
+        <ModalHeader className="dark:border-gray-700" />
+        <ModalBody className="dark:bg-gray-800">
           <div className="text-center">
-            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-red-500 dark:text-red-400" />
             <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
               Are you sure you want to revoke this API key?
             </h3>
-            {/* Display key details */}
+            {/* Display key details - Improved UI */}
             {keyToRevoke && (
-              <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-                Name:{" "}
-                <span className="font-medium">
-                  {keyToRevoke.name || (
-                    <span className="italic">Unnamed Key</span>
-                  )}
-                </span>
-                <br />
-                Prefix:{" "}
-                <span className="font-mono">{keyToRevoke.prefix}...</span>
-              </p>
+              <div className="my-4 rounded-md bg-gray-100 p-3 text-left sm:mx-auto sm:max-w-sm dark:bg-gray-700">
+                <div className="mb-1">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Name:{" "}
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {keyToRevoke.name || (
+                      <span className="italic">Unnamed Key</span>
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Prefix:{" "}
+                  </span>
+                  <span className="font-mono font-semibold text-gray-900 dark:text-white">
+                    {keyToRevoke.prefix}...
+                  </span>
+                </div>
+              </div>
             )}
             <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
               This key will immediately stop working and cannot be reactivated.
             </p>
             <div className="flex justify-center gap-4">
               <Button
-                color="failure"
+                color="red"
+                outline
                 onClick={handleRevokeConfirm}
                 disabled={isRevokingKey}
               >
@@ -442,7 +479,7 @@ export function ApiKeyManagement() {
                 )}
               </Button>
               <Button
-                color="gray"
+                color="blue"
                 onClick={() => setShowRevokeModal(false)}
                 disabled={isRevokingKey}
               >

@@ -17,12 +17,28 @@ exports.createApiKey = async function (req, body) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || await getUserData(req.headers.authorization?.split(' ')[1]);
 
+    // Validate API key name
+    if (!body.name || body.name.trim() === "") {
+      return respondWithCode(400, {
+        code: 400,
+        message: 'API key name is required.',
+      });
+    }
+
     // Check if store exists
     const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
     if (!store) {
       return respondWithCode(404, {
         code: 404,
         message: 'Store not found',
+      });
+    }
+
+    // Check if an API key with the same name already exists for this store (and is active)
+    if (store.apiKeys && store.apiKeys.some(key => key.name === body.name.trim())) {
+      return respondWithCode(409, {
+        code: 409,
+        message: `An active API key with the name "${body.name.trim()}" already exists.`,
       });
     }
 
@@ -35,7 +51,7 @@ exports.createApiKey = async function (req, body) {
       keyId: new ObjectId().toString(),
       prefix,
       hashedKey,
-      name: body.name || 'API Key',
+      name: body.name.trim(), // Use the provided and trimmed name
       status: 'active',
       createdAt: new Date(),
     };

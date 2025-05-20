@@ -10,6 +10,7 @@ import {
   MonthlySpendingAnalytics,
   GetSpendingAnalyticsParams,
   GetRecentUserDataParams, // <-- Import params type for recent data
+  UserDataDeletionRequest, // Import the request type if you defined it in openapi.yaml components
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -216,5 +217,43 @@ export function useStoreConsentLists() {
     enabled: isAuthenticated && !authLoading && clientsReady,
     // Add specific cache settings if needed
     // ...cacheSettings.consent, // Example
+  });
+}
+
+export function useDeleteUserDataHistory() {
+  const { apiClients, clientsReady } = useApiClients();
+  const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  return useMutation<
+    void, // Assuming 204 No Content response
+    Error,
+    UserDataDeletionRequest // Type for the request body
+  >({
+    mutationFn: (deletionRequest: UserDataDeletionRequest) => {
+      if (!clientsReady || !isAuthenticated || authLoading) {
+        return Promise.reject(
+          new Error("API client not ready or user not authenticated."),
+        );
+      }
+      // Assuming your generated client has a method like 'deleteUserDataHistory'
+      // Adjust the method name if it's different based on your openapi-generator config
+      return apiClients.users
+        .deleteUserDataHistory(deletionRequest)
+        .then((res) => res.data);
+    },
+    onSuccess: () => {
+      // Invalidate queries that display this data
+      // This will cause components using these queries to refetch
+      queryClient.invalidateQueries({ queryKey: cacheKeys.users.recentData() });
+      queryClient.invalidateQueries({
+        queryKey: cacheKeys.users.spendingAnalytics(),
+      });
+      // Potentially show a success toast
+    },
+    onError: (error) => {
+      // Potentially show an error toast
+      console.error("Failed to delete user data history:", error);
+    },
   });
 }

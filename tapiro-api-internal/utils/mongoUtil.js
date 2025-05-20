@@ -119,6 +119,7 @@ async function setupIndexes(db) {
     await db.collection('stores').createIndex({ auth0Id: 1 }, { unique: true });
     await db.collection('stores').createIndex({ email: 1 });
     await db.collection('stores').createIndex({ "apiKeys.prefix": 1 });
+    await db.collection('stores').createIndex({ name: "text" });
     
     // API usage indexes
     await db.collection('apiUsage').createIndex({ apiKeyId: 1, timestamp: -1 });
@@ -128,6 +129,23 @@ async function setupIndexes(db) {
     await db.collection('userData').createIndex({ userId: 1, timestamp: -1 });
     await db.collection('userData').createIndex({ email: 1 });
     await db.collection('userData').createIndex({ storeId: 1, timestamp: -1 });
+
+    // New indexes for filtering by dataType and storeId, user-centric
+    await db.collection('userData').createIndex({ userId: 1, dataType: 1, timestamp: -1 });
+    await db.collection('userData').createIndex({ userId: 1, storeId: 1, timestamp: -1 });
+    await db.collection('userData').createIndex({ userId: 1, dataType: 1, storeId: 1, timestamp: -1 });
+
+    // New text index for searchTerm
+    await db.collection('userData').createIndex(
+      {
+        "entries.items.name": "text",
+        "entries.items.category": "text",
+        "entries.query": "text"
+      },
+      {
+        name: "userData_text_search_idx"
+      }
+    );
     
     console.log('MongoDB indexes successfully configured');
   } catch (error) {

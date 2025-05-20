@@ -1,5 +1,5 @@
-import { useForm, SubmitHandler } from "react-hook-form"; // Import useForm and SubmitHandler
-import { Button, FloatingLabel, HelperText } from "flowbite-react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { Button, HelperText, Label, TextInput } from "flowbite-react"; // Import Label and TextInput
 import { StoreCreate } from "../../api/types/data-contracts";
 import LoadingSpinner from "../common/LoadingSpinner";
 
@@ -42,14 +42,21 @@ export function StoreRegistrationForm({
         Complete Store Registration
       </h3>
 
-      {/* Store Name with FloatingLabel and Icon */}
-      <div className="relative">
-        <FloatingLabel
-          variant="outlined"
+      {/* Store Name */}
+      <div>
+        <div className="mb-2 block">
+          <Label
+            htmlFor="store-name"
+            color={errors.name ? "failure" : "default"}
+          >
+            Store Name
+          </Label>
+        </div>
+        <TextInput
           id="store-name"
-          label="Store Name"
-          color={errors.name ? "error" : "default"} // Use errors object
-          // Register the input with validation
+          placeholder="Enter your store name"
+          color={errors.name ? "failure" : "gray"}
+          required
           {...register("name", {
             required: "Store name is required",
             minLength: {
@@ -61,9 +68,7 @@ export function StoreRegistrationForm({
               message: "Name cannot exceed 100 characters",
             },
           })}
-          required // Keep HTML required for accessibility/native behavior
         />
-        {/* Display validation error */}
         {errors.name && (
           <HelperText color="failure" className="mt-1">
             {errors.name.message}
@@ -71,14 +76,20 @@ export function StoreRegistrationForm({
         )}
       </div>
 
-      {/* Store Address with FloatingLabel and Icon */}
-      <div className="relative">
-        <FloatingLabel
-          variant="outlined"
+      {/* Store Address */}
+      <div>
+        <div className="mb-2 block">
+          <Label
+            htmlFor="store-address"
+            color={errors.address ? "failure" : "default"}
+          >
+            Store Address (Optional)
+          </Label>
+        </div>
+        <TextInput
           id="store-address"
-          label="Store Address"
-          color={errors.address ? "error" : "default"} // Use errors object
-          // Register the input (optional validation)
+          placeholder="Enter your store address"
+          color={errors.address ? "failure" : "gray"}
           {...register("address", {
             maxLength: {
               value: 200,
@@ -86,13 +97,12 @@ export function StoreRegistrationForm({
             },
           })}
         />
-        {/* Display validation error */}
         {errors.address && (
           <HelperText color="failure" className="mt-1">
             {errors.address.message}
           </HelperText>
         )}
-        {!errors.address && ( // Show helper text only if no error
+        {!errors.address && (
           <HelperText color="gray" className="mt-1">
             Optional: Provide a physical or primary business address.
           </HelperText>
@@ -103,7 +113,6 @@ export function StoreRegistrationForm({
         {isLoading ? (
           <LoadingSpinner size="md" className="py-2" />
         ) : (
-          // No need to manually disable based on name state anymore
           <Button type="submit" disabled={isLoading} size="lg">
             Complete Registration
           </Button>

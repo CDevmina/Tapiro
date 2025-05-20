@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"; // Added useEffect
+import React, { useState, useMemo, useEffect } from "react"; // Added useEffect
 import {
   Card,
   Datepicker,
@@ -13,6 +13,14 @@ import {
   TextInput,
   Select,
   Label,
+  Dropdown, // Added Dropdown
+  Modal, // Added Modal
+  ModalHeader,
+  ModalBody,
+  Toast,
+  ToastToggle,
+  DropdownItem,
+  DropdownDivider, // Added Toast
 } from "flowbite-react";
 import {
   ResponsiveContainer,
@@ -29,22 +37,28 @@ import {
   HiOutlineSearch,
   HiChevronLeft,
   HiChevronRight,
+  HiTrash, // Added Trash icon
+  HiExclamation, // Added Exclamation icon for modal
+  HiCheckCircle, // For success toast
+  HiXCircle, // For error toast
 } from "react-icons/hi";
 import {
   useRecentUserData,
   useSpendingAnalytics,
+  useDeleteUserDataHistory,
 } from "../../api/hooks/useUserHooks";
 import { useLookupStores } from "../../api/hooks/useStoreHooks";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
-  RecentUserDataEntry, // Keep this import now
+  RecentUserDataEntry,
   StoreBasicInfo,
   MonthlySpendingItem,
   GetRecentUserDataParams,
-  PurchaseItem, // Assuming PurchaseItem is the type for purchase details items
-  PurchaseEntry, // <-- Import PurchaseEntry
-  SearchEntry, // Assuming SearchEntry is the type for search details
+  PurchaseItem,
+  PurchaseEntry,
+  SearchEntry,
+  UserDataHistoryDeletionRequest,
 } from "../../api/types/data-contracts";
 
 // --- Helper Functions (Keep existing) ---
@@ -112,6 +126,16 @@ const UserAnalyticsPage: React.FC = () => {
   const [activityPage, setActivityPage] = useState<number>(1);
   const activityLimit = 15; // Items per page
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletionScope, setDeletionScope] = useState<
+    UserDataHistoryDeletionRequest["scope"] | null
+  >(null);
+  const [entryToDeleteId, setEntryToDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
   // --- Data Fetching ---
   const {
     data: spendingData,
@@ -144,7 +168,8 @@ const UserAnalyticsPage: React.FC = () => {
     data: activityData,
     isLoading: activityLoading,
     error: activityError,
-    isPlaceholderData, // Check if data is placeholder (useful for disabling next)
+    isPlaceholderData,
+    refetch: refetchActivityData, // Destructure refetch function
   } = useRecentUserData(activityParams);
 
   const activityStoreIds = useMemo(() => {
@@ -160,6 +185,9 @@ const UserAnalyticsPage: React.FC = () => {
     isLoading: storesLoading,
     error: storesError,
   } = useLookupStores(activityStoreIds);
+
+  const { mutate: deleteUserData, isPending: isDeletingUserData } =
+    useDeleteUserDataHistory();
 
   // --- Memos (Keep existing) ---
   const storeNameMap = useMemo(() => {
@@ -231,6 +259,64 @@ const UserAnalyticsPage: React.FC = () => {
   };
   // --- End Pagination Logic ---
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const handleDeleteRequest = (
+    scope: UserDataHistoryDeletionRequest["scope"],
+    entryId?: string,
+  ) => {
+    setDeletionScope(scope);
+    if (entryId) {
+      setEntryToDeleteId(entryId);
+    } else {
+      setEntryToDeleteId(null);
+    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (!deletionScope) return;
+
+    const requestBody: UserDataHistoryDeletionRequest = {
+      scope: deletionScope,
+    };
+    if (deletionScope === "individual" && entryToDeleteId) {
+      requestBody.entryIds = [entryToDeleteId];
+    } else if (deletionScope === "individual" && !entryToDeleteId) {
+      setToast({
+        message: "Error: Entry ID missing for individual deletion.",
+        type: "error",
+      });
+      setShowDeleteModal(false);
+      return;
+    }
+
+    deleteUserData(requestBody, {
+      onSuccess: () => {
+        setToast({
+          message: "Data history deleted successfully.",
+          type: "success",
+        });
+        setShowDeleteModal(false);
+        setDeletionScope(null);
+        setEntryToDeleteId(null);
+        refetchActivityData(); // Explicitly refetch the activity data
+      },
+      onError: (error) => {
+        setToast({
+          message: error.message || "Failed to delete data history.",
+          type: "error",
+        });
+        setShowDeleteModal(false);
+      },
+    });
+  };
+
   // --- Render Logic ---
   const isLoading = spendingLoading || activityLoading || storesLoading;
   // Remove combinedError
@@ -242,6 +328,18 @@ const UserAnalyticsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-12">
+      {toast && (
+        <Toast className="fixed top-5 right-5 z-50">
+          {toast.type === "success" ? (
+            <HiCheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+          ) : (
+            <HiXCircle className="h-5 w-5 text-red-600 dark:text-red-500" />
+          )}
+          <div className="pl-4 text-sm font-normal">{toast.message}</div>
+          <ToastToggle onDismiss={() => setToast(null)} />
+        </Toast>
+      )}
+
       <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
         Your Data Insights
       </h2>
@@ -268,7 +366,7 @@ const UserAnalyticsPage: React.FC = () => {
             placeholder="End Date"
           />
           {(spendingStartDate || spendingEndDate) && (
-            <Button size="sm" color="light" onClick={clearSpendingDates}>
+            <Button size="sm" color="blue" outline onClick={clearSpendingDates}>
               Clear Dates
             </Button>
           )}
@@ -325,9 +423,39 @@ const UserAnalyticsPage: React.FC = () => {
 
       {/* --- Recent Activity Section --- */}
       <Card>
-        <h3 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
-          Recent Activity Log
-        </h3>
+        <div className="mb-4 flex flex-col items-start justify-between sm:flex-row sm:items-center">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Recent Activity Log
+          </h3>
+          <Dropdown
+            label="Delete History"
+            color="red"
+            size="sm"
+            disabled={isDeletingUserData}
+          >
+            <DropdownItem
+              onClick={() => handleDeleteRequest("today")}
+              icon={HiTrash}
+            >
+              Delete Today's Activity
+            </DropdownItem>
+            <DropdownItem
+              onClick={() => handleDeleteRequest("last7days")}
+              icon={HiTrash}
+            >
+              Delete Last 7 Days
+            </DropdownItem>
+            <DropdownDivider />
+            <DropdownItem
+              onClick={() => handleDeleteRequest("all")}
+              icon={HiTrash}
+              className="text-red-700 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-600"
+            >
+              Delete All Activity
+            </DropdownItem>
+          </Dropdown>
+        </div>
+
         {/* Activity Filters (Keep existing) */}
         <div className="mb-6 grid grid-cols-1 items-end gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Datepicker
@@ -389,25 +517,31 @@ const UserAnalyticsPage: React.FC = () => {
             />
           </div>
           <div className="flex justify-end lg:col-start-4">
-            <Button size="sm" color="light" onClick={clearActivityFilters}>
+            <Button
+              size="sm"
+              color="blue"
+              outline
+              onClick={clearActivityFilters}
+            >
               Clear Filters
             </Button>
           </div>
         </div>
 
         {/* Activity Table */}
-        {activityError || storesError ? ( // <-- Check both activityError and storesError
+        {activityError || storesError ? (
+          // ... error display ...
           <ErrorDisplay
             title="Activity Log Error"
             message={
               activityError?.message ||
-              storesError?.message || // <-- Display storesError message if present
+              storesError?.message ||
               "Could not load activity data or store details."
             }
-            error={activityError || storesError} // Pass the first error encountered
+            error={activityError || storesError}
             className="py-4"
           />
-        ) : activityLoading && isPlaceholderData ? ( // Show spinner only if loading AND data is placeholder
+        ) : activityLoading && isPlaceholderData ? (
           <div className="flex h-[200px] items-center justify-center">
             <Spinner size="lg" />
           </div>
@@ -417,7 +551,7 @@ const UserAnalyticsPage: React.FC = () => {
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
               <Table hoverable>
                 <TableHead>
                   <TableRow>
@@ -425,17 +559,15 @@ const UserAnalyticsPage: React.FC = () => {
                     <TableHeadCell>Type</TableHeadCell>
                     <TableHeadCell>Store</TableHeadCell>
                     <TableHeadCell>Details</TableHeadCell>
+                    <TableHeadCell>Actions</TableHeadCell>
                   </TableRow>
                 </TableHead>
                 <TableBody className="divide-y">
                   {activityData.map((entry: RecentUserDataEntry) => {
-                    // Safely access details[0]
                     const firstDetail =
                       Array.isArray(entry.details) && entry.details.length > 0
                         ? entry.details[0]
                         : undefined;
-
-                    // Cast details based on dataType for better type safety (optional but recommended)
                     const purchaseDetail =
                       entry.dataType === "purchase"
                         ? (firstDetail as PurchaseEntry | undefined)
@@ -457,27 +589,38 @@ const UserAnalyticsPage: React.FC = () => {
                           {entry.dataType}
                         </TableCell>
                         <TableCell>
-                          {/* Check storeId before using map */}
                           {entry.storeId
                             ? (storeNameMap.get(entry.storeId) ?? entry.storeId)
                             : "N/A"}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {/* Display relevant details based on type */}
                           {entry.dataType === "purchase" &&
-                            purchaseDetail?.items && // Use casted detail and optional chaining
+                            purchaseDetail?.items &&
                             purchaseDetail.items.length > 0 && (
                               <span>
                                 {purchaseDetail.items
-                                  .map((item: PurchaseItem) => item.name) // Add type to item
+                                  .map((item: PurchaseItem) => item.name)
                                   .join(", ")}
                               </span>
                             )}
                           {entry.dataType === "search" &&
-                            searchDetail?.query && ( // Use casted detail and optional chaining
+                            searchDetail?.query && (
                               <span>Query: "{searchDetail.query}"</span>
                             )}
-                          {/* Add more detail rendering as needed */}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            color="red"
+                            size="xs"
+                            outline
+                            onClick={() =>
+                              handleDeleteRequest("individual", entry._id)
+                            }
+                            disabled={isDeletingUserData}
+                            title="Delete this entry"
+                          >
+                            <HiTrash className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -490,19 +633,21 @@ const UserAnalyticsPage: React.FC = () => {
             <div className="mt-4 flex items-center justify-between px-1">
               <Button
                 size="sm"
-                color="light"
+                color="blue"
+                outline
                 onClick={handlePreviousPage}
                 disabled={activityPage <= 1 || activityLoading} // Disable if on first page or loading
               >
                 <HiChevronLeft className="mr-1 h-4 w-4" />
                 Previous
               </Button>
-              <span className="text-sm text-gray-700 dark:text-gray-400">
+              <span className="inline-flex items-center rounded-md bg-blue-100 px-3 py-1.5 text-sm font-semibold text-blue-700 dark:bg-blue-700 dark:text-blue-100">
                 Page {activityPage}
               </span>
               <Button
                 size="sm"
-                color="light"
+                color="blue"
+                outline
                 onClick={handleNextPage}
                 disabled={!hasMoreData || activityLoading} // Disable if no more data inferred or loading
               >
@@ -522,6 +667,54 @@ const UserAnalyticsPage: React.FC = () => {
           </>
         )}
       </Card>
+
+      {/* Deletion Confirmation Modal */}
+      <Modal
+        show={showDeleteModal}
+        size="md"
+        onClose={() => !isDeletingUserData && setShowDeleteModal(false)}
+        popup
+      >
+        <ModalHeader />
+        <ModalBody>
+          <div className="text-center">
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-red-600 dark:text-red-600" />
+            <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this data?
+              {deletionScope === "today" &&
+                " This will remove all activity recorded today."}
+              {deletionScope === "last7days" &&
+                " This will remove all activity from the last 7 days."}
+              {deletionScope === "all" &&
+                " This will remove ALL your activity history."}
+              {deletionScope === "individual" &&
+                entryToDeleteId &&
+                " This specific entry will be permanently removed."}
+              This action cannot be undone.
+            </h3>
+            <div className="flex justify-center gap-4">
+              <Button
+                color="red"
+                onClick={confirmDelete}
+                disabled={isDeletingUserData}
+              >
+                {isDeletingUserData ? (
+                  <Spinner size="sm" className="mr-2" />
+                ) : null}
+                Yes, I'm sure
+              </Button>
+              <Button
+                color="blue"
+                outline
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeletingUserData}
+              >
+                No, cancel
+              </Button>
+            </div>
+          </div>
+        </ModalBody>
+      </Modal>
     </div>
   );
 };

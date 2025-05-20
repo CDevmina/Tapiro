@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"; // <-- Import useState, useEffect
+import React, { useState, useMemo, useEffect, useRef } from "react"; // <-- Added useRef
 import {
   Card,
   Alert,
@@ -15,22 +15,24 @@ import {
   Spinner,
   Tabs,
   TabItem,
+  type TabsRef, // <-- Added TabsRef type import
 } from "flowbite-react";
 import {
-  HiArrowRight,
-  HiClock,
-  HiInformationCircle,
   HiOutlineNewspaper,
   HiOutlineCurrencyDollar,
   HiOutlineShare,
-  HiCalendar,
-  HiOutlineGlobeAlt,
-  HiOutlineCake,
-  HiOutlineCash,
-  HiOutlineUserCircle,
-  HiOutlineViewGrid,
+  HiArrowRight,
+  HiInformationCircle,
   HiOutlineSparkles,
   HiOutlineChartPie,
+  HiOutlineOfficeBuilding, // Added store icon
+  HiCalendar,
+  HiClock,
+  HiOutlineViewGrid,
+  HiOutlineUserCircle,
+  HiOutlineCake,
+  HiOutlineGlobeAlt,
+  HiOutlineCash,
 } from "react-icons/hi";
 import {
   ResponsiveContainer,
@@ -59,6 +61,8 @@ import ErrorDisplay from "../../components/common/ErrorDisplay";
 import {
   StoreBasicInfo,
   MonthlySpendingItem,
+  RecentUserDataEntry, // Keep this import
+  TaxonomyCategory, // Keep this import
 } from "../../api/types/data-contracts";
 import { InterestFormModal } from "../../components/auth/InterestFormModal";
 
@@ -135,6 +139,7 @@ interface CustomizedLabelProps {
   innerRadius: number;
   outerRadius: number;
   percent: number;
+  name: string;
 }
 
 const renderCustomizedLabel = ({
@@ -159,6 +164,7 @@ const renderCustomizedLabel = ({
       textAnchor={x > cx ? "start" : "end"}
       dominantBaseline="central"
       fontSize={12}
+      fontWeight="bold"
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
@@ -171,6 +177,7 @@ interface DemoInfoCardProps {
   label: string;
   value: string | number | null | undefined;
   isLoading?: boolean;
+  isInferred?: boolean; // Added isInferred
 }
 
 const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
@@ -178,9 +185,11 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
   label,
   value,
   isLoading,
+  isInferred, // Added isInferred
 }) => (
   <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+    <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />{" "}
+    {/* Changed icon color */}
     <div className="flex-grow">
       <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
         {label}
@@ -190,6 +199,12 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
       ) : (
         <p className="text-sm font-semibold text-gray-900 dark:text-white">
           {value || "Not set"}
+          {isInferred &&
+            value && ( // Added inferred text display
+              <span className="ml-1 text-xs font-normal text-yellow-600 dark:text-yellow-400">
+                (inferred)
+              </span>
+            )}
         </p>
       )}
     </div>
@@ -200,6 +215,7 @@ const DemoInfoCard: React.FC<DemoInfoCardProps> = ({
 export default function UserDashboard() {
   // --- State for Active Tab ---
   const [activeTab, setActiveTab] = useState(0); // 0 = Overview, 1 = Profile, etc.
+  const tabsRef = useRef<TabsRef>(null); // <-- Added ref for Tabs component
 
   // --- State for Date Range ---
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -221,7 +237,7 @@ export default function UserDashboard() {
     data: recentActivity,
     isLoading: activityLoading,
     error: activityError,
-  } = useRecentUserData({ limit: 3 });
+  } = useRecentUserData({ limit: 3 }); // Fetch 3 for overview
   const {
     data: spendingData,
     isLoading: spendingLoading,
@@ -312,7 +328,7 @@ export default function UserDashboard() {
     // Build helper maps from taxonomy
     const categoryNameMap = new Map<string, string>();
     const parentMap = new Map<string, string | null>();
-    taxonomyData.categories.forEach((cat) => {
+    taxonomyData.categories.forEach((cat: TaxonomyCategory) => {
       categoryNameMap.set(cat.id, cat.name);
       parentMap.set(cat.id, cat.parent_id || null);
     });
@@ -348,9 +364,9 @@ export default function UserDashboard() {
         if (topLevelCat) {
           const current = aggregatedScores.get(topLevelCat.id) || {
             name: topLevelCat.name,
-            value: 0, // Use 'value'
+            value: 0,
           };
-          current.value += pref.score; // Add score to value
+          current.value += pref.score; // Sum scores (assuming score is 0-1)
           aggregatedScores.set(topLevelCat.id, current);
         }
       }
@@ -358,9 +374,6 @@ export default function UserDashboard() {
 
     // Convert map to array suitable for PieChart
     const chartData = Array.from(aggregatedScores.values());
-
-    // Optional: Normalize scores to percentages if needed, or just use raw scores
-    // For PieChart, raw values usually work fine as it calculates percentages internally.
 
     // Filter out items with zero or negative score if necessary
     return chartData.filter((item) => item.value > 0);
@@ -417,8 +430,9 @@ export default function UserDashboard() {
   // --- Render Dashboard ---
   return (
     <>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 pb-12">
         <Tabs
+          ref={tabsRef} // <-- Assign ref to Tabs
           aria-label="User dashboard tabs"
           variant="underline"
           onActiveTabChange={(tab) => setActiveTab(tab)}
@@ -429,7 +443,7 @@ export default function UserDashboard() {
             title="Overview"
             icon={HiOutlineViewGrid}
           >
-            {activeTab === 0 && ( // Conditionally render Overview tab content
+            {activeTab === 0 && (
               <>
                 {profileLoading ||
                 activityLoading ||
@@ -487,31 +501,34 @@ export default function UserDashboard() {
                         ) : (
                           <div className="p-4">
                             <Timeline>
-                              {recentActivity.map((entry) => (
-                                <TimelineItem key={entry._id}>
-                                  <TimelinePoint icon={HiClock} />
-                                  <TimelineContent>
-                                    <TimelineTime>
-                                      {formatDate(entry.timestamp)}
-                                    </TimelineTime>
-                                    <TimelineTitle className="capitalize">
-                                      {entry.dataType}
-                                      {entry.storeId &&
-                                        ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
-                                    </TimelineTitle>
-                                    {/* Further details can be added here if needed */}
-                                  </TimelineContent>
-                                </TimelineItem>
-                              ))}
+                              {recentActivity.map(
+                                (entry: RecentUserDataEntry) => (
+                                  <TimelineItem key={entry._id}>
+                                    <TimelinePoint icon={HiClock} />
+                                    <TimelineContent>
+                                      <TimelineTime>
+                                        {formatDate(entry.timestamp)}
+                                      </TimelineTime>
+                                      <TimelineTitle className="capitalize">
+                                        {entry.dataType}
+                                        {entry.storeId &&
+                                          ` at ${storeNameMap.get(entry.storeId) || "Unknown Store"}`}
+                                      </TimelineTitle>
+                                      {/* Further details can be added here if needed */}
+                                    </TimelineContent>
+                                  </TimelineItem>
+                                ),
+                              )}
                             </Timeline>
                           </div>
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(3)} // 3 = Analytics Tab Index
                       >
                         View Full Activity Log{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
@@ -546,7 +563,8 @@ export default function UserDashboard() {
                           {(startDate || endDate) && (
                             <Button
                               size="xs"
-                              color="light"
+                              color="blue"
+                              outline
                               onClick={clearDates}
                             >
                               Clear Dates
@@ -612,88 +630,19 @@ export default function UserDashboard() {
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(3)} // 3 = Analytics Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(3)} // 3 = Analytics Tab Index
                       >
                         View Detailed Analytics{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
                       </Button>
                     </Card>
 
-                    {/* --- Top Interests Card --- */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-1">
-                      <div className="flex-grow">
-                        <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
-                          Top Interests
-                        </h4>
-                        {preferencesError || taxonomyError ? (
-                          <Alert color="failure" icon={HiInformationCircle}>
-                            Could not load preference data.
-                          </Alert>
-                        ) : preferencesLoading || taxonomyLoading ? (
-                          <div className="flex h-[250px] items-center justify-center">
-                            <Spinner>Loading preferences...</Spinner>
-                          </div>
-                        ) : !preferencesPieChartData ||
-                          preferencesPieChartData.length === 0 ? (
-                          <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                            No preference data available yet. Add interests to
-                            see insights.
-                          </p>
-                        ) : (
-                          <div className="h-[300px] w-full">
-                            <ResponsiveContainer>
-                              <PieChart>
-                                <Pie
-                                  data={preferencesPieChartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={renderCustomizedLabel}
-                                  outerRadius={100}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {preferencesPieChartData.map(
-                                    (_entry, index) => (
-                                      <Cell
-                                        key={`cell-${index}`}
-                                        fill={
-                                          LINE_COLORS[
-                                            index % LINE_COLORS.length
-                                          ]
-                                        }
-                                      />
-                                    ),
-                                  )}
-                                </Pie>
-                                <RechartsTooltip
-                                  formatter={(value: number) =>
-                                    `${Math.round(value * 100)}% Interest`
-                                  }
-                                />
-                                <RechartsLegend />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        color="light"
-                        size="sm"
-                        className="mt-4 self-start"
-                        onClick={() => setActiveTab(1)} // 1 = Preferences Tab Index
-                      >
-                        Manage All Preferences{" "}
-                        <HiArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    </Card>
-
                     {/* --- Data Sharing Card --- */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-2">
+                    <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-1">
                       <div className="flex-grow">
                         <h3 className="mb-4 flex items-center text-xl font-semibold text-gray-900 dark:text-white">
                           <HiOutlineShare className="mr-2 h-5 w-5" />
@@ -712,17 +661,25 @@ export default function UserDashboard() {
                             You are not currently sharing data with any stores.
                           </p>
                         ) : (
-                          <List unstyled className="space-y-2">
+                          <List unstyled className="space-y-3">
+                            {" "}
+                            {/* Increased spacing */}
                             {(consentLists?.optInStores ?? []).map(
                               (storeId) => (
-                                <ListItem
-                                  key={storeId}
-                                  className="text-sm text-gray-700 dark:text-gray-300"
-                                >
-                                  Sharing with{" "}
-                                  <span className="font-semibold">
-                                    {storeNameMap.get(storeId) || storeId}
-                                  </span>
+                                <ListItem key={storeId} className="w-full">
+                                  {" "}
+                                  {/* Ensure ListItem takes full width */}
+                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                    <HiOutlineOfficeBuilding className="mr-3 h-6 w-6 flex-shrink-0 text-blue-600 dark:text-blue-500" />
+                                    <div className="flex-grow">
+                                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        Sharing data with
+                                      </p>
+                                      <p className="text-md font-semibold text-gray-900 dark:text-white">
+                                        {storeNameMap.get(storeId) || storeId}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </ListItem>
                               ),
                             )}
@@ -730,59 +687,146 @@ export default function UserDashboard() {
                         )}
                       </div>
                       <Button
-                        color="light"
+                        color="blue"
+                        outline
                         size="sm"
                         className="mt-4 self-start"
-                        onClick={() => setActiveTab(2)} // 2 = Sharing Tab Index
+                        onClick={() => tabsRef.current?.setActiveTab(2)} // 2 = Sharing Tab Index
                       >
                         Manage Sharing Settings{" "}
                         <HiArrowRight className="ml-1 h-4 w-4" />
                       </Button>
                     </Card>
 
-                    {/* Demographics Section */}
-                    <Card className="col-span-1 flex flex-col md:col-span-1 lg:col-span-3">
-                      <div className="flex flex-col">
-                        <h4 className="mb-6 text-base font-medium text-gray-700 dark:text-gray-300">
-                          About You
-                        </h4>
-                        {profileError ? (
-                          <Alert color="failure" icon={HiInformationCircle}>
-                            Could not load profile information.
-                          </Alert>
-                        ) : profileLoading ? (
-                          <div className="flex h-[250px] items-center justify-center">
-                            <Spinner>Loading profile...</Spinner>
+                    {/* --- Top Interests Card --- */}
+                    <Card className="col-span-1 flex flex-col md:col-span-2 lg:col-span-2">
+                      <div className="flex-grow">
+                        {/* New flex container for horizontal layout on md screens and up, vertical on sm */}
+                        <div className="flex flex-col md:flex-row md:gap-6">
+                          {/* Section 1: Top Interests */}
+                          <div className="flex-1">
+                            <h4 className="mb-2 text-base font-medium text-gray-700 dark:text-gray-300">
+                              Top Interests
+                            </h4>
+                            {preferencesError || taxonomyError ? (
+                              <Alert color="failure" icon={HiInformationCircle}>
+                                Could not load preference data.
+                              </Alert>
+                            ) : preferencesLoading || taxonomyLoading ? (
+                              <div className="flex h-[250px] items-center justify-center">
+                                <Spinner>Loading preferences...</Spinner>
+                              </div>
+                            ) : !preferencesPieChartData ||
+                              preferencesPieChartData.length === 0 ? (
+                              <p className="flex h-[250px] items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                                No preference data available yet. Add interests
+                                to see insights.
+                              </p>
+                            ) : (
+                              <div className="h-[300px] w-full">
+                                <ResponsiveContainer>
+                                  <PieChart>
+                                    <Pie
+                                      data={preferencesPieChartData}
+                                      cx="50%"
+                                      cy="50%"
+                                      labelLine={false}
+                                      label={renderCustomizedLabel}
+                                      outerRadius={100}
+                                      fill="#8884d8"
+                                      dataKey="value"
+                                      nameKey="name"
+                                    >
+                                      {preferencesPieChartData.map(
+                                        (_entry, index) => (
+                                          <Cell
+                                            key={`cell-${index}`}
+                                            fill={
+                                              LINE_COLORS[
+                                                index % LINE_COLORS.length
+                                              ]
+                                            }
+                                          />
+                                        ),
+                                      )}
+                                    </Pie>
+                                    <RechartsTooltip
+                                      formatter={(value: number) =>
+                                        `${Math.round(value * 100)}% Interest`
+                                      }
+                                    />
+                                    <RechartsLegend />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <DemoInfoCard
-                              icon={HiOutlineUserCircle}
-                              label="Gender"
-                              value={profile?.demographicData?.gender}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineCake}
-                              label="Age"
-                              value={profile?.demographicData?.age?.toString()}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineGlobeAlt}
-                              label="Country"
-                              value={profile?.demographicData?.country}
-                              isLoading={profileLoading}
-                            />
-                            <DemoInfoCard
-                              icon={HiOutlineCash}
-                              label="Income Bracket"
-                              value={profile?.demographicData?.incomeBracket}
-                              isLoading={profileLoading}
-                            />
+
+                          {/* Section 2: About You */}
+                          {/* Removed original mt-6, border-t, pt-6 wrapper. Added mt-6 for small screens, md:mt-0 for larger */}
+                          <div className="mt-6 flex-1 md:mt-0">
+                            <h4 className="mb-4 text-base font-medium text-gray-700 dark:text-gray-300">
+                              About You
+                            </h4>
+                            {profileError ? (
+                              <Alert color="failure" icon={HiInformationCircle}>
+                                Could not load profile information.
+                              </Alert>
+                            ) : profileLoading ? (
+                              <div className="flex h-[250px] items-center justify-center">
+                                <Spinner>Loading profile...</Spinner>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <DemoInfoCard
+                                  icon={HiOutlineUserCircle}
+                                  label="Gender"
+                                  value={
+                                    profile?.demographicData?.gender ||
+                                    profile?.demographicData?.inferredGender
+                                  }
+                                  isLoading={profileLoading}
+                                  isInferred={
+                                    !profile?.demographicData?.gender &&
+                                    !!profile?.demographicData?.inferredGender
+                                  }
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineCake}
+                                  label="Age"
+                                  value={profile?.demographicData?.age?.toString()}
+                                  isLoading={profileLoading}
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineGlobeAlt}
+                                  label="Country"
+                                  value={profile?.demographicData?.country}
+                                  isLoading={profileLoading}
+                                />
+                                <DemoInfoCard
+                                  icon={HiOutlineCash}
+                                  label="Income Bracket"
+                                  value={
+                                    profile?.demographicData?.incomeBracket
+                                  }
+                                  isLoading={profileLoading}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>{" "}
+                        {/* End of new flex container */}
                       </div>
+                      <Button
+                        color="blue"
+                        outline
+                        size="sm"
+                        className="mt-4 self-start"
+                        onClick={() => tabsRef.current?.setActiveTab(1)} // 1 = Preferences Tab Index
+                      >
+                        Manage All Preferences{" "}
+                        <HiArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
                     </Card>
                   </div>
                 )}

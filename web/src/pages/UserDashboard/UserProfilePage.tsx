@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   ToggleSwitch,
-  FloatingLabel,
   HelperText,
   Spinner,
   Tabs,
@@ -15,6 +14,8 @@ import {
   ModalBody,
   ModalHeader,
   Tooltip, // <-- Import Tooltip
+  Label, // <-- Add Label
+  TextInput, // <-- Add TextInput
 } from "flowbite-react";
 // Import necessary icons
 import {
@@ -239,12 +240,18 @@ export default function UserProfilePage() {
                 Basic Information
               </h2>
               {/* Username */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="username"
+                    color={errors.username ? "failure" : "default"}
+                  >
+                    Username
+                  </Label>
+                </div>
+                <TextInput
                   id="username"
-                  label="Username"
-                  color={errors.username ? "error" : "default"}
+                  placeholder="Enter username"
                   {...register("username", {
                     required: "Username is required",
                     minLength: {
@@ -270,12 +277,18 @@ export default function UserProfilePage() {
               </div>
 
               {/* Phone Number */}
-              <div className="relative">
-                <FloatingLabel
-                  variant="outlined"
+              <div>
+                <div className="mb-2 block">
+                  <Label
+                    htmlFor="phone"
+                    color={errors.phone ? "failure" : "default"}
+                  >
+                    Phone Number
+                  </Label>
+                </div>
+                <TextInput
                   id="phone"
-                  label="Phone Number (e.g., +14155552671)"
-                  color={errors.phone ? "error" : "default"}
+                  placeholder="e.g., +14155552671"
                   {...register("phone", {
                     pattern: {
                       value: /^\+[1-9]\d{1,14}$/,
@@ -459,7 +472,7 @@ export default function UserProfilePage() {
         <ModalHeader />
         <ModalBody>
           <div className="text-center">
-            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-red-600 dark:text-red-600" />
             <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
               Are you sure you want to permanently delete your user account?
             </h3>
@@ -482,7 +495,7 @@ export default function UserProfilePage() {
                 )}
               </Button>
               <Button
-                color="dark"
+                color="default"
                 outline
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}

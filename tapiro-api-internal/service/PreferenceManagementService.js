@@ -103,9 +103,16 @@ exports.optOutFromStore = async function (req, storeId) {
     );
 
     // Clear relevant caches
-    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    // Ensure user.email is available from the 'user' object fetched earlier.
+    if (user.email) {
+      await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+      console.log(`Invalidated store preference cache (email key): ${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+    } else {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) opted out from store ${storeId} but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
+    }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
     await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`); // Add this line
 
     return respondWithCode(204);
   } catch (error) {
@@ -194,17 +201,32 @@ exports.updateUserPreferences = async function (req, body) {
     // No need to fetch again if we trust the update, but it confirms the write
     const updatedUser = await db.collection('users').findOne(
         { _id: user._id },
-        { projection: { preferences: 1, updatedAt: 1 } }
+        { projection: { preferences: 1, updatedAt: 1, email: 1, privacySettings: 1 } }
     );
 
     // Clear related caches
-    const userCacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`;
+    const userCacheKey = `${CACHE_KEYS.PREFERENCES}${userData.sub}`; // userData.sub is the Auth0 user ID
     await invalidateCache(userCacheKey);
+    console.log(`Invalidated general preferences cache: ${userCacheKey}`);
+
+    // Invalidate USER_DATA cache as the user document (updatedAt) has changed
+    const userDataCacheKey = `${CACHE_KEYS.USER_DATA}${userData.sub}`;
+    await invalidateCache(userDataCacheKey);
+    console.log(`Invalidated user data cache: ${userDataCacheKey}`);
 
     // Clear store-specific preference caches as preferences changed
-    if (user.privacySettings?.optInStores) {
-      for (const storeId of user.privacySettings.optInStores) {
-        await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    if (updatedUser.privacySettings?.optInStores && updatedUser.privacySettings.optInStores.length > 0) {
+      const userEmail = updatedUser.email; 
+      if (userEmail) {
+        console.log(`Invalidating store-specific preferences for user ${updatedUser._id} (Email: ${userEmail}) across ${updatedUser.privacySettings.optInStores.length} stores.`);
+        for (const storeId of updatedUser.privacySettings.optInStores) {
+          // Standardize to use email for the cache key
+          const storePrefCacheKeyByEmail = `${CACHE_KEYS.STORE_PREFERENCES}${userEmail}:${storeId}`;
+          await invalidateCache(storePrefCacheKeyByEmail);
+          console.log(`Invalidated store preference cache (email key): ${storePrefCacheKeyByEmail}`);
+        }
+      } else {
+        console.warn(`User ${updatedUser._id} (Auth0 ID: ${userData.sub}) has opt-in stores but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
       }
     }
 
@@ -215,8 +237,9 @@ exports.updateUserPreferences = async function (req, body) {
       updatedAt: updatedUser.updatedAt, // Use the actual updated timestamp
     };
 
-    // Update the cache with the new minimal response
+    // Update the general preferences cache with the new minimal response
     await setCache(userCacheKey, JSON.stringify(preferencesResponse), { EX: CACHE_TTL.USER_DATA });
+    console.log(`Re-cached general preferences: ${userCacheKey}`);
 
     return respondWithCode(200, preferencesResponse);
 
@@ -281,9 +304,16 @@ exports.optInToStore = async function (req, storeId) {
     );
 
     // Clear relevant caches
-    await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user._id}:${storeId}`);
+    // Ensure user.email is available from the 'user' object fetched earlier.
+    if (user.email) {
+      await invalidateCache(`${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+      console.log(`Invalidated store preference cache (email key): ${CACHE_KEYS.STORE_PREFERENCES}${user.email}:${storeId}`);
+    } else {
+      console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) opted into store ${storeId} but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
+    }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {
@@ -297,15 +327,20 @@ exports.optInToStore = async function (req, storeId) {
  */
 exports.getStoreConsentLists = async function (req) {
   try {
-    // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // Try cache first
+    const consentCacheKey = `${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`;
+    const cachedConsentLists = await getCache(consentCacheKey);
+    if (cachedConsentLists) {
+      return respondWithCode(200, JSON.parse(cachedConsentLists));
+    }
 
     const db = getDB();
 
-    // Find user in database using Auth0 ID, projecting only necessary fields
     const user = await db.collection('users').findOne(
       { auth0Id: userData.sub },
-      { projection: { 'privacySettings.optInStores': 1, 'privacySettings.optOutStores': 1, _id: 0 } } // Only get opt-in/out lists
+      { projection: { 'privacySettings.optInStores': 1, 'privacySettings.optOutStores': 1, _id: 0 } }
     );
 
     if (!user) {
@@ -315,14 +350,13 @@ exports.getStoreConsentLists = async function (req) {
       });
     }
 
-    // Prepare the response object, defaulting to empty arrays if fields don't exist
     const consentLists = {
       optInStores: user.privacySettings?.optInStores || [],
       optOutStores: user.privacySettings?.optOutStores || [],
     };
 
-    // Note: Caching could be added here if needed, potentially using a specific key
-    // or relying on the USER_DATA cache invalidation from opt-in/out actions.
+    // Cache the result
+    await setCache(consentCacheKey, JSON.stringify(consentLists), { EX: CACHE_TTL.USER_DATA }); // Using USER_DATA TTL, adjust if needed
 
     return respondWithCode(200, consentLists);
   } catch (error) {

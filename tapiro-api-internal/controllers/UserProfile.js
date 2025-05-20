@@ -51,3 +51,13 @@ module.exports.getSpendingAnalytics = function getSpendingAnalytics(req, res, ne
       utils.writeJson(res, response);
     });
 };
+
+module.exports.deleteUserDataHistory = function deleteUserDataHistory(req, res, next, body) {
+  UserProfile.deleteUserDataHistory(req, body)
+    .then((response) => {
+      utils.writeJson(res, response);
+    })
+    .catch((response) => {
+      utils.writeJson(res, response);
+    });
+};

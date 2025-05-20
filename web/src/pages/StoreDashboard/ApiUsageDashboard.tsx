@@ -329,7 +329,7 @@ export function ApiUsageDashboard() {
         ) : (
           <>
             <div
-              className={`overflow-x-auto ${isLogPlaceholder ? "opacity-50" : ""}`}
+              className={`overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 ${isLogPlaceholder ? "opacity-50" : ""}`}
             >
               <Table hoverable>
                 <TableHead>

@@ -92,7 +92,7 @@ jobs:
   docker-tests:
     name: Docker Tests
     runs-on: ubuntu-latest
-    environment: development
+    environment: Production
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -108,39 +108,56 @@ jobs:
           curl -SL https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
           chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 
-      - name: Configure environment
+      - name: Create env file
         run: |
-          # Create .env file
-          cat << EOF > .env
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}
-          AUTH0_ISSUER_BASE_URL=${{ secrets.AUTH0_ISSUER_BASE_URL }}
-          AUTH0_CLIENT_SECRET=${{ secrets.AUTH0_CLIENT_SECRET }}
-          EOF
+          echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> .env
+          echo "DB_NAME=tapiro" >> .env
+          echo "AUTH0_SPA_CLIENT_ID=${{ secrets.AUTH0_SPA_CLIENT_ID }}" >> .env
+          echo "AUTH0_ISSUER_BASE_URL=${{ secrets.AUTH0_ISSUER_BASE_URL }}" >> .env
+          echo "AUTH0_TOKEN_URL=${{ secrets.AUTH0_TOKEN_URL }}" >> .env
+          echo "AUTH0_AUTHORIZE_URL=${{ secrets.AUTH0_AUTHORIZE_URL }}" >> .env
+          echo "AUTH0_AUDIENCE=${{ secrets.AUTH0_AUDIENCE }}" >> .env
+          echo "AUTH0_MANAGEMENT_API_TOKEN=${{ secrets.AUTH0_MANAGEMENT_API_TOKEN }}" >> .env
+          echo "AUTH0_USER_ROLE_ID=${{ secrets.AUTH0_USER_ROLE_ID }}" >> .env
+          echo "AUTH0_STORE_ROLE_ID=${{ secrets.AUTH0_STORE_ROLE_ID }}" >> .env
+          echo "AUTH0_M2M_CLIENT_ID=${{ secrets.AUTH0_M2M_CLIENT_ID }}" >> .env
+          echo "AUTH0_M2M_CLIENT_SECRET=${{ secrets.AUTH0_M2M_CLIENT_SECRET }}" >> .env
+          echo "AI_SERVICE_API_KEY=${{ secrets.AI_SERVICE_API_KEY }}" >> .env
+          echo "AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}" >> .env
+          echo "ALLOWED_ORIGINS=http://localhost:5174" >> .env
+          # Variables for compose.yml that are not secrets but good to have in .env for consistency
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "BASE_URL=http://localhost:3000" >> .env
+          echo "FRONTEND_URL=http://localhost:5173" >> .env
+          echo "AI_SERVICE_URL=http://ml-service:8000/api" >> .env
+          echo "EXTERNAL_API_URL=http://tapiro-api-external:3001" >> .env
+          echo "API_BASE_URL=http://tapiro-api-internal:3000" >> .env # For ml-service
+          echo "VITE_API_URL=http://localhost:3000" >> .env # For web
+          echo "VITE_STORE_API_URL=http://localhost:3001" >> .env # For demo-store
 
       - name: Build containers
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
-          AUTH0_ISSUER_BASE_URL: ${{ secrets.AUTH0_ISSUER_BASE_URL }}
-          AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}
-        run: |
-          docker compose -f compose.yml build
-          docker compose -f compose.yml config
+        run: docker compose -f compose.yml build
+        # No explicit env block needed here if .env file is comprehensive
 
       - name: Test container health
         run: |
           docker compose -f compose.yml up -d
           echo "Waiting for containers to start..."
-          sleep 30
+          sleep 30 # Adjust sleep time if services take longer to start
 
-          # Simple container status check
-          RUNNING_CONTAINERS=$(docker compose ps | grep -c "Up")
-          if [ "${RUNNING_CONTAINERS}" -eq 3 ]; then
+          # Check status of all services defined in compose.yml
+          SERVICES_COUNT=$(docker compose -f compose.yml config --services | wc -l)
+          RUNNING_CONTAINERS=$(docker compose -f compose.yml ps --services --filter "status=running" | wc -l)
+
+          echo "Expected services: $SERVICES_COUNT"
+          echo "Running containers: $RUNNING_CONTAINERS"
+
+          if [ "${RUNNING_CONTAINERS}" -eq "${SERVICES_COUNT}" ]; then
             echo "All containers are running"
-            docker ps
+            docker compose ps
           else
-            echo "Container startup failed"
+            echo "Not all containers started successfully."
             docker compose ps
             docker compose logs
             exit 1

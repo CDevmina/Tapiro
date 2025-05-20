@@ -14,7 +14,7 @@ exports.healthCheck = async function (req) {
     const response = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'tapiro-api',
+      service: 'tapiro-api-internal',
       dependencies: {
         database: 'disconnected',
         cache: 'disconnected',
