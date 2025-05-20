@@ -21,9 +21,10 @@ const CACHE_KEYS = {
   SCOPES: 'scopes:', // Token to scopes mapping
   ADMIN_TOKEN: 'auth0_management_token', // Auth0 management token
   PREFERENCES: 'preferences:', // User preferences
-  STORE_PREFERENCES: 'prefs:', // Store preferences
-  TAXONOMY: 'taxonomy:current', // <-- Add this line
-  AI_REQUEST: 'ai_request:', // AI service request cache
+  STORE_PREFERENCES: 'prefs:',
+  TAXONOMY: 'taxonomy:current',
+  AI_REQUEST: 'ai_request:',
+  USER_STORE_CONSENT: 'userconsent:', // New key for store consent lists
 };
 
 module.exports = { CACHE_TTL, CACHE_KEYS };

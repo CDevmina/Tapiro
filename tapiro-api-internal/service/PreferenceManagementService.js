@@ -311,7 +311,8 @@ exports.optInToStore = async function (req, storeId) {
       console.warn(`User ${user._id} (Auth0 ID: ${userData.sub}) opted into store ${storeId} but email is missing. Cannot invalidate STORE_PREFERENCES by email.`);
     }
     await invalidateCache(`${CACHE_KEYS.PREFERENCES}${userData.sub}`);
-    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`); // User profile cache might contain privacy settings
+    await invalidateCache(`${CACHE_KEYS.USER_DATA}${userData.sub}`);
+    await invalidateCache(`${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`);
 
     return respondWithCode(204);
   } catch (error) {
@@ -325,15 +326,20 @@ exports.optInToStore = async function (req, storeId) {
  */
 exports.getStoreConsentLists = async function (req) {
   try {
-    // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
+
+    // Try cache first
+    const consentCacheKey = `${CACHE_KEYS.USER_STORE_CONSENT}${userData.sub}`;
+    const cachedConsentLists = await getCache(consentCacheKey);
+    if (cachedConsentLists) {
+      return respondWithCode(200, JSON.parse(cachedConsentLists));
+    }
 
     const db = getDB();
 
-    // Find user in database using Auth0 ID, projecting only necessary fields
     const user = await db.collection('users').findOne(
       { auth0Id: userData.sub },
-      { projection: { 'privacySettings.optInStores': 1, 'privacySettings.optOutStores': 1, _id: 0 } } // Only get opt-in/out lists
+      { projection: { 'privacySettings.optInStores': 1, 'privacySettings.optOutStores': 1, _id: 0 } }
     );
 
     if (!user) {
@@ -343,14 +349,13 @@ exports.getStoreConsentLists = async function (req) {
       });
     }
 
-    // Prepare the response object, defaulting to empty arrays if fields don't exist
     const consentLists = {
       optInStores: user.privacySettings?.optInStores || [],
       optOutStores: user.privacySettings?.optOutStores || [],
     };
 
-    // Note: Caching could be added here if needed, potentially using a specific key
-    // or relying on the USER_DATA cache invalidation from opt-in/out actions.
+    // Cache the result
+    await setCache(consentCacheKey, JSON.stringify(consentLists), { EX: CACHE_TTL.USER_DATA }); // Using USER_DATA TTL, adjust if needed
 
     return respondWithCode(200, consentLists);
   } catch (error) {
