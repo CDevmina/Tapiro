@@ -19,7 +19,7 @@ import {
   Error,
   GetApiKeyUsagePayload,
   GetApiUsageLogParams,
-  LookupStoresParams,
+  LookupStoresPayload,
   PaginationInfo,
   SearchStoresParams,
   Store,
@@ -251,19 +251,20 @@ export class Stores<
    * @tags Store Management
    * @name LookupStores
    * @summary Lookup Store Details
-   * @request GET:/stores/lookup
+   * @request POST:/stores/lookup
    * @secure
    * @response `200` `(StoreBasicInfo)[]` Store details retrieved successfully.
    * @response `400` `Error`
    * @response `401` `Error`
    * @response `500` `Error`
    */
-  lookupStores = (query: LookupStoresParams, params: RequestParams = {}) =>
+  lookupStores = (data: LookupStoresPayload, params: RequestParams = {}) =>
     this.request<StoreBasicInfo[], Error>({
       path: `/stores/lookup`,
-      method: "GET",
-      query: query,
+      method: "POST",
+      body: data,
       secure: true,
+      type: ContentType.Json,
       format: "json",
       ...params,
     });

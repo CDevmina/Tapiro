@@ -154,19 +154,15 @@ exports.deleteStoreProfile = async function (req) {
  * Lookup Store Details
  * Retrieves basic details (like name) for a list of store IDs.
  */
-exports.lookupStores = async function (req, ids) {
+exports.lookupStores = async function (req, body) { // Changed signature to accept body
   try {
-    if (!ids) {
-      return respondWithCode(400, { code: 400, message: 'Missing required query parameter: ids' });
+    const ids = body.ids; // Get IDs from request body
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return respondWithCode(400, { code: 400, message: 'Missing or invalid required body parameter: ids (must be a non-empty array)' });
     }
 
-    const storeIds = ids.split(',');
-
-    // Optional: Validate if IDs are in ObjectId format if needed
-    // const validObjectIds = storeIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
-    // if (validObjectIds.length !== storeIds.length) {
-    //   return respondWithCode(400, { code: 400, message: 'One or more invalid store ID formats provided.' });
-    // }
+    const storeIds = ids;
 
     const db = getDB();
 

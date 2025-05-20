@@ -191,7 +191,7 @@ const UserDataSharingPage: React.FC = () => {
         Control Data Sharing
       </h2>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
         {/* Opt-In List (Existing) */}
         <Card>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
