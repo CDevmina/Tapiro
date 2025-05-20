@@ -299,15 +299,17 @@ export default function HomePage() {
             Experience a new era of data control and personalization with
             Tapiro.
           </p>
-          <Link to="/register">
-            <Button
-              size="xl"
-              color="light"
-              className="dark:bg-white dark:text-blue-700 dark:hover:bg-gray-100"
-            >
-              Sign Up Now
-            </Button>
-          </Link>
+          <div className="flex justify-center">
+            <Link to="/register">
+              <Button
+                size="xl"
+                color="light"
+                className="dark:bg-white dark:text-blue-700 dark:hover:bg-gray-100"
+              >
+                Sign Up Now
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
     </div>
