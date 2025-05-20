@@ -641,11 +641,11 @@ paths:
             default: 1
         - name: dataType
           in: query
-          description: Filter by data type (purchase or search)
+          description: Filter by data type (purchase, search, or preference_access)
           required: false
           schema:
             type: string
-            enum: [purchase, search]
+            enum: [purchase, search, preference_access]
         - name: storeId
           in: query
           description: Filter by store ID
@@ -1596,6 +1596,17 @@ components:
           items:
             type: string
 
+    PreferenceAccessEntry:
+      type: object
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the preferences were accessed.
+      description: Record of when a store accessed a user's preference data.
+
     RecentUserDataEntry:
       type: object
       properties:
@@ -1607,7 +1618,7 @@ components:
           description: The ID of the store that submitted the data.
         dataType:
           type: string
-          enum: [purchase, search]
+          enum: [purchase, search, preference_access]
           description: The type of data submitted.
         timestamp:
           type: string
@@ -1619,11 +1630,12 @@ components:
           description: The timestamp of the original event (e.g., purchase time).
         details:
           type: array
-          description: Array of individual purchase or search events within this batch.
+          description: Array of individual purchase, search, or preference access events within this batch.
           items:
             oneOf:
               - $ref: "#/components/schemas/PurchaseEntry"
               - $ref: "#/components/schemas/SearchEntry"
+              - $ref: "#/components/schemas/PreferenceAccessEntry"
 
     StoreBasicInfo:
       type: object

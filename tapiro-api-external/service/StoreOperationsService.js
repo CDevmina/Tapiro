@@ -23,11 +23,8 @@ exports.getUserPreferences = async function (req, userId) {
     // Try cache first using preference-specific cache key with constants
     const cacheKey = `${CACHE_KEYS.STORE_PREFERENCES}${userId}:${req.storeId}`;
     const cachedPrefs = await getCache(cacheKey);
-    if (cachedPrefs) {
-      return respondWithCode(200, JSON.parse(cachedPrefs));
-    }
-
-    // Find user in database by email only
+    
+    // Find user in database by email only (needed regardless of cache hit/miss for logging)
     const user = await db.collection('users').findOne({ email: userId });
 
     if (!user) {
@@ -52,6 +49,26 @@ exports.getUserPreferences = async function (req, userId) {
         code: 403,
         message: 'No consent: user has opted out from sharing data with this store',
       });
+    }
+
+    // Log preference access event regardless of cache hit/miss
+    await db.collection('userData').insertOne({
+      userId: user._id,
+      storeId: req.storeId,
+      email: userId,
+      dataType: 'preference_access', // New data type for preference access
+      entries: [{ timestamp: new Date() }], // Simplified entry structure for preference access
+      metadata: {
+        source: req.keyId ? `api-key:${req.keyId}` : 'api',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      },
+      processedStatus: 'processed', // No need for AI processing for preference access
+      timestamp: new Date(),
+    });
+
+    // Return cached response if available
+    if (cachedPrefs) {
+      return respondWithCode(200, JSON.parse(cachedPrefs));
     }
 
     // Check if user has explicitly opted in to this store

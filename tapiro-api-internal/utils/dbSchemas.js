@@ -3,7 +3,7 @@
  */
 
 // Schema version tracking
-const SCHEMA_VERSION = '3.0.0'; // Incremented version
+const SCHEMA_VERSION = '3.0.1'; // Incremented version
 
 const userSchema = {
   validator: {
@@ -255,8 +255,8 @@ const userDataSchema = {
         email: { bsonType: 'string' },
         dataType: {
           bsonType: 'string',
-          enum: ['purchase', 'search'],
-          description: 'Type of data being stored',
+          enum: ['purchase', 'search', 'preference_access'],
+          description: 'Type of data collected',
         },
         entries: {
           bsonType: 'array',

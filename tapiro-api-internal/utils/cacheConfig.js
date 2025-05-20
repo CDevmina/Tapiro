@@ -10,6 +10,7 @@ const CACHE_TTL = {
   INVALIDATION: 1, // Short TTL for invalidation
   AI_REQUEST: 60, // AI service requests - 1 minute
   TAXONOMY: 86400, // Taxonomy data - 1 day (added)
+  EXTERNAL_API_KEY_DETAILS: 1800, // TTL for API key details in the external API - 30 minutes
 };
 
 /**

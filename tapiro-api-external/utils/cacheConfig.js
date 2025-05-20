@@ -7,6 +7,7 @@ const CACHE_TTL = {
   USER_DATA: 3600, // User profiles - 1 hour
   STORE_DATA: 3600, // Store profiles - 1 hour
   API_KEY: 1800, // API keys - 30 minutes
+  API_KEY_DETAILS: 1800, // TTL for detailed API key info - 30 minutes
   INVALIDATION: 1, // Short TTL for invalidation
   AI_REQUEST: 60, // AI service requests - 1 minute
 };

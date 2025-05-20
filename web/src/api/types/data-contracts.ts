@@ -484,13 +484,22 @@ export interface SearchEntry {
   clicked?: string[] | null;
 }
 
+/** Record of when a store accessed a user's preference data. */
+export interface PreferenceAccessEntry {
+  /**
+   * ISO 8601 timestamp of when the preferences were accessed.
+   * @format date-time
+   */
+  timestamp: string;
+}
+
 export interface RecentUserDataEntry {
   /** The unique ID of the userData entry. */
   _id?: string;
   /** The ID of the store that submitted the data. */
   storeId?: string;
   /** The type of data submitted. */
-  dataType?: "purchase" | "search";
+  dataType?: "purchase" | "search" | "preference_access";
   /**
    * When the data was submitted to Tapiro.
    * @format date-time
@@ -501,8 +510,8 @@ export interface RecentUserDataEntry {
    * @format date-time
    */
   entryTimestamp?: string;
-  /** Array of individual purchase or search events within this batch. */
-  details?: (PurchaseEntry | SearchEntry)[];
+  /** Array of individual purchase, search, or preference access events within this batch. */
+  details?: (PurchaseEntry | SearchEntry | PreferenceAccessEntry)[];
 }
 
 export interface StoreBasicInfo {
@@ -605,8 +614,8 @@ export interface GetRecentUserDataParams {
    * @default 1
    */
   page?: number;
-  /** Filter by data type (purchase or search) */
-  dataType?: "purchase" | "search";
+  /** Filter by data type (purchase, search, or preference_access) */
+  dataType?: "purchase" | "search" | "preference_access";
   /** Filter by store ID */
   storeId?: string;
   /**

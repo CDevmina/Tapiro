@@ -45,6 +45,7 @@ import {
   HiCheckCircle, // For success toast
   HiXCircle, // For error toast
   HiOutlineEye, // Added Eye icon for view details
+  HiOutlineSparkles, // Added Sparkles icon for preference access
 } from "react-icons/hi";
 import {
   useRecentUserData,
@@ -503,7 +504,9 @@ const UserAnalyticsPage: React.FC = () => {
                 // Cast value back to the correct type or handle empty string
                 const value = e.target.value;
                 setActivityDataType(
-                  value === "purchase" || value === "search"
+                  value === "purchase" ||
+                    value === "search" ||
+                    value === "preference_access"
                     ? value
                     : undefined,
                 );
@@ -513,6 +516,7 @@ const UserAnalyticsPage: React.FC = () => {
               <option value="">All Types</option>
               <option value="purchase">Purchase</option>
               <option value="search">Search</option>
+              <option value="preference_access">Preference Access</option>
             </Select>
           </div>
           <div>
@@ -599,7 +603,9 @@ const UserAnalyticsPage: React.FC = () => {
                           {formatDate(entry.timestamp)}
                         </TableCell>
                         <TableCell className="capitalize">
-                          {entry.dataType}
+                          {entry.dataType === "preference_access"
+                            ? "Preference Access"
+                            : entry.dataType}
                         </TableCell>
                         <TableCell>
                           {entry.storeId
@@ -622,6 +628,9 @@ const UserAnalyticsPage: React.FC = () => {
                             searchDetail?.query && (
                               <span>Query: "{searchDetail.query}"</span>
                             )}
+                          {entry.dataType === "preference_access" && (
+                            <span>Store accessed your preference data</span>
+                          )}
                         </TableCell>
                         <TableCell className="flex space-x-2">
                           <Button
@@ -911,6 +920,32 @@ const UserAnalyticsPage: React.FC = () => {
                       )}
                     </div>
                   )}
+                {selectedEntryForDetails.dataType === "preference_access" && (
+                  <div className="space-y-2">
+                    <div className="rounded-lg border bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900">
+                      <div className="flex items-center">
+                        <HiOutlineSparkles className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <p className="text-md font-medium text-blue-700 dark:text-blue-300">
+                          Preference Data Access
+                        </p>
+                      </div>
+                      <p
+                        id="storeName"
+                        className="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {selectedEntryForDetails.storeId
+                          ? (storeNameMap.get(
+                              selectedEntryForDetails.storeId,
+                            ) ?? `ID: ${selectedEntryForDetails.storeId}`)
+                          : "N/A"}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        You can manage which stores can access your data in the
+                        "Sharing" tab.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </Card>
             ))}
             {!selectedEntryForDetails.details ||

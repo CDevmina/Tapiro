@@ -41,19 +41,38 @@ const validateApiKey = async (req, scopes, schema) => {
       throw new Error('API key required');
     }
 
-    const apiKeyDetailsCacheKey = `${CACHE_KEYS.API_KEY_DETAILS}${apiKey}`; // New cache key
+    const apiKeyDetailsCacheKey = `${CACHE_KEYS.API_KEY_DETAILS}${apiKey}`; 
     let cachedApiKeyDetails = await getCache(apiKeyDetailsCacheKey);
 
     if (cachedApiKeyDetails) {
       cachedApiKeyDetails = JSON.parse(cachedApiKeyDetails);
-      if (cachedApiKeyDetails.status === 'active') {
-        req.storeId = cachedApiKeyDetails.storeId;
-        req.keyId = cachedApiKeyDetails.keyId; // Set keyId for tracking
+      const { keyId: cachedKeyId, storeId: cachedStoreId, status: cachedStatus } = cachedApiKeyDetails;
+
+      if (cachedStatus === 'active') {
+        // Check for an explicit revocation marker for this keyId
+        let isMarkedRevoked = false;
+        if (cachedKeyId) {
+          const markerKey = `revoked_api_key_marker:${cachedKeyId}`;
+          const revocationMarker = await getCache(markerKey);
+          if (revocationMarker === 'revoked') {
+            isMarkedRevoked = true;
+          }
+        }
+
+        if (isMarkedRevoked) {
+          console.log(`API key ${apiKey.substring(0,8)}... (keyId: ${cachedKeyId}) found revocation marker. Invalidating local cache.`);
+          await invalidateCache(apiKeyDetailsCacheKey); // Invalidate this specific raw API key's cache
+          throw new Error('API key revoked or invalid (marker)');
+        }
+
+        // If not marked revoked, proceed
+        req.storeId = cachedStoreId;
+        req.keyId = cachedKeyId; 
         trackApiUsage(req, apiKey, req.storeId, req.keyId);
         return true;
       } else {
-        // Key was cached but is not active (e.g. revoked)
-        throw new Error('API key revoked or invalid');
+        // Key was cached but is not active (e.g. revoked directly in this cache)
+        throw new Error('API key revoked or invalid (cached as non-active)');
       }
     }
 
@@ -63,7 +82,7 @@ const validateApiKey = async (req, scopes, schema) => {
 
     const store = await db.collection('stores').findOne({
       'apiKeys.prefix': prefix,
-      'apiKeys.status': 'active', // Query for active keys directly
+      'apiKeys.status': 'active', 
     });
 
     if (!store) {
@@ -75,8 +94,6 @@ const validateApiKey = async (req, scopes, schema) => {
     );
 
     if (!foundKey) {
-      // This case should ideally be covered by the store query if prefix is unique enough
-      // and status is checked.
       throw new Error('Invalid API key (specific key not found or inactive)');
     }
 
@@ -86,26 +103,22 @@ const validateApiKey = async (req, scopes, schema) => {
       throw new Error('Invalid API key (hash mismatch)');
     }
 
-    // Set store ID and key ID in request
     req.storeId = store._id.toString();
     req.keyId = foundKey.keyId;
 
-    // Cache the API key details (storeId, keyId, status)
     const apiKeyDetailsToCache = {
       storeId: req.storeId,
       keyId: req.keyId,
-      status: foundKey.status, // Should be 'active' here
+      status: foundKey.status, 
     };
-    await setCache(apiKeyDetailsCacheKey, JSON.stringify(apiKeyDetailsToCache), { EX: CACHE_TTL.API_KEY || 1800 });
+    // Use the correct TTL from local cacheConfig for API_KEY_DETAILS
+    await setCache(apiKeyDetailsCacheKey, JSON.stringify(apiKeyDetailsToCache), { EX: CACHE_TTL.API_KEY_DETAILS || 1800 });
     
     trackApiUsage(req, apiKey, req.storeId, req.keyId);
     
     return true;
   } catch (error) {
-    console.error('API key validation failed:', error.message); // Log only message for brevity
-    // Re-throw to be handled by the oas3-tools error handler or a global error handler
-    // which should return a proper HTTP error response.
-    // Avoid directly sending res.status here as it bypasses standard error flow.
+    console.error('API key validation failed:', error.message); 
     throw error; 
   }
 };
