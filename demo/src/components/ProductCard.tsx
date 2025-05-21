@@ -4,16 +4,16 @@ interface ProductCardProps {
   product: Product;
   onProductClick?: (product: Product) => void; // Handler for clicks
   onPurchaseClick?: (product: Product) => void; // Handler for purchase clicks
-  isRecommended?: boolean; // Optional flag for highlighting
-  categoryNameMap: Record<string, string>; // Add categoryNameMap prop
+  recommendationLevel?: "high" | "medium" | null; // Updated prop
+  categoryNameMap: Record<string, string>;
 }
 
 export function ProductCard({
   product,
   onProductClick,
   onPurchaseClick,
-  isRecommended,
-  categoryNameMap, // Destructure categoryNameMap
+  recommendationLevel, // Updated prop
+  categoryNameMap,
 }: ProductCardProps) {
   const handleCardClick = () => {
     if (onProductClick) {
@@ -31,15 +31,21 @@ export function ProductCard({
   return (
     <div
       className={`relative flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-white shadow-md transition-shadow duration-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 ${
-        isRecommended
+        recommendationLevel === "high"
           ? "border-blue-500 ring-2 ring-blue-300 dark:border-blue-400"
+          : recommendationLevel === "medium"
+          ? "border-yellow-500 ring-2 ring-yellow-300 dark:border-yellow-400"
           : "border-gray-200"
       }`}
       onClick={handleCardClick}
       title={`Simulate View: ${product.name}`}
     >
-      {isRecommended && (
-        <div className="absolute top-2 right-2 rounded bg-blue-500 px-2 py-1 text-xs font-bold text-white">
+      {recommendationLevel && (
+        <div
+          className={`absolute top-2 right-2 rounded px-2 py-1 text-xs font-bold text-white ${
+            recommendationLevel === "high" ? "bg-blue-500" : "bg-yellow-500"
+          }`}
+        >
           Recommended
         </div>
       )}
