@@ -3,9 +3,9 @@ import { ProductCard } from "./ProductCard"; // Import ProductCard
 
 interface ProductListProps {
   products: Product[];
-  onProductClick?: (product: Product) => void; // Pass click handler down
-  onPurchaseClick?: (product: Product) => void; // Pass purchase click handler down
-  recommendedProductIds?: Set<string>; // Set of IDs to highlight
+  onProductClick?: (product: Product) => void;
+  onPurchaseClick?: (product: Product) => void;
+  recommendationLevels?: Map<string, "high" | "medium">; // Updated prop
   categoryNameMap: Record<string, string>; // Add categoryNameMap prop
 }
 
@@ -13,7 +13,7 @@ export function ProductList({
   products,
   onProductClick,
   onPurchaseClick,
-  recommendedProductIds = new Set(),
+  recommendationLevels = new Map(), // Updated prop
   categoryNameMap, // Destructure categoryNameMap
 }: ProductListProps) {
   if (!products || products.length === 0) {
@@ -32,7 +32,7 @@ export function ProductList({
           product={product}
           onProductClick={onProductClick}
           onPurchaseClick={onPurchaseClick}
-          isRecommended={recommendedProductIds.has(product.id)}
+          recommendationLevel={recommendationLevels.get(product.id) || null} // Pass the level
           categoryNameMap={categoryNameMap} // Pass categoryNameMap to ProductCard
         />
       ))}

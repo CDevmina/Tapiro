@@ -660,7 +660,7 @@ function App() {
 
   // --- Recommended Product IDs ---
   const recommendedProductIds = useMemo(() => {
-    const ids = new Set<string>();
+    const ids = new Map<string, "high" | "medium">(); // Changed to Map
     if (preferences && preferences.length > 0 && displayedProducts.length > 0) {
       // Get scores for all currently displayed products
       const productScores = displayedProducts.map((product) => {
@@ -704,24 +704,47 @@ function App() {
       productScores.sort((a, b) => b.score - a.score);
 
       // Recommend top N products or products above a certain score threshold
-      // For example, recommend products with a score > 0.6 (adjust as needed)
-      // Or recommend the top 3-5 products if there are enough.
-      const recommendationThreshold = 0.6; // Adjusted threshold
+      const highRecommendationThreshold = 0.6; // Existing threshold for strong recommendation
+      const mediumRecommendationThreshold = 0.1; // New threshold for medium recommendation
+
       productScores.forEach((ps) => {
-        if (ps.score > recommendationThreshold) {
-          ids.add(ps.id);
+        if (ps.score > highRecommendationThreshold) {
+          ids.set(ps.id, "high");
+        } else if (ps.score > mediumRecommendationThreshold) {
+          ids.set(ps.id, "medium");
         }
       });
 
-      // If no products are above the threshold, maybe recommend the top 1-2 anyway if scores are positive
+      // If no products are above the high threshold, ensure top products with medium score are still captured
+      // This part might need adjustment based on desired behavior if you want to *only* show medium if no high,
+      // or if the above loop already covers it. The current logic will add 'medium' if score is > 0.1 and <= 0.6.
+
+      // Example: If you want to ensure at least one medium recommendation if no high ones exist
+      // and the top product has a score > 0.1
       if (
         ids.size === 0 &&
         productScores.length > 0 &&
-        productScores[0].score > 0.1
+        productScores[0].score > mediumRecommendationThreshold
       ) {
-        ids.add(productScores[0].id);
-        if (productScores.length > 1 && productScores[1].score > 0.1) {
-          ids.add(productScores[1].id);
+        // This check is somewhat redundant if the loop above correctly sets 'medium'
+        // but can be kept if specific fallback logic is needed.
+        // For simplicity, the loop above should handle it.
+        // Let's refine the fallback: if no 'high' recommendations, and top product is 'medium'
+        let hasHighRecommendation = false;
+        ids.forEach((level) => {
+          if (level === "high") hasHighRecommendation = true;
+        });
+
+        if (
+          !hasHighRecommendation &&
+          productScores.length > 0 &&
+          productScores[0].score > mediumRecommendationThreshold &&
+          productScores[0].score <= highRecommendationThreshold
+        ) {
+          // This ensures if there are ONLY medium recommendations, the top ones are still recommended.
+          // The main loop already handles this, so this specific block might be redundant
+          // unless you want to *force* a recommendation if nothing meets 'high'.
+          // For now, the primary loop is sufficient.
         }
       }
     }
@@ -985,7 +1008,7 @@ function App() {
             products={displayedProducts}
             onProductClick={handleProductClick}
             onPurchaseClick={handlePurchaseClick}
-            recommendedProductIds={recommendedProductIds}
+            recommendationLevels={recommendedProductIds} // Pass the map here
             categoryNameMap={categoryNameMap}
           />
         </div>
