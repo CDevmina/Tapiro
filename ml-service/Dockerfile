@@ -5,7 +5,11 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY ./requirements.txt /app/requirements.txt
 
-# Install dependencies
+# Install the CPU-only torch build first. The default PyPI wheel pulls in
+# CUDA libraries (about 8 GB) that this service never uses.
+RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Install the rest. torch==2.6.0 in requirements.txt is already satisfied.
 RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 # Create non-root user
