@@ -145,9 +145,9 @@ services:
     build:
       context: ./demo
       dockerfile: dockerfile
+      args:
+        - VITE_STORE_API_URL=http://localhost:3001
     container_name: demo
-    environment:
-      - VITE_STORE_API_URL=http://localhost:3001
     ports:
       - "5174:80"
     networks:

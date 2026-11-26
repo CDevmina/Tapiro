@@ -9,6 +9,10 @@ RUN npm install --frozen-lockfile
 # Copy the rest of the application code
 COPY . .
 
+# Vite reads VITE_ vars at build time only, so the API URL is a build arg
+ARG VITE_STORE_API_URL=http://localhost:3001
+ENV VITE_STORE_API_URL=$VITE_STORE_API_URL
+
 # Build the React application
 # Vite automatically uses .env variables prefixed with VITE_
 RUN npm run build
