@@ -15,8 +15,12 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir --upgr
 # Create non-root user
 RUN addgroup --system app && adduser --system --ingroup app app
 
-# Create directories for model cache and set permissions
-RUN mkdir -p /app/model_cache && chmod 777 /app/model_cache
+# Bake the embedding model into the image so containers start without
+# downloading it (matters when the service scales to zero)
+ENV MODEL_CACHE_DIR=/app/model_cache
+RUN mkdir -p /app/model_cache && \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/app/model_cache')" && \
+    chmod -R a+rwX /app/model_cache
 
 # Copy application code
 COPY ./app /app/app
