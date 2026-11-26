@@ -5,6 +5,26 @@ const { CACHE_TTL, CACHE_KEYS } = require('../utils/cacheConfig');
 const AIService = require('../clients/AIService');
 
 /**
+ * The public demo store's API key ships in the demo site's JavaScript, so
+ * it may only touch demo users. Returns an error response, or null.
+ */
+async function blockDemoStoreForRealUsers(db, storeId, user) {
+  const { ObjectId } = require('mongodb');
+  if (user.isDemo || !ObjectId.isValid(storeId)) return null;
+  const store = await db.collection('stores').findOne(
+    { _id: new ObjectId(storeId) },
+    { projection: { isDemo: 1 } },
+  );
+  if (store && store.isDemo) {
+    return respondWithCode(403, {
+      code: 403,
+      message: 'The demo store can only access demo users',
+    });
+  }
+  return null;
+}
+
+/**
  * Get user preferences for targeted advertising
  * Used by stores via API key authentication
  */
@@ -33,6 +53,9 @@ exports.getUserPreferences = async function (req, userId) {
         message: 'User not found',
       });
     }
+
+    const demoBlock = await blockDemoStoreForRealUsers(db, req.storeId, user);
+    if (demoBlock) return demoBlock;
 
     // Check for consent
     if (!user.privacySettings?.dataSharingConsent) {
@@ -148,6 +171,9 @@ exports.submitUserData = async function (req, body) {
         message: 'User not found',
       });
     }
+
+    const demoBlock = await blockDemoStoreForRealUsers(db, req.storeId, user);
+    if (demoBlock) return demoBlock;
 
     // Check user consent
     if (!user.privacySettings?.dataSharingConsent) {
