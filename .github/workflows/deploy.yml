@@ -1,0 +1,171 @@
+name: Build and deploy
+
+# Builds the three service images, pushes them to GitHub Container Registry,
+# rolls them out to Azure Container Apps, deploys both frontends to Azure
+# Static Web Apps and re-seeds the demo data. The nightly run only re-seeds.
+# One-time setup: deploy/azure/setup.sh
+
+on:
+  push:
+    branches: [Development]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 20 * * *" # 01:47 in Colombo
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write # Azure login via OIDC
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  IMAGE_PREFIX: ghcr.io/cdevmina/tapiro
+
+jobs:
+  check:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Type-check and build web
+        working-directory: web
+        run: npm ci && npm run build
+      - name: Build demo store
+        working-directory: demo
+        run: npm ci && npm run build
+
+  images:
+    if: github.event_name != 'schedule'
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: api-internal
+            context: tapiro-api-internal
+            file: tapiro-api-internal/dockerfile
+            target: production
+          - service: api-external
+            context: tapiro-api-external
+            file: tapiro-api-external/dockerfile
+            target: production
+          - service: ml
+            context: ml-service
+            file: ml-service/Dockerfile
+            target: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy-apis:
+    if: github.event_name != 'schedule'
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Roll out new images
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          az containerapp update -n tapiro-ml -g "$RG" --image "$IMAGE_PREFIX-ml:$GITHUB_SHA" -o none
+          az containerapp update -n tapiro-api-external -g "$RG" --image "$IMAGE_PREFIX-api-external:$GITHUB_SHA" -o none
+          az containerapp update -n tapiro-api-internal -g "$RG" --image "$IMAGE_PREFIX-api-internal:$GITHUB_SHA" -o none
+
+  deploy-frontends:
+    if: github.event_name != 'schedule'
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build web
+        working-directory: web
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_AUTH0_DOMAIN: ${{ vars.VITE_AUTH0_DOMAIN }}
+          VITE_AUTH0_CLIENT_ID: ${{ vars.VITE_AUTH0_CLIENT_ID }}
+          VITE_AUTH0_AUDIENCE: ${{ vars.VITE_AUTH0_AUDIENCE }}
+          VITE_DEMO_USER_EMAIL: ${{ vars.DEMO_USER_EMAIL }}
+          VITE_DEMO_USER_PASSWORD: ${{ secrets.DEMO_USER_PASSWORD }}
+          VITE_DEMO_STORE_EMAIL: ${{ vars.DEMO_STORE_EMAIL }}
+          VITE_DEMO_STORE_PASSWORD: ${{ secrets.DEMO_STORE_PASSWORD }}
+        run: npm ci && npm run build
+      - name: Build demo store
+        working-directory: demo
+        env:
+          VITE_STORE_API_URL: ${{ vars.VITE_STORE_API_URL }}
+          VITE_DEMO_API_KEY: ${{ secrets.DEMO_STORE_API_KEY }}
+          VITE_DEMO_USER_EMAIL: ${{ vars.DEMO_USER_EMAIL }}
+        run: npm ci && npm run build
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.SWA_TOKEN_WEB }}
+          action: upload
+          app_location: web/dist
+          skip_app_build: true
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.SWA_TOKEN_DEMO }}
+          action: upload
+          app_location: demo/dist
+          skip_app_build: true
+
+  seed:
+    needs: [deploy-apis, deploy-frontends]
+    # Run after a deploy, and on its own for the nightly reset
+    if: always() && (github.event_name == 'schedule' || needs.deploy-apis.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Seed demo data
+        working-directory: tapiro-api-internal
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          DB_NAME: tapiro
+          EXTERNAL_API_URL: ${{ vars.VITE_STORE_API_URL }}
+          AUTH0_ISSUER_BASE_URL: https://${{ vars.VITE_AUTH0_DOMAIN }}
+          AUTH0_M2M_CLIENT_ID: ${{ secrets.AUTH0_M2M_CLIENT_ID }}
+          AUTH0_M2M_CLIENT_SECRET: ${{ secrets.AUTH0_M2M_CLIENT_SECRET }}
+          AUTH0_USER_ROLE_ID: ${{ secrets.AUTH0_USER_ROLE_ID }}
+          AUTH0_STORE_ROLE_ID: ${{ secrets.AUTH0_STORE_ROLE_ID }}
+          DEMO_USER_EMAIL: ${{ vars.DEMO_USER_EMAIL }}
+          DEMO_STORE_EMAIL: ${{ vars.DEMO_STORE_EMAIL }}
+          DEMO_USER_PASSWORD: ${{ secrets.DEMO_USER_PASSWORD }}
+          DEMO_STORE_PASSWORD: ${{ secrets.DEMO_STORE_PASSWORD }}
+          DEMO_STORE_API_KEY: ${{ secrets.DEMO_STORE_API_KEY }}
+        run: |
+          npm ci --omit=dev
+          # The APIs scale to zero; the first call can take a minute to wake them
+          for _ in 1 2 3 4 5 6; do curl -sf "$EXTERNAL_API_URL/ping" > /dev/null && break; sleep 20; done
+          node scripts/seedDemo.js
