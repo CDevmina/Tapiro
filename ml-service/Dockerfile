@@ -27,5 +27,5 @@ USER app
 # Expose the port
 EXPOSE 8000
 
-# Use --reload flag for development
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app"]
+# compose.yml adds --reload for local development
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
