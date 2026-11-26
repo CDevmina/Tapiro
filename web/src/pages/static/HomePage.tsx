@@ -10,6 +10,7 @@ import {
   HiOutlineChartBar,
 } from "react-icons/hi2"; // Using Hi2 for potentially newer icons
 import { Link } from "react-router"; // Assuming react-router is used
+import DemoAccounts from "../../components/home/DemoAccounts";
 
 // Placeholder icons for features - replace with actual or more suitable icons
 const FeatureIconUserControl = HiOutlineUserGroup;
@@ -90,6 +91,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
+          <DemoAccounts />
         </div>
       </section>
 

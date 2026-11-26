@@ -1,3 +1,4 @@
+import type { RedirectLoginOptions } from "@auth0/auth0-react";
 import { createContext } from "react";
 import { User } from "@auth0/auth0-react";
 
@@ -7,7 +8,7 @@ export interface AuthContextProps {
   user: User | undefined;
   userRoles: string[];
   getAccessToken: () => Promise<string>;
-  login: () => Promise<void>;
+  login: (options?: RedirectLoginOptions) => Promise<void>;
   logout: () => Promise<void>;
   tokenError: Error | null;
   refreshTokens: () => Promise<void>;
