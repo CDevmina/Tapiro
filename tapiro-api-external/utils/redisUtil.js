@@ -3,7 +3,8 @@ const redis = require('redis');
 const { CACHE_TTL } = require('./cacheConfig');
 
 const client = redis.createClient({
-  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  // REDIS_URL supports passwords and TLS (rediss://), e.g. Upstash.
+  url: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
 
 async function connectRedis() {

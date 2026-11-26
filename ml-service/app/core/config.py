@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # Redis settings
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
+    # Takes priority over host/port. Supports passwords and TLS (rediss://).
+    REDIS_URL: str = ""
 
 # Create global settings object
 settings = Settings()
