@@ -164,11 +164,17 @@ function App() {
   // --- Effects ---
   useEffect(() => {
     // Check for stored API Key first
-    const storedApiKey = localStorage.getItem("tapiroDemoApiKey");
+    // The public demo build can supply a demo key and user so visitors
+    // don't need their own store account
+    const storedApiKey =
+      localStorage.getItem("tapiroDemoApiKey") ||
+      import.meta.env.VITE_DEMO_API_KEY;
     if (storedApiKey) {
       setApiKey(storedApiKey);
       // Then check for stored Email
-      const storedEmail = localStorage.getItem("tapiroDemoUserEmail");
+      const storedEmail =
+        localStorage.getItem("tapiroDemoUserEmail") ||
+        import.meta.env.VITE_DEMO_USER_EMAIL;
       if (storedEmail) {
         setUserEmail(storedEmail);
       } else {

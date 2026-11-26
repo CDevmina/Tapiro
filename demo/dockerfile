@@ -11,7 +11,11 @@ COPY . .
 
 # Vite reads VITE_ vars at build time only, so the API URL is a build arg
 ARG VITE_STORE_API_URL=http://localhost:3001
-ENV VITE_STORE_API_URL=$VITE_STORE_API_URL
+ARG VITE_DEMO_API_KEY
+ARG VITE_DEMO_USER_EMAIL
+ENV VITE_STORE_API_URL=$VITE_STORE_API_URL \
+    VITE_DEMO_API_KEY=$VITE_DEMO_API_KEY \
+    VITE_DEMO_USER_EMAIL=$VITE_DEMO_USER_EMAIL
 
 # Build the React application
 # Vite automatically uses .env variables prefixed with VITE_
