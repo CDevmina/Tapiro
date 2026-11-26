@@ -896,6 +896,16 @@ components:
           type: boolean
           description: Allow Tapiro to infer demographic data based on user activity.
           default: true
+        optInStores:
+          type: array
+          items:
+            type: string
+          description: Store IDs the user has explicitly allowed.
+        optOutStores:
+          type: array
+          items:
+            type: string
+          description: Store IDs the user has blocked.
       required:
         - dataSharingConsent
 

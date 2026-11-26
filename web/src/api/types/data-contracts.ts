@@ -45,6 +45,10 @@ export interface PrivacySettings {
    * @default true
    */
   allowInference?: boolean;
+  /** Store IDs the user has explicitly allowed. */
+  optInStores?: string[];
+  /** Store IDs the user has blocked. */
+  optOutStores?: string[];
 }
 
 export interface Store {
