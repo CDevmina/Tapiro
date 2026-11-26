@@ -144,7 +144,7 @@ services:
   demo-store:
     build:
       context: ./demo
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     container_name: demo
     environment:
       - VITE_STORE_API_URL=http://localhost:3001
