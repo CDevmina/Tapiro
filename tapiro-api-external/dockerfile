@@ -6,3 +6,14 @@ COPY . .
 RUN npm install -g nodemon
 EXPOSE 3001
 CMD ["nodemon", "index.js"]
+
+# Lean image for deployment: production dependencies only, no nodemon
+FROM node:20-alpine AS production
+ENV NODE_ENV=production
+WORKDIR /app
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
+COPY . .
+USER node
+EXPOSE 3001
+CMD ["node", "index.js"]

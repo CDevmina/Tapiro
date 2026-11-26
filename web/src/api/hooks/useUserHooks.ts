@@ -10,7 +10,7 @@ import {
   MonthlySpendingAnalytics,
   GetSpendingAnalyticsParams,
   GetRecentUserDataParams, // <-- Import params type for recent data
-  UserDataDeletionRequest, // Import the request type if you defined it in openapi.yaml components
+  UserDataHistoryDeletionRequest, // Import the request type if you defined it in openapi.yaml components
 } from "../types/data-contracts";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth
 
@@ -228,9 +228,9 @@ export function useDeleteUserDataHistory() {
   return useMutation<
     void, // Assuming 204 No Content response
     Error,
-    UserDataDeletionRequest // Type for the request body
+    UserDataHistoryDeletionRequest // Type for the request body
   >({
-    mutationFn: (deletionRequest: UserDataDeletionRequest) => {
+    mutationFn: (deletionRequest: UserDataHistoryDeletionRequest) => {
       if (!clientsReady || !isAuthenticated || authLoading) {
         return Promise.reject(
           new Error("API client not ready or user not authenticated."),

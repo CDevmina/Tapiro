@@ -20,14 +20,16 @@ CACHE_DURATIONS = {
 }
 
 # Create Redis client with connection pooling
-redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
+_redis_options = dict(
     decode_responses=True,
     max_connections=10,  # Limit connection pool
     socket_timeout=2.0,  # Add timeouts
-    socket_connect_timeout=1.0
+    socket_connect_timeout=1.0,
 )
+if settings.REDIS_URL:
+    redis_client = redis.Redis.from_url(settings.REDIS_URL, **_redis_options)
+else:
+    redis_client = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, **_redis_options)
 
 # Define the same cache prefixes as in Node.js for consistency
 CACHE_KEYS = {

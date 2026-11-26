@@ -129,6 +129,11 @@ exports.deleteStoreProfile = async function (req) {
     // Get user data - use req.user if available (from middleware) or fetch it
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
+    // The shared demo accounts are listed on the home page, so keep them usable
+    if (await db.collection('stores').findOne({ auth0Id: userData.sub, isDemo: true })) {
+      return respondWithCode(403, { code: 403, message: 'The demo account cannot be deleted' });
+    }
+
     // Delete from database
     const result = await db.collection('stores').deleteOne({ auth0Id: userData.sub });
     if (result.deletedCount === 0) {

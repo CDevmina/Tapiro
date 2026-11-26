@@ -147,6 +147,11 @@ exports.revokeApiKey = async function (req, keyId) {
     const db = getDB();
     const userData = req.user || (await getUserData(req.headers.authorization?.split(' ')[1]));
 
+    // The shared demo accounts are listed on the home page, so keep them usable
+    if (await db.collection('stores').findOne({ auth0Id: userData.sub, isDemo: true })) {
+      return respondWithCode(403, { code: 403, message: 'The demo account cannot be changed' });
+    }
+
     // Get the store with API keys first to find the prefix of the key being revoked
     const store = await db.collection('stores').findOne({ auth0Id: userData.sub });
     if (!store) {

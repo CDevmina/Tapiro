@@ -25,6 +25,7 @@
     "axios-retry": "^4.5.0",
     "connect": "^3.2.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "js-yaml": "^3.3.0",
     "jsonwebtoken": "^9.0.2",
@@ -33,7 +34,6 @@
     "redis": "^4.7.0"
   },
   "devDependencies": {
-    "dotenv": "^16.4.7",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^10.0.1",

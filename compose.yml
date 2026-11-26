@@ -10,7 +10,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017}
       - DB_NAME=tapiro
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -36,10 +36,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_started
     networks:
       - tapiro-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/ping"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -56,7 +58,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017}
       - DB_NAME=tapiro
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -69,12 +71,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_started
       tapiro-api-internal:
         condition: service_started
     networks:
       - tapiro-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/ping"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3001/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,12 +89,13 @@ services:
       context: ./ml-service
       dockerfile: Dockerfile
     container_name: tapiro-ai
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app"]
     volumes:
       - ./ml-service:/app
       - /app/__pycache__
       - ml-model-cache:/app/model_cache
     environment:
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017}
       - API_BASE_URL=http://tapiro-api-internal:3000
       - EXTERNAL_API_URL=http://tapiro-api-external:3001
       - MONGODB_DB_NAME=tapiro
@@ -106,8 +111,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -144,16 +151,24 @@ services:
   demo-store:
     build:
       context: ./demo
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
+      args:
+        - VITE_STORE_API_URL=http://localhost:3001
     container_name: demo
-    environment:
-      - VITE_STORE_API_URL=http://localhost:3001
     ports:
       - "5174:80"
     networks:
       - tapiro-net
     depends_on:
       - tapiro-api-external
+
+  mongodb:
+    image: mongo:7
+    container_name: tapiro-mongodb
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - tapiro-net
 
   redis:
     image: redis:alpine
@@ -176,5 +191,6 @@ networks:
   tapiro-net:
 
 volumes:
+  mongo-data:
   redis-data:
   ml-model-cache:

@@ -1,34 +1,75 @@
-# Tapiro Store API Documentation
+# Tapiro
 
-Welcome to the Tapiro Store API! This documentation provides everything you need to integrate your store's systems with Tapiro to leverage AI-driven personalized advertising and insights.
+Tapiro builds a preference profile for each shopper from the purchases and searches that stores send it, lets the shopper see and control that profile, and gives stores an API to use it for recommendations.
 
-By integrating with Tapiro, you can:
+**Live demo:** LIVE_URL_PENDING
+**Demo store:** DEMO_STORE_URL_PENDING
 
-- Submit user interaction data (purchases, searches) for analysis.
-- Retrieve processed user preferences to personalize user experiences (e.g., targeted ads, product recommendations).
+Press "Log in as demo user" or "Log in as demo store" on the home page. The logins are listed there too. Demo data resets every night.
 
-## Getting Started
+![Tapiro demo](docs/tapiro-flow.gif)
 
-1.  **Obtain an API Key:** Generate API keys from your Store Dashboard within the Tapiro web application. Keep these keys secure.
-2.  **Authentication:** All API requests must be authenticated using your API key. See the [Authentication Guide](./authentication.md).
-3.  **Understand Endpoints:** Familiarize yourself with the primary endpoints for stores:
-    - [Data Submission](./data_submission.md): Send user purchase and search data.
-    - [Preference Retrieval](./preference_retrieval.md): Get user preferences.
-4.  **Review the Taxonomy:** Accurate data categorization is crucial for effective personalization. Understand how to use the [Tapiro Taxonomy](./taxonomy.md).
-5.  **Error Handling:** Be prepared to handle potential API errors. Refer to the [Error Handling Guide](./error_handling.md).
+## How it works
 
-## Core Concepts
+```mermaid
+flowchart LR
+    Web["Tapiro web app<br/>React + Auth0"]
+    Shop["Demo store<br/>React"]
+    Auth0(["Auth0"])
+    Internal["Internal API<br/>Express"]
+    External["Store API<br/>Express, API keys"]
+    ML["ML service<br/>FastAPI + Sentence Transformers"]
+    Mongo[("MongoDB Atlas")]
+    Redis[("Upstash Redis")]
 
-- **API Key:** Your unique secret key authenticates your store's requests. It identifies your store to Tapiro.
-- **User Identification:** Users are primarily identified by their **email address** when submitting data or retrieving preferences via the API. This email _must_ correspond to a registered user within the Tapiro ecosystem.
-- **Consent:** Tapiro respects user privacy choices. Data submission will only be processed if the user has given `dataSharingConsent` within Tapiro _and_ has not explicitly opted out of sharing data with _your specific store_. Preference retrieval will fail (403 Forbidden) if consent is not granted for your store.
-- **Taxonomy:** A hierarchical system for categorizing products and interests. Using correct category IDs or names from the taxonomy when submitting data is essential for the AI models.
+    Web -- login --> Auth0
+    Web -- "JWT" --> Internal
+    Shop -- "X-API-Key" --> External
+    External -- "purchases, searches" --> ML
+    ML -- "preferences" --> Mongo
+    Internal --> Mongo
+    External --> Mongo
+    Internal & External & ML --> Redis
+```
 
-## API Base URL
+1. A store sends purchases and searches to the Store API with its API key.
+2. The ML service matches each item to a category in the taxonomy (`ml-service/app/data/taxonomy.yaml`) using `all-MiniLM-L6-v2` embeddings, then updates the shopper's preference scores.
+3. The shopper logs in to the web app to see their profile, turn data sharing on or off, and block individual stores.
+4. Stores read preferences back through the Store API, but only for shoppers who allow it.
 
-The base URL for the production API is: `https://api.tapiro.com/v1`
-_(Note: Use the appropriate URL provided for development or staging environments.)_
+Store API docs: [authentication](authentication.md), [data submission](data_submission.md), [preference retrieval](preference_retrieval.md), [taxonomy](taxonomy.md).
 
-## Need Help?
+## Run it locally
 
-If you encounter issues or have questions, please contact Tapiro Support at `tapirosupport@gmail.com`.
+You need Docker and an Auth0 tenant (the free plan works). `.env.example` lists what to set up in Auth0.
+
+```bash
+git clone https://github.com/CDevmina/Tapiro.git && cd Tapiro
+cp .env.example .env   # fill in the Auth0 values and AI_SERVICE_API_KEY
+docker compose up --build
+```
+
+- Web app: http://localhost:5173
+- Demo store: http://localhost:5174
+- Internal API docs: http://localhost:3000/docs
+- Store API docs: http://localhost:3001/docs
+
+To load the demo user, demo store and sample shopping data:
+
+```bash
+docker compose exec \
+  -e DEMO_STORE_API_KEY=$(openssl rand -hex 32) \
+  -e DEMO_USER_PASSWORD=pick-one -e DEMO_STORE_PASSWORD=pick-one \
+  tapiro-api-internal npm run seed:demo
+```
+
+The script creates the two demo users in your Auth0 tenant. Add `-e SKIP_AUTH0=1` to load only the MongoDB data.
+
+## Stack
+
+- Frontend: React 19, Vite, Tailwind CSS, Flowbite, Auth0
+- APIs: Node.js 20, Express, oas3-tools (OpenAPI 3.0)
+- ML: Python 3.11, FastAPI, Sentence Transformers (`all-MiniLM-L6-v2`, CPU)
+- Data: MongoDB, Redis
+- Hosting: Azure Container Apps, Azure Static Web Apps, MongoDB Atlas, Upstash
+- CI/CD: GitHub Actions builds the images, deploys on every push to `Development` and re-seeds the demo nightly

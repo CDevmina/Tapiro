@@ -7,6 +7,7 @@ from fastapi import HTTPException
 import logging
 from sentence_transformers import SentenceTransformer
 import numpy as np
+from app.core.config import settings
 from app.models.taxonomy import TaxonomyAttribute, TaxonomyCategory, Taxonomy
 from app.utils.redis_util import get_cache, set_cache, get_cache_json, set_cache_json, CACHE_KEYS, CACHE_TTL
 
@@ -95,18 +96,16 @@ class TaxonomyService:
                 logger.info(f"Loaded embeddings from Redis cache for {len(self.category_embeddings)} categories")
                 
                 # Load the model but skip generating embeddings
-                model_name = "all-MiniLM-L6-v2"
-                self.embedding_model = SentenceTransformer(model_name)
+                self.embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL, cache_folder=settings.MODEL_CACHE_DIR)
                 return
             except Exception as e:
                 logger.error(f"Failed to load embeddings from cache: {str(e)}")
                 # Continue to generate embeddings
                 
         try:
-            model_name = "all-MiniLM-L6-v2"  # Good balance of speed and performance
-            # Specify a writable cache directory inside the container
-            cache_dir = "/app/model_cache"
-            self.embedding_model = SentenceTransformer(model_name, cache_folder=cache_dir)
+            # all-MiniLM-L6-v2: good balance of speed and quality. The Docker
+            # image ships it in MODEL_CACHE_DIR, so no download at startup.
+            self.embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL, cache_folder=settings.MODEL_CACHE_DIR)
             
             # Generate embeddings for all categories
             for category in self.taxonomy.categories:
